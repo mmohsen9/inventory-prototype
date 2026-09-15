@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}تسجيل الدخول{% endblock %}
+
+{% block extra_css %}
+<style>
+    main {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .login-container {
+        width: 100%;
+        max-width: 400px;
+    }
+
+    .login-container h2 {
+        text-align: center;
+        margin-bottom: 30px;
+        color: #333;
+    }
+
+    .quick-users {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #ddd;
+    }
+
+    .quick-users h4 {
+        margin-bottom: 15px;
+        color: #666;
+        font-size: 14px;
+    }
+
+    .user-buttons {
+        display: grid;
+        gap: 10px;
+    }
+
+    .user-btn {
+        padding: 10px 15px;
+        background: #f0f0f0;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        cursor: pointer;
+        text-align: right;
+        transition: all 0.3s;
+        font-size: 14px;
+    }
+
+    .user-btn:hover {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="container">
+        <h2>تسجيل الدخول</h2>
+        
+        <form method="POST">
+            <div class="form-group">
+                <label for="name">اسم المستخدم</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">كلمة المرور</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+
+            <button type="submit" style="width: 100%;">دخول</button>
+        </form>
+
+        {% if users %}
+        <div class="quick-users">
+            <h4>المستخدمون المتاحون:</h4>
+            <div class="user-buttons">
+                {% for user in users %}
+                <button type="button" class="user-btn" onclick="selectUser('{{ user.name }}', '{{ user.password }}')">
+                    {{ user.name }} ({{ user.role }})
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function selectUser(name, password) {
+        document.getElementById('name').value = name;
+        document.getElementById('password').value = password;
+        document.querySelector('form').submit();
+    }
+</script>
+{% endblock %}
