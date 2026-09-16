@@ -1,71 +1,104 @@
-{% extends "base.html" %}
-
-{% block title %}تسجيل الدخول{% endblock %}
-
-{% block extra_css %}
-<style>
-    main {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .login-container {
-        width: 100%;
-        max-width: 400px;
-    }
-
-    .login-container h2 {
-        text-align: center;
-        margin-bottom: 30px;
-        color: #333;
-    }
-
-    .quick-users {
-        margin-top: 20px;
-        padding-top: 20px;
-        border-top: 1px solid #ddd;
-    }
-
-    .quick-users h4 {
-        margin-bottom: 15px;
-        color: #666;
-        font-size: 14px;
-    }
-
-    .user-buttons {
-        display: grid;
-        gap: 10px;
-    }
-
-    .user-btn {
-        padding: 10px 15px;
-        background: #f0f0f0;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        cursor: pointer;
-        text-align: right;
-        transition: all 0.3s;
-        font-size: 14px;
-    }
-
-    .user-btn:hover {
-        background: #667eea;
-        color: white;
-        border-color: #667eea;
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="login-container">
-    <div class="container">
-        <h2>تسجيل الدخول</h2>
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - نظام المخزون</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .login-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .alert {
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>🏭 نظام إدخال المخزون</h1>
         
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         <form method="POST">
             <div class="form-group">
                 <label for="name">اسم المستخدم</label>
-                <input type="text" id="name" name="name" required>
+                <select id="name" name="name" required>
+                    <option value="">-- اختر المستخدم --</option>
+                    {% for user in users %}
+                        <option value="{{ user.name }}">{{ user.name }} ({{ user.role }})</option>
+                    {% endfor %}
+                </select>
             </div>
 
             <div class="form-group">
@@ -73,29 +106,8 @@
                 <input type="password" id="password" name="password" required>
             </div>
 
-            <button type="submit" style="width: 100%;">دخول</button>
+            <button type="submit">تسجيل الدخول</button>
         </form>
-
-        {% if users %}
-        <div class="quick-users">
-            <h4>المستخدمون المتاحون:</h4>
-            <div class="user-buttons">
-                {% for user in users %}
-                <button type="button" class="user-btn" onclick="selectUser('{{ user.name }}', '{{ user.password }}')">
-                    {{ user.name }} ({{ user.role }})
-                </button>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
     </div>
-</div>
-
-<script>
-    function selectUser(name, password) {
-        document.getElementById('name').value = name;
-        document.getElementById('password').value = password;
-        document.querySelector('form').submit();
-    }
-</script>
-{% endblock %}
+</body>
+</html>

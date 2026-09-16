@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>طلب صنف جديد</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f5f5f5; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; }
+        .container { max-width: 600px; margin: 20px auto; padding: 0 20px; }
+        .card { background: white; padding: 30px; border-radius: 8px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; }
+        input, select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; }
+        button { width: 100%; padding: 10px; background: #667eea; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <header><h1>✨ طلب صنف جديد</h1></header>
+    <div class="container">
+        <div class="card">
+            <form method="POST" enctype="multipart/form-data">
+                <label>الاسم العربي</label>
+                <input type="text" name="name_ar" required>
+                <label>الاسم الإنجليزي</label>
+                <input type="text" name="name_en" required>
+                <label>وحدة التخزين</label>
+                <input type="text" name="unit" required>
+                <label>معامل التحويل</label>
+                <input type="number" name="conversion_factor" value="1" step="0.01">
+                <label>التكلفة المتوقعة</label>
+                <input type="number" name="estimated_cost" step="0.01">
+                <label>المورد</label>
+                <input type="text" name="supplier">
+                <label>مرفق</label>
+                <input type="file" name="attachment">
+                <button type="submit">✅ إرسال</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

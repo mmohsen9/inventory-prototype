@@ -3,130 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>قائمة المشتريات - نظام المخزون</title>
+    <title>قائمة المشتريات</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f5f5;
-        }
-        header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        header h1 { font-size: 24px; }
-        .container {
-            max-width: 1000px;
-            margin: 20px auto;
-            padding: 0 20px;
-        }
-        .btn {
-            background: #667eea;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            transition: background 0.2s;
-        }
-        .btn:hover { background: #764ba2; }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        th, td {
-            padding: 15px;
-            text-align: right;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background: #f5f5f5;
-            font-weight: 600;
-            color: #333;
-        }
-        tr:hover {
-            background: #f9f9f9;
-        }
-        .badge {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 3px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .badge-draft { background: #ccc; color: #333; }
-        .badge-submitted { background: #fff3cd; color: #856404; }
-        .badge-approved { background: #d4edda; color: #155724; }
-        .badge-queued { background: #cfe2ff; color: #084298; }
-        .badge-rejected { background: #f8d7da; color: #721c24; }
-        .empty-message {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-        }
-        .action-link {
-            color: #667eea;
-            text-decoration: none;
-            cursor: pointer;
-        }
-        .action-link:hover {
-            text-decoration: underline;
-        }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f5f5f5; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; }
+        .container { max-width: 1000px; margin: 20px auto; padding: 0 20px; }
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        th, td { padding: 15px; text-align: right; border-bottom: 1px solid #ddd; }
+        th { background: #f5f5f5; font-weight: 600; }
+        a { color: #667eea; text-decoration: none; }
     </style>
 </head>
 <body>
     <header>
-        <div>
-            <h1>📦 المشتريات</h1>
-            <p>إدارة فواتير الشراء</p>
-        </div>
-        <a href="/purchases/new" class="btn">➕ شراء جديد</a>
+        <h1>📦 المشتريات</h1>
     </header>
-
     <div class="container">
         {% if purchases %}
         <table>
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>المورد</th>
-                    <th>رقم الفاتورة</th>
-                    <th>التاريخ</th>
-                    <th>الحالة</th>
-                    <th>الإجراء</th>
-                </tr>
-            </thead>
+            <thead><tr><th>#</th><th>المورد</th><th>الفاتورة</th><th>الإجراء</th></tr></thead>
             <tbody>
                 {% for purchase in purchases %}
-                <tr>
-                    <td>{{ purchase.id }}</td>
-                    <td>{{ purchase.supplier_name }}</td>
-                    <td>{{ purchase.invoice_number }}</td>
-                    <td>{{ purchase.invoice_date or '-' }}</td>
-                    <td>
-                        <span class="badge badge-{{ purchase.status }}">
-                            {{ purchase.status }}
-                        </span>
-                    </td>
-                    <td>
-                        <a href="/purchases/{{ purchase.id }}" class="action-link">📝 عرض</a>
-                    </td>
-                </tr>
+                <tr><td>{{ purchase.id }}</td><td>{{ purchase.supplier_name }}</td><td>{{ purchase.invoice_number }}</td><td><a href="/purchases/{{ purchase.id }}">عرض</a></td></tr>
                 {% endfor %}
             </tbody>
         </table>
-        {% else %}
-        <div class="empty-message">
-            <p>لا توجد مشتريات حتى الآن</p>
-            <a href="/purchases/new" class="btn">➕ إنشاء شراء جديد</a>
-        </div>
         {% endif %}
     </div>
 </body>

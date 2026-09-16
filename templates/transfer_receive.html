@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>استقبال تحويل</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f5f5f5; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; }
+        .container { max-width: 900px; margin: 20px auto; padding: 0 20px; }
+        .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
+        input { width: 100%; padding: 8px; margin-bottom: 10px; }
+        button { padding: 10px 15px; background: #667eea; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <header><h1>📥 استقبال تحويل #{{ transfer.id }}</h1></header>
+    <div class="container">
+        <div class="card">
+            <form method="POST">
+                <button type="submit">✅ تأكيد الاستقبال</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
