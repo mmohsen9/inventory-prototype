@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تحرير الشراء - نظام المخزون</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+            font-size: 13px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .purchase-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #333;
+        }
+        tr:hover {
+            background: #f9f9f9;
+        }
+        .delete-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .delete-btn:hover {
+            background: #ee5a52;
+        }
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button, .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+        }
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+        .add-line-form {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 10px;
+            align-items: end;
+            margin-bottom: 20px;
+        }
+        .add-line-form input {
+            font-size: 13px;
+        }
+        .empty-message {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-size: 14px;
+        }
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+        }
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        .file-label {
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: inline-block;
+            transition: background 0.2s;
+        }
+        .file-label:hover {
+            background: #218838;
+        }
+        .attachments-list {
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        .attachment-item {
+            padding: 8px;
+            background: #f5f5f5;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .attachment-item a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .attachment-item a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>✏️ تحرير الشراء #{{ purchase.id }}</h1>
+        <p>الحالة: <strong>{{ purchase.status }}</strong></p>
+    </header>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- معلومات الشراء -->
+        <div class="card">
+            <h3>📋 بيانات الشراء</h3>
+            <div class="purchase-info">
+                <div class="form-group">
+                    <label>المورد:</label>
+                    <input type="text" value="{{ purchase.supplier_name }}" disabled>
+                </div>
+                <div class="form-group">
+                    <label>رقم الفاتورة:</label>
+                    <input type="text" value="{{ purchase.invoice_number }}" disabled>
+                </div>
+                <div class="form-group">
+                    <label>تاريخ الفاتورة:</label>
+                    <input type="date" value="{{ purchase.invoice_date }}" disabled>
+                </div>
+                <div class="form-group">
+                    <label>الموقع:</label>
+                    <input type="text" value="{{ purchase.location.name_ar if purchase.location else 'غير محدد' }}" disabled>
+                </div>
+            </div>
+        </div>
+
+        <!-- إضافة أصناف -->
+        {% if purchase.status == 'draft' %}
+        <div class="card">
+            <h3>➕ إضافة صنف</h3>
+            <form method="POST" class="add-line-form">
+                <input type="hidden" name="action" value="add_line">
+                <input type="text" name="code" placeholder="SKU / الباركود" required>
+                <input type="number" name="quantity" placeholder="الكمية" step="0.01" required>
+                <input type="text" name="unit" placeholder="الوحدة" required>
+                <button type="submit" class="btn-primary">✅ إضافة</button>
+            </form>
+        </div>
+        {% endif %}
+
+        <!-- الأصناف المضافة -->
+        <div class="card">
+            <h3>📦 الأصناف</h3>
+            {% if purchase.lines %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>الصنف</th>
+                        <th>الكمية</th>
+                        <th>السعر/الوحدة</th>
+                        <th>الإجمالي</th>
+                        {% if purchase.status == 'draft' %}<th>إجراء</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in purchase.lines %}
+                    <tr>
+                        <td>{{ line.item.name_ar }} ({{ line.item.sku }})</td>
+                        <td>{{ line.quantity }}</td>
+                        <td>{{ line.unit_cost }}</td>
+                        <td>{{ (line.quantity * line.unit_cost) | round(2) }}</td>
+                        {% if purchase.status == 'draft' %}
+                        <td>
+                            <form method="POST" style="display: inline;">
+                                <input type="hidden" name="action" value="delete_line">
+                                <input type="hidden" name="line_id" value="{{ line.id }}">
+                                <button type="submit" class="delete-btn" onclick="return confirm('تأكيد الحذف؟')">حذف</button>
+                            </form>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-message">لا توجد أصناف مضافة بعد</div>
+            {% endif %}
+        </div>
+
+        <!-- المرفقات -->
+        <div class="card">
+            <h3>📎 المرفقات</h3>
+            {% if purchase.status == 'draft' %}
+            <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="upload_attachment">
+                <div style="display: flex; gap: 10px;">
+                    <input type="file" name="attachment" accept="image/*,.pdf" required style="flex: 1;">
+                    <button type="submit" class="btn-primary">📤 رفع</button>
+                </div>
+            </form>
+            {% endif %}
+            
+            {% if attachments %}
+            <div class="attachments-list">
+                {% for att in attachments %}
+                <div class="attachment-item">
+                    <a href="{{ att }}" target="_blank">{{ att.split('/')[-1] }}</a>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-message">لا توجد مرفقات</div>
+            {% endif %}
+        </div>
+
+        <!-- الإجراءات -->
+        <div class="card">
+            <div class="form-actions">
+                {% if purchase.status == 'draft' %}
+                <form method="POST" style="flex: 1;">
+                    <input type="hidden" name="action" value="submit_for_review">
+                    <button type="submit" class="btn-primary" style="width: 100%;">📨 إرسال للمراجعة</button>
+                </form>
+                {% endif %}
+                <a href="/purchases" class="btn btn-secondary">🔙 رجوع</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
