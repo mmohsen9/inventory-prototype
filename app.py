@@ -219,8 +219,20 @@ def api_lookup_item():
 
 
 # ---------------------------------------------------------------
+# ---------------------------------------------------------------
 # المشتريات
 # ---------------------------------------------------------------
+@app.route("/purchases")
+@login_required
+def purchases_list():
+    u = current_user()
+    q = PurchaseTransaction.query
+    if u.role != "accountant":
+        q = q.filter_by(created_by=u.id)
+    purchases = q.order_by(PurchaseTransaction.created_at.desc()).all()
+    return render_template("purchases_list.html", purchases=purchases)
+
+
 @app.route("/purchases/new", methods=["GET", "POST"])
 @login_required
 def purchase_new():
@@ -228,19 +240,6 @@ def purchase_new():
     locations = Location.query.all()
     # جلب أسماء الموردين من قاعدة البيانات لمنع التكرار وتسهيل البحث
     suppliers = [r[0] for r in db.session.query(PurchaseTransaction.supplier_name).distinct().all() if r[0]]
-
-    if request.method == "POST":
-        # ... (باقي كود الحفظ كما هو لديك)
-        pass # لم أغير كود الحفظ
-
-    return render_template("purchase_new.html", locations=locations, user=u, suppliers=suppliers)
-
-
-@app.route("/purchases/new", methods=["GET", "POST"])
-@login_required
-def purchase_new():
-    u = current_user()
-    locations = Location.query.all()
 
     if request.method == "POST":
         location_id = int(request.form.get("location_id") or (u.location_id or 0))
@@ -261,10 +260,10 @@ def purchase_new():
         db.session.commit()
         return redirect(url_for("purchase_edit", purchase_id=purchase.id))
 
-    return render_template("purchase_new.html", locations=locations, user=u)
+    return render_template("purchase_new.html", locations=locations, user=u, suppliers=suppliers)
 
 
-@app.route("/purchases/<int:purchase_id>", methods=["GET", "POST"])
+@app.route("/purchases/", methods=["GET", "POST"])
 @login_required
 def purchase_edit(purchase_id):
     purchase = PurchaseTransaction.query.get_or_404(purchase_id)
@@ -288,6 +287,18 @@ def purchase_edit(purchase_id):
                 db.session.commit()
                 if msg:
                     flash(msg, "warning")
+
+        elif action == "update_line":  # إضافة ميزة التعديل على الكمية بعد إضافتها
+            line_id = int(request.form.get("line_id"))
+            new_qty = float(request.form.get("new_quantity") or 0)
+            line = PurchaseLine.query.get(line_id)
+            if line and line.purchase_id == purchase.id:
+                if new_qty > 0:
+                    line.quantity = new_qty
+                    db.session.commit()
+                    flash("تم تحديث الكمية بنجاح", "success")
+                else:
+                    flash("الكمية يجب أن تكون أكبر من صفر", "error")
 
         elif action == "delete_line":
             line_id = int(request.form.get("line_id"))
@@ -323,7 +334,7 @@ def purchase_edit(purchase_id):
                             attachments=json.loads(purchase.attachments or "[]"))
 
 
-@app.route("/purchases/<int:purchase_id>/review", methods=["POST"])
+@app.route("/purchases//review", methods=["POST"])
 @login_required
 @role_required("accountant")
 def purchase_review(purchase_id):
@@ -348,7 +359,6 @@ def purchase_review(purchase_id):
         flash("تم رفض الفاتورة", "warning")
 
     return redirect(url_for("accountant_review"))
-
 
 # ---------------------------------------------------------------
 # التحويلات
