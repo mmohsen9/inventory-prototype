@@ -24,8 +24,10 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(os.path.join(BASE_DIR, "instance"), exist_ok=True)
 
 app = Flask(__name__)
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'rafa_inventory.db')}"
-app.config["SECRET_KEY"] = "change-this-secret-key-in-production"
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+    "DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'rafa_inventory.db')}"
+)
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-this-secret-key-in-production")
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20MB لكل رفع
 
 db.init_app(app)
@@ -37,20 +39,63 @@ def ensure_seed_data():
         default_locations = [
             ("المستودع الرئيسي", "Warehouse 1", "warehouse"),
             ("رفاء", "RAFA", "branch"),
+            ("التخصصي", "Takhassusi", "branch"),
+            ("هيتن", "Hittin", "branch"),
+            ("الصحافة", "Sahafa", "branch"),
+            ("النزهة", "Nuzha", "branch"),
+            ("الياسمين", "Yasmin", "branch"),
         ]
         for name_ar, name_en, location_type in default_locations:
             db.session.add(Location(name_ar=name_ar, name_en=name_en, type=location_type))
+        db.session.commit()
 
-    if User.query.count() == 0:
-        warehouse_loc = Location.query.filter_by(type="warehouse").first()
-        branch_loc = Location.query.filter_by(type="branch").first()
-        default_users = [
-            User(name="أمين المستودع", role="warehouse", location_id=warehouse_loc.id if warehouse_loc else None, password="1234", active=True),
-            User(name="موظف الفرع", role="branch_staff", location_id=branch_loc.id if branch_loc else None, password="1234", active=True),
-            User(name="المحاسب", role="accountant", location_id=None, password="1234", active=True),
-        ]
-        for user in default_users:
-            db.session.add(user)
+    # تحميل الأصناف من ملف items_export.csv (بدون هذه الخطوة لا يمكن إضافة أي صنف للحركات)
+    if Item.query.count() == 0:
+        csv_path = os.path.join(BASE_DIR, "items_export.csv")
+        if os.path.exists(csv_path):
+            import csv as _csv
+
+            def _to_float(value, default=0.0):
+                try:
+                    return float(str(value).strip())
+                except (TypeError, ValueError):
+                    return default
+
+            with open(csv_path, encoding="utf-8-sig") as fh:
+                loaded = 0
+                for row in _csv.DictReader(fh):
+                    sku = (row.get("sku") or "").strip()
+                    if not sku:
+                        continue
+                    db.session.add(Item(
+                        foodics_id=(row.get("id") or "").strip() or None,
+                        sku=sku,
+                        name_en=(row.get("name") or "").strip(),
+                        name_ar=(row.get("name_localized") or "").strip() or (row.get("name") or "").strip(),
+                        storage_unit=(row.get("storage_unit") or "").strip(),
+                        ingredient_unit=(row.get("ingredient_unit") or "").strip(),
+                        storage_to_ingredient_factor=_to_float(row.get("storage_to_ingredient_factor"), 1.0) or 1.0,
+                        cost=_to_float(row.get("cost"), 0.0),
+                        barcode=(row.get("barcode") or "").strip(),
+                        category_reference=(row.get("category_reference") or "").strip(),
+                    ))
+                    loaded += 1
+            db.session.commit()
+            print(f"تم تحميل {loaded} صنفاً من items_export.csv.")
+        else:
+            print("تحذير: لم يُعثر على items_export.csv، لن تتوفر أصناف للاختيار.")
+
+    warehouse_loc = Location.query.filter_by(type="warehouse").first()
+    branch_loc = Location.query.filter_by(type="branch").first()
+    default_users = [
+        ("أمين المستودع", "warehouse", warehouse_loc.id if warehouse_loc else None),
+        ("موظف الفرع", "branch_staff", branch_loc.id if branch_loc else None),
+        ("المحاسب", "accountant", None),
+    ]
+    # الفحص بالاسم يمنع تكرار المستخدمين عند إقلاع أكثر من worker في نفس اللحظة
+    for name, role, loc_id in default_users:
+        if not User.query.filter_by(name=name).first():
+            db.session.add(User(name=name, role=role, location_id=loc_id, password="1234", active=True))
 
     db.session.commit()
 
@@ -590,8 +635,16 @@ def serve_upload(filepath):
     return send_from_directory(UPLOAD_DIR, filepath)
 
 
-if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
+# التهيئة عند الإقلاع: تعمل مع gunicorn أيضاً وليس فقط عند التشغيل المباشر
+with app.app_context():
+    db.create_all()
+    try:
         ensure_seed_data()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    except Exception as _seed_err:
+        print(f"تحذير: تعذّر التحميل الأولي للبيانات: {_seed_err}")
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_DEBUG", "1") == "1"
+    app.run(host="0.0.0.0", port=port, debug=debug)
