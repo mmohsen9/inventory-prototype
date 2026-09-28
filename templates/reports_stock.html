@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}تقرير أرصدة المخزون الحالية{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>📈 تقرير أرصدة المخزون الحالية</h2>
+        <p>متابعة كميات الأصناف الحالية في المستودع الرئيسي وكافة الفروع وتقييم قيمتها المالية</p>
+    </div>
+    <div class="page-actions">
+        {% if user.role in ['admin', 'accountant'] %}
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('importModal').style.display='flex'">
+            📥 استيراد أرصدة (CSV)
+        </button>
+        {% endif %}
+        <a href="{{ url_for('reports_export', type='stock') }}" class="btn btn-secondary">
+            📊 تصدير Excel (CSV)
+        </a>
+        <button type="button" class="btn btn-primary" onclick="window.print()">
+            🖨️ طباعة التقرير
+        </button>
+    </div>
+</div>
+
+<!-- شريط الفلترة والبحث -->
+<form method="GET" action="{{ url_for('reports_stock') }}" class="filter-bar no-print">
+    <div class="filter-item">
+        <label style="font-size: 12px; font-weight: 600; color: var(--gray-600); display: block; margin-bottom: 4px;">الموقع / الفرع</label>
+        <select name="location_id" class="form-control" onchange="this.form.submit()">
+            <option value="all" {% if selected_location_id == 'all' %}selected{% endif %}>-- كافة المواقع والفروع --</option>
+            {% for loc in locations %}
+            <option value="{{ loc.id }}" {% if selected_location_id == loc.id %}selected{% endif %}>
+                {{ loc_name(loc) }} ({{ loc_type(loc) }})
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="filter-item" style="flex: 2;">
+        <label style="font-size: 12px; font-weight: 600; color: var(--gray-600); display: block; margin-bottom: 4px;">البحث بالاسم أو كود SKU أو الباركود</label>
+        <input type="text" name="search" class="form-control" placeholder="اكتب للبحث..." value="{{ search }}">
+    </div>
+
+    <div class="filter-item" style="display: flex; align-items: flex-end; gap: 8px;">
+        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 8px; font-size: 13px; font-weight: 600;">
+            <input type="checkbox" name="low_stock" value="1" {% if low_stock %}checked{% endif %} onchange="this.form.submit()">
+            ⚠️ الأصناف المنخفضة فقط (≤ 10)
+        </label>
+    </div>
+
+    <div style="display: flex; align-items: flex-end; gap: 6px;">
+        <button type="submit" class="btn btn-primary btn-sm" style="padding: 10px 16px;">🔍 بحث</button>
+        {% if search or selected_location_id != 'all' or low_stock %}
+        <a href="{{ url_for('reports_stock') }}" class="btn btn-secondary btn-sm" style="padding: 10px 14px;">إلغاء</a>
+        {% endif %}
+    </div>
+</form>
+
+<!-- إحصائيات التقرير -->
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <h4>عدد السجلات المطابقة</h4>
+            <div class="kpi-value">{{ rows|length }}</div>
+            <div class="kpi-desc">بند مسجل في المواقع المحددة</div>
+        </div>
+        <div class="kpi-icon icon-blue">📋</div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <h4>إجمالي عدد الوحدات</h4>
+            <div class="kpi-value">{{ "{:,.1f}".format(total_qty) }}</div>
+            <div class="kpi-desc">مجموع الكميات الفعلية</div>
+        </div>
+        <div class="kpi-icon icon-purple">📦</div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <h4>{{ 'إجمالي القيمة التقديرية' if lang == 'ar' else 'Total Estimated Value' }}</h4>
+            <div class="kpi-value">{{ "{:,.2f}".format(total_val) }} <span style="font-size: 14px; font-weight: normal;">{{ currency }}</span></div>
+            <div class="kpi-desc">{{ 'إجمالي تكلفة الأصناف المتوفرة' if lang == 'ar' else 'Total cost of in-stock items' }}</div>
+        </div>
+        <div class="kpi-icon icon-green">💰</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>الموقع / الفرع</th>
+                    <th>كود الصنف SKU</th>
+                    <th>اسم الصنف</th>
+                    <th>الباركود</th>
+                    <th>وحدة التخزين</th>
+                    <th>الرصيد الحالي</th>
+                    <th>تكلفة الوحدة</th>
+                    <th>إجمالي القيمة</th>
+                    <th>حالة المخزون</th>
+                    {% if user.role in ['admin', 'accountant'] %}
+                    <th>الإجراء</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for bal, it, loc in rows %}
+                <tr>
+                    <td><strong>{{ loc_name(loc) }}</strong></td>
+                    <td><code>{{ it.sku }}</code></td>
+                    <td>
+                        <strong>{{ item_name(it) }}</strong>
+                    </td>
+                    <td style="font-size: 12px; color: var(--gray-500);">{{ it.barcode or '-' }}</td>
+                    <td><span class="badge badge-draft">{{ it.storage_unit }}</span></td>
+                    <td style="font-weight: 700; font-size: 15px;">
+                        {{ bal.quantity }}
+                    </td>
+                    <td>{{ "{:,.2f}".format(it.cost or 0) }} {{ currency }}</td>
+                    <td style="font-weight: 700; color: #1e1b4b;">
+                        {{ "{:,.2f}".format(bal.total_value) }} {{ currency }}
+                    </td>
+                    <td>
+                        {% if bal.quantity <= 0 %}
+                        <span class="badge badge-danger">{{ 'نافد' if lang == 'ar' else 'Out of Stock' }}</span>
+                        {% elif bal.quantity <= 10 %}
+                        <span class="badge badge-warning">{{ 'منخفض جداً' if lang == 'ar' else 'Low Stock' }}</span>
+                        {% else %}
+                        <span class="badge badge-success">{{ 'متوفر' if lang == 'ar' else 'In Stock' }}</span>
+                        {% endif %}
+                    </td>
+                    {% if user.role in ['admin', 'accountant'] %}
+                    <td>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="openAdjustModal({{ it.id }}, '{{ it.name_ar|replace("'", "\\'") }}', {{ loc.id }}, '{{ loc.name_ar|replace("'", "\\'") }}', {{ bal.quantity }})" title="تعديل الرصيد يدوياً">
+                            ✏️ تعديل
+                        </button>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="10" style="text-align: center; color: var(--gray-400); padding: 30px;">
+                        لا توجد أصناف مطابقة للبحث المحدد
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal تعديل الرصيد -->
+<div id="adjustModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; padding: 24px; width: 100%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin: 0; font-size: 18px; font-weight: 800;">✏️ تسجيل الرصيد الصحيح للصنف</h3>
+            <button type="button" onclick="closeAdjustModal()" style="background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('stock_adjust') }}">
+            <input type="hidden" name="item_id" id="modal_item_id">
+            <input type="hidden" name="location_id" id="modal_location_id">
+            <div style="margin-bottom: 12px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 4px;">الصنف والموقع:</label>
+                <div id="modal_item_title" style="font-weight: 700; color: var(--primary);"></div>
+                <div id="modal_location_title" style="font-size: 12px; color: var(--gray-500);"></div>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 4px;">الرصيد الحالي:</label>
+                <input type="text" id="modal_current_qty" class="form-control" readonly style="background: #f1f5f9;">
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 4px;">الكمية الفعلية الصحيحة *</label>
+                <input type="number" step="0.001" name="new_quantity" id="modal_new_qty" class="form-control" required placeholder="أدخل الكمية الصحيحة">
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 4px;">سبب التعديل / ملاحظات</label>
+                <input type="text" name="reason" class="form-control" placeholder="مثال: تصحيح عجز جرد، كسر أو تالف">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-secondary" onclick="closeAdjustModal()">إلغاء</button>
+                <button type="submit" class="btn btn-primary">💾 حفظ وتعديل الرصيد</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal استيراد الأرصدة عبر CSV -->
+<div id="importModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; padding: 24px; width: 100%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin: 0; font-size: 18px; font-weight: 800;">📥 استيراد أرصدة الأصناف (CSV)</h3>
+            <button type="button" onclick="document.getElementById('importModal').style.display='none'" style="background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('stock_import') }}" enctype="multipart/form-data">
+            <p style="font-size: 13px; color: var(--gray-600); margin-bottom: 12px;">
+                يمكنك تحديث كميات وأرصدة المخزون دفعة واحدة برفع ملف CSV يحتوي على الأعمدة التالية:
+                <code>sku, location_id, quantity, notes</code>
+            </p>
+            <div style="margin-bottom: 16px;">
+                <a href="{{ url_for('stock_import_template') }}" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 4px;">
+                    📄 تنزيل نموذج CSV الجاهز
+                </a>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 4px;">اختر ملف CSV *</label>
+                <input type="file" name="file" accept=".csv" class="form-control" required>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('importModal').style.display='none'">إلغاء</button>
+                <button type="submit" class="btn btn-primary">🚀 بدء الاستيراد وتحديث الأرصدة</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openAdjustModal(itemId, itemName, locId, locName, currentQty) {
+    document.getElementById('modal_item_id').value = itemId;
+    document.getElementById('modal_location_id').value = locId;
+    document.getElementById('modal_item_title').textContent = itemName;
+    document.getElementById('modal_location_title').textContent = 'الموقع: ' + locName;
+    document.getElementById('modal_current_qty').value = currentQty;
+    document.getElementById('modal_new_qty').value = currentQty;
+    document.getElementById('adjustModal').style.display = 'flex';
+}
+function closeAdjustModal() {
+    document.getElementById('adjustModal').style.display = 'none';
+}
+</script>
+{% endblock %}

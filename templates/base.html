@@ -1,297 +1,101 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ lang }}" dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}نظام إدخال حركات المخزون{% endblock %}</title>
+    <title>{% block title %}{{ t('app_subtitle') }}{% endblock %} - {{ t('app_title') }}</title>
+    <!-- خط تجوال و ستايل النظام الموحد -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
+            font-family: {% if lang == 'en' %}'Inter', 'Segoe UI', sans-serif{% else %}'Tajawal', 'Segoe UI', sans-serif{% endif %};
         }
-
-        header {
-            background: rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            color: white;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        header h1 {
-            font-size: 28px;
-            margin-bottom: 10px;
-        }
-
-        nav {
-            display: flex;
-            gap: 15px;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        nav a {
-            color: white;
-            text-decoration: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            transition: background 0.3s;
-        }
-
-        nav a:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .user-info {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        main {
-            flex: 1;
-            padding: 40px 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        .container {
-            background: white;
-            border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
-
-        .alerts {
-            margin-bottom: 20px;
-        }
-
-        .alert {
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            border-right: 4px solid;
-            animation: slideIn 0.3s ease;
-        }
-
-        .alert.success {
-            background: #d4edda;
-            color: #155724;
-            border-color: #28a745;
-        }
-
-        .alert.error {
-            background: #f8d7da;
-            color: #721c24;
-            border-color: #f5c6cb;
-        }
-
-        .alert.warning {
-            background: #fff3cd;
-            color: #856404;
-            border-color: #ffeeba;
-        }
-
-        .alert.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border-color: #bee5eb;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateX(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #333;
-        }
-
-        input[type="text"],
-        input[type="password"],
-        input[type="email"],
-        input[type="number"],
-        input[type="date"],
-        input[type="file"],
-        select,
-        textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-            transition: border-color 0.3s;
-        }
-
-        input[type="text"]:focus,
-        input[type="password"]:focus,
-        input[type="email"]:focus,
-        input[type="number"]:focus,
-        input[type="date"]:focus,
-        input[type="file"]:focus,
-        select:focus,
-        textarea:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 5px rgba(102, 126, 234, 0.1);
-        }
-
-        button {
-            padding: 12px 25px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: background 0.3s;
-        }
-
-        button:hover {
-            background: #764ba2;
-        }
-
-        button.secondary {
-            background: #6c757d;
-        }
-
-        button.secondary:hover {
-            background: #5a6268;
-        }
-
-        button.danger {
-            background: #dc3545;
-        }
-
-        button.danger:hover {
-            background: #c82333;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        table th {
-            background: #f8f9fa;
-            padding: 15px;
-            text-align: right;
-            font-weight: 600;
-            border-bottom: 2px solid #ddd;
-        }
-
-        table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #ddd;
-        }
-
-        table tr:hover {
-            background: #f8f9fa;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-
-        .badge.success {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .badge.warning {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .badge.danger {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .badge.info {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-
-        footer {
-            background: rgba(0, 0, 0, 0.1);
-            color: white;
-            text-align: center;
-            padding: 20px;
-            margin-top: 40px;
-        }
-
-        {% block extra_css %}{% endblock %}
     </style>
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <header>
-        <h1>نظام إدخال حركات المخزون</h1>
-        <nav>
-            <div>
-                {% if user %}
-                    <a href="{{ url_for('dashboard') }}">الرئيسية</a>
-                    <a href="{{ url_for('purchases_list') }}">المشتريات</a>
-                    <a href="{{ url_for('transfers_list') }}">التحويلات</a>
-                    {% if user.role == 'accountant' %}
-                        <a href="{{ url_for('accountant_review') }}">مركز التحكم</a>
+    <header class="top-navbar">
+        <div class="nav-container">
+            <a href="{{ url_for('dashboard') }}" class="brand-section">
+                <div class="brand-icon">🏢</div>
+                <div class="brand-info">
+                    <h1>{{ t('app_title') }}</h1>
+                    <span>{{ t('app_subtitle') }}</span>
+                </div>
+            </a>
+
+            {% if user %}
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    📊 {{ t('nav_dashboard') }}
+                </a>
+                <a href="{{ url_for('purchases_list') }}" class="nav-item {% if 'purchase' in request.endpoint %}active{% endif %}">
+                    📦 {{ t('nav_purchases') }}
+                </a>
+                <a href="{{ url_for('transfers_list') }}" class="nav-item {% if 'transfer' in request.endpoint %}active{% endif %}">
+                    🚚 {{ t('nav_transfers') }}
+                </a>
+                <a href="{{ url_for('count_new') }}" class="nav-item {% if 'count' in request.endpoint %}active{% endif %}">
+                    📝 {{ t('nav_count') }}
+                </a>
+                <a href="{{ url_for('reports_stock') }}" class="nav-item {% if 'reports' in request.endpoint %}active{% endif %}">
+                    📈 {{ t('nav_reports') }}
+                </a>
+                {% if user.role in ['admin', 'accountant'] %}
+                <a href="{{ url_for('users_list') }}" class="nav-item {% if request.endpoint == 'users_list' %}active{% endif %}">
+                    👥 {{ t('nav_users') }}
+                </a>
+                <a href="{{ url_for('accountant_review') }}" class="nav-item {% if request.endpoint == 'accountant_review' %}active{% endif %}">
+                    🔍 {{ t('nav_control_hub') }}
+                    {% if pending_reviews_count > 0 %}
+                    <span style="background: #ef4444; color: white; border-radius: 10px; padding: 2px 7px; font-size: 11px; font-weight: 700;">
+                        {{ pending_reviews_count }}
+                    </span>
                     {% endif %}
-                    {% if user.role != 'accountant' %}
-                        <a href="{{ url_for('new_item_request') }}">طلب صنف جديد</a>
-                        <a href="{{ url_for('count_new') }}">جرد</a>
+                </a>
+                {% endif %}
+                {% if user.role != 'accountant' %}
+                <a href="{{ url_for('new_item_request') }}" class="nav-item {% if request.endpoint == 'new_item_request' %}active{% endif %}">
+                    ✨ {{ t('nav_item_request') }}
+                </a>
+                {% endif %}
+            </nav>
+
+            <div class="nav-user">
+                <a href="{{ url_for('toggle_lang') }}" class="btn-sm" style="background: rgba(255,255,255,0.15); color: white; text-decoration: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Switch Language">
+                    🌐 {{ t('switch_lang') }}
+                </a>
+                <div class="user-badge">
+                    <span>👤 {{ user.name }}</span>
+                    <span class="role-pill {{ user.role }}">{{ role_name(user) }}</span>
+                    {% if user.location %}
+                    <span style="font-size: 11px; color: #cbd5e1;">({{ loc_name(user.location) }})</span>
                     {% endif %}
-                {% endif %}
+                </div>
+                <a href="{{ url_for('logout') }}" class="btn-logout" title="{{ t('logout') }}">🚪 {{ t('logout') }}</a>
             </div>
-            <div class="user-info">
-                {% if user %}
-                    <span>مرحباً: {{ user.name }}</span>
-                    <a href="{{ url_for('logout') }}">تسجيل الخروج</a>
-                {% endif %}
+            {% else %}
+            <div class="nav-user">
+                <a href="{{ url_for('toggle_lang') }}" class="btn-sm" style="background: rgba(255,255,255,0.15); color: white; text-decoration: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Switch Language">
+                    🌐 {{ t('switch_lang') }}
+                </a>
             </div>
-        </nav>
+            {% endif %}
+        </div>
     </header>
 
-    <main>
-        <div class="alerts">
+    <main class="main-wrapper">
+        <div class="alerts-container">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
-                        <div class="alert {{ category }}">{{ message }}</div>
+                        <div class="alert alert-{{ category }}">
+                            <span>{{ message }}</span>
+                            <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; cursor:pointer; font-size:16px; color:inherit;">×</button>
+                        </div>
                     {% endfor %}
                 {% endif %}
             {% endwith %}
@@ -301,20 +105,10 @@
     </main>
 
     <footer>
-        <p>&copy; 2024 نظام إدخال حركات المخزون - جميع الحقوق محفوظة</p>
+        <p>نظام إدخال حركات المخزون - مساكن رفاء &copy; {{ now.year }} | متوافق مع Foodics API</p>
     </footer>
 
-    <script>
-        // Auto-remove alerts after 5 seconds
-        setTimeout(function() {
-            document.querySelectorAll('.alert').forEach(el => {
-                el.style.opacity = '0';
-                el.style.transition = 'opacity 0.5s';
-                setTimeout(() => el.remove(), 500);
-            });
-        }, 5000);
-    </script>
-
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

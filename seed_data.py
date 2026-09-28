@@ -1,11 +1,12 @@
 """
-تحميل البيانات الأولية: الأصناف من ملف تصدير فوديكس + المواقع + المستخدمون التجريبيون
+تحميل البيانات الأولية: الأصناف من ملف تصدير فوديكس + المواقع + المستخدمون التجريبيون + الأرصدة الافتتاحية
 تشغيل مرة واحدة: python seed_data.py
 """
 import os
 import csv
+import random
 from app import app
-from models import db, Item, Location, User
+from models import db, Item, Location, User, StockBalance, record_stock_movement
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ITEMS_CSV = os.path.join(BASE_DIR, "items_export.csv")
@@ -14,7 +15,7 @@ LOCATIONS = [
     ("المستودع الرئيسي", "Warehouse 1", "warehouse"),
     ("رفاء", "RAFA", "branch"),
     ("التخصصي", "Takhassussi- HMG", "branch"),
-    ("هيتن", "Hitten-branch", "branch"),
+    ("حطين", "Hitten-branch", "branch"),
     ("الصحافة", "Alsahafa - HMG", "branch"),
     ("النزهة", "Alnuzha", "branch"),
     ("الياسمين", "Alyasamin -Brunch", "branch"),
@@ -75,21 +76,59 @@ def seed_items():
 
 
 def seed_users():
-    if User.query.count() > 0:
-        print("المستخدمون موجودون مسبقاً، تخطي.")
-        return
     warehouse_loc = Location.query.filter_by(type="warehouse").first()
     branch_loc = Location.query.filter_by(type="branch").first()
 
-    users = [
-        User(name="أمين المستودع", role="warehouse", location_id=warehouse_loc.id if warehouse_loc else None, password="1234"),
-        User(name="موظف الفرع", role="branch_staff", location_id=branch_loc.id if branch_loc else None, password="1234"),
-        User(name="المحاسب", role="accountant", location_id=None, password="1234"),
+    default_users = [
+        ("مدير النظام", "admin", None, "admin"),
+        ("أمين المستودع", "warehouse", warehouse_loc.id if warehouse_loc else None, "1234"),
+        ("موظف الفرع", "branch_staff", branch_loc.id if branch_loc else None, "1234"),
+        ("المحاسب", "accountant", None, "1234"),
     ]
-    for u in users:
-        db.session.add(u)
+
+    created = 0
+    for name, role, loc_id, pwd in default_users:
+        existing = User.query.filter_by(name=name).first()
+        if not existing:
+            db.session.add(User(name=name, role=role, location_id=loc_id, password=pwd, active=True))
+            created += 1
     db.session.commit()
-    print("تم إنشاء 3 مستخدمين تجريبيين (كلمة المرور: 1234).")
+    if created:
+        print(f"تم إنشاء {created} مستخدمين تجريبيين جدد.")
+    else:
+        print("المستخدمون موجودون مسبقاً.")
+
+
+def seed_initial_stock():
+    if StockBalance.query.count() > 0:
+        print("أرصدة المخزون موجودة مسبقاً، تخطي.")
+        return
+
+    locations = Location.query.all()
+    items = Item.query.limit(30).all()
+    if not locations or not items:
+        return
+
+    admin_user = User.query.filter_by(role="admin").first()
+    admin_id = admin_user.id if admin_user else None
+
+    count = 0
+    for loc in locations:
+        for it in items:
+            base_qty = 120.0 if loc.type == "warehouse" else 25.0
+            qty = round(base_qty * (0.4 + random.random()), 1)
+            record_stock_movement(
+                item_id=it.id,
+                location_id=loc.id,
+                movement_type="initial",
+                quantity_change=qty,
+                notes="رصيد افتتاحي تمهيدي للتشغيل",
+                user_id=admin_id,
+            )
+            count += 1
+
+    db.session.commit()
+    print(f"تم توليد {count} رصيداً افتتاحي في المستودعات والفروع.")
 
 
 if __name__ == "__main__":
@@ -98,4 +137,5 @@ if __name__ == "__main__":
         seed_locations()
         seed_items()
         seed_users()
-    print("اكتمل تحميل البيانات الأولية.")
+        seed_initial_stock()
+    print("اكتملت تهيئة وتحميل كافة البيانات بنجاح.")

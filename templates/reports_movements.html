@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}سجل حركات المخزون (دفتر الأستاذ){% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>📋 سجل حركات المخزون (دفتر الأستاذ)</h2>
+        <p>تتبع مفصل وتدقيق كامل لجميع العمليات المخزنية (توريدات، تحويلات، استلام، تسويات جرد)</p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('reports_export', type='movements') }}" class="btn btn-secondary">
+            📥 تصدير إلى Excel (CSV)
+        </a>
+        <button type="button" class="btn btn-primary" onclick="window.print()">
+            🖨️ طباعة السجل
+        </button>
+    </div>
+</div>
+
+<!-- شريط الفلاتر -->
+<form method="GET" action="{{ url_for('reports_movements') }}" class="filter-bar no-print">
+    <div class="filter-item">
+        <label style="font-size: 12px; font-weight: 600; color: var(--gray-600); display: block; margin-bottom: 4px;">الموقع / الفرع</label>
+        <select name="location_id" class="form-control" onchange="this.form.submit()">
+            <option value="all">-- كافة المواقع --</option>
+            {% for loc in locations %}
+            <option value="{{ loc.id }}" {% if selected_location_id == loc.id|string %}selected{% endif %}>
+                {{ loc.name_ar }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="filter-item">
+        <label style="font-size: 12px; font-weight: 600; color: var(--gray-600); display: block; margin-bottom: 4px;">نوع الحركة</label>
+        <select name="movement_type" class="form-control" onchange="this.form.submit()">
+            <option value="all">-- كافة الحركات --</option>
+            <option value="purchase_in" {% if selected_movement_type == 'purchase_in' %}selected{% endif %}>توريد مشتريات</option>
+            <option value="transfer_out" {% if selected_movement_type == 'transfer_out' %}selected{% endif %}>تحويل صادر</option>
+            <option value="transfer_in" {% if selected_movement_type == 'transfer_in' %}selected{% endif %}>تحويل وارد</option>
+            <option value="count_adjustment" {% if selected_movement_type == 'count_adjustment' %}selected{% endif %}>تسوية جرد</option>
+            <option value="initial" {% if selected_movement_type == 'initial' %}selected{% endif %}>رصيد افتتاحي</option>
+        </select>
+    </div>
+
+    <div class="filter-item">
+        <label style="font-size: 12px; font-weight: 600; color: var(--gray-600); display: block; margin-bottom: 4px;">البحث بالبيان أو الكود</label>
+        <input type="text" name="search" class="form-control" placeholder="بحث بالبيان أو كود الصنف..." value="{{ search }}">
+    </div>
+
+    <div style="display: flex; align-items: flex-end; gap: 6px;">
+        <button type="submit" class="btn btn-primary btn-sm" style="padding: 10px 16px;">🔍 تصفية</button>
+        {% if search or selected_location_id != 'all' or selected_movement_type != 'all' %}
+        <a href="{{ url_for('reports_movements') }}" class="btn btn-secondary btn-sm" style="padding: 10px 14px;">إلغاء</a>
+        {% endif %}
+    </div>
+</form>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">الحركات المخزنية المسجلة ({{ movements|length }})</div>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>التاريخ والوقت</th>
+                    <th>الموقع</th>
+                    <th>نوع الحركة</th>
+                    <th>الصنف</th>
+                    <th>الكمية المتغيرة</th>
+                    <th>الرصيد بعدها</th>
+                    <th>البيان والتفاصيل</th>
+                    <th>المستخدم</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in movements %}
+                <tr>
+                    <td style="color: var(--gray-600); font-size: 13px; white-space: nowrap;">
+                        {{ m.created_at.strftime('%Y-%m-%d %H:%M') }}
+                    </td>
+                    <td><strong>{{ m.location.name_ar if m.location else '-' }}</strong></td>
+                    <td>
+                        <span class="badge {% if m.movement_type in ['purchase_in', 'transfer_in'] %}badge-success{% elif m.movement_type == 'transfer_out' %}badge-warning{% else %}badge-info{% endif %}">
+                            {{ m.movement_type_label_ar }}
+                        </span>
+                    </td>
+                    <td>
+                        <strong>[{{ m.item.sku }}]</strong> {{ m.item.name_ar }}
+                        <div style="font-size: 11px; color: var(--gray-400);">وحدة: {{ m.item.storage_unit }}</div>
+                    </td>
+                    <td style="direction: ltr; text-align: right; font-weight: 700; font-size: 15px; color: {% if m.quantity_change > 0 %}#15803d{% else %}#b91c1c{% endif %};">
+                        {% if m.quantity_change > 0 %}+{% endif %}{{ m.quantity_change }}
+                    </td>
+                    <td><strong>{{ m.balance_after }}</strong></td>
+                    <td style="color: var(--gray-700); font-size: 13px;">{{ m.notes or '-' }}</td>
+                    <td style="color: var(--gray-500); font-size: 12px;">{{ m.user.name if m.user else '-' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align: center; color: var(--gray-400); padding: 30px;">
+                        لا توجد حركات مخزنية مسجلة تطابق الشروط
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,25 +1,104 @@
-<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-    <meta charset="UTF-8">
-    <title>استقبال تحويل</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f5f5f5; }
-        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; }
-        .container { max-width: 900px; margin: 20px auto; padding: 0 20px; }
-        .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
-        input { width: 100%; padding: 8px; margin-bottom: 10px; }
-        button { padding: 10px 15px; background: #667eea; color: white; border: none; cursor: pointer; }
-    </style>
-</head>
-<body>
-    <header><h1>📥 استقبال تحويل #{{ transfer.id }}</h1></header>
-    <div class="container">
-        <div class="card">
-            <form method="POST">
-                <button type="submit">✅ تأكيد الاستقبال</button>
-            </form>
+{% extends "base.html" %}
+
+{% block title %}{{ t('transfer_receive_title') }} #{{ transfer.id }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>📥 {{ t('transfer_receive_title') }} #{{ transfer.id }}</h2>
+        <p>
+            {{ t('from_location') }}: <strong>{{ loc_name(transfer.from_location) }}</strong> &larr;
+            {{ t('to_location') }}: <strong>{{ loc_name(transfer.to_location) }}</strong>
+        </p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('transfer_edit', transfer_id=transfer.id) }}" class="btn btn-secondary">
+            🔙 {{ t('back_to_list') }}
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">📦 {{ 'مطابقة الكميات الفعلية الواصلة للفرع' if lang == 'ar' else 'Match Actual Quantities Received at Branch' }}</div>
+        <div style="font-size: 13px; color: var(--gray-500);">
+            💡 {{ 'تم ملء الكميات المستلمة افتراضياً بالكميات المصروفة، عدّل أي بند يحتوي على نقص أو زيادة' if lang == 'ar' else 'Quantities defaulted to dispatched amounts; update any variance' }}
         </div>
     </div>
-</body>
-</html>
+
+    <form method="POST">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>{{ t('sku_code') }}</th>
+                        <th>{{ t('items') }}</th>
+                        <th>{{ t('unit') }}</th>
+                        <th>{{ t('qty_sent') }}</th>
+                        <th>{{ t('notes') }}</th>
+                        <th style="background: #f0fdf4;">{{ t('qty_received') }} *</th>
+                        <th>{{ t('variance_reason') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in transfer.lines %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td><code>{{ line.item.sku }}</code></td>
+                        <td><strong>{{ item_name(line.item) }}</strong></td>
+                        <td><span class="badge badge-draft">{{ line.item.storage_unit }}</span></td>
+                        <td style="font-weight: 700; font-size: 15px;">{{ line.qty_sent }}</td>
+                        <td style="font-size: 12px; color: var(--gray-600);">{{ line.notes or "-" }}</td>
+                        <td style="background: #f0fdf4;">
+                            <input type="number" step="any"
+                                   id="qty_received_{{ line.id }}"
+                                   name="qty_received_{{ line.id }}"
+                                   value="{{ line.qty_received if line.qty_received is not none else line.qty_sent }}"
+                                   class="form-control"
+                                   style="width: 120px; font-weight: 700;"
+                                   required
+                                   oninput="checkLineDiff({{ line.id }}, {{ line.qty_sent }})">
+                        </td>
+                        <td>
+                            <input type="text"
+                                   id="reason_{{ line.id }}"
+                                   name="reason_{{ line.id }}"
+                                   class="form-control"
+                                   placeholder="{{ 'سبب الفرق...' if lang == 'ar' else 'Variance reason...' }}"
+                                   value="{{ line.variance_reason or '' }}">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--gray-100); display: flex; justify-content: flex-end; gap: 10px;">
+            <a href="{{ url_for('transfers_list') }}" class="btn btn-secondary">{{ t('cancel') }}</a>
+            <button type="submit" class="btn btn-primary" style="padding: 12px 28px; font-size: 15px;">
+                ✅ {{ 'تأكيد الاستلام وإدخال المخزون للفرع' if lang == 'ar' else 'Confirm Receiving & Update Stock' }}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function checkLineDiff(lineId, sentQty) {
+    const recInput = document.getElementById('qty_received_' + lineId);
+    const reasonInput = document.getElementById('reason_' + lineId);
+    const currentVal = parseFloat(recInput.value) || 0;
+    if (currentVal !== sentQty) {
+        recInput.style.borderColor = '#ef4444';
+        recInput.style.backgroundColor = '#fef2f2';
+        reasonInput.required = true;
+        reasonInput.placeholder = "{{ 'يرجى كتابة سبب الفرق هنا (إلزامي)' if lang == 'ar' else 'Please enter variance reason (Required)' }}";
+    } else {
+        recInput.style.borderColor = '#cbd5e1';
+        recInput.style.backgroundColor = 'white';
+        reasonInput.required = false;
+        reasonInput.placeholder = "{{ 'سبب الفرق...' if lang == 'ar' else 'Variance reason...' }}";
+    }
+}
+</script>
+{% endblock %}

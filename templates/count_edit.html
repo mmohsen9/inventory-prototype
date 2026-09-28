@@ -1,34 +1,184 @@
-<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-    <meta charset="UTF-8">
-    <title>تحرير الجرد</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f5f5f5; }
-        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; }
-        .container { max-width: 900px; margin: 20px auto; padding: 0 20px; }
-        .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
-        input { width: 100%; padding: 8px; margin-bottom: 10px; }
-        button { padding: 10px 15px; background: #667eea; color: white; border: none; cursor: pointer; }
-    </style>
-</head>
-<body>
-    <header><h1>📝 جرد #{{ session_obj.id }}</h1></header>
-    <div class="container">
-        <div class="card">
-            <form method="POST">
-                <input type="hidden" name="action" value="add_line">
-                <input type="text" name="code" placeholder="SKU" required>
-                <input type="number" name="counted_quantity" placeholder="الكمية المعدودة" required>
-                <button type="submit">✅ إضافة</button>
-            </form>
-        </div>
-        <div class="card">
-            <form method="POST">
-                <input type="hidden" name="action" value="close_session">
-                <button type="submit">🔒 إغلاق الجرد</button>
-            </form>
+{% extends "base.html" %}
+
+{% block title %}جلسة الجرد #{{ session_obj.id }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>📝 جلسة جرد مخزني #{{ session_obj.id }}</h2>
+        <p>
+            الموقع: <strong>{{ session_obj.location.name_ar if session_obj.location else '-' }}</strong> |
+            التاريخ: <strong>{{ session_obj.count_date }}</strong> |
+            المسؤول: <strong>{{ session_obj.creator.name if session_obj.creator else '-' }}</strong>
+        </p>
+    </div>
+    <div class="page-actions">
+        <span class="badge badge-{{ session_obj.status }}" style="font-size: 14px; padding: 6px 14px;">
+            {{ session_obj.status_label_ar }}
+        </span>
+        <button type="button" class="btn btn-secondary" onclick="window.print()">
+            🖨️ طباعة كشف الجرد
+        </button>
+        <a href="{{ url_for('reports_variance') }}" class="btn btn-secondary">
+            🔙 تقرير الفروقات
+        </a>
+    </div>
+</div>
+
+{% if session_obj.status == 'open' %}
+<!-- نموذج مسح وإضافة صنف للجرد -->
+<div class="card no-print" style="border: 2px solid var(--primary-light);">
+    <div class="card-header">
+        <div class="card-title">🔍 عد صنف جديد (مسح بالباركود أو بحث بالاسم)</div>
+        <div style="font-size: 13px; color: var(--gray-500);">
+            💡 يمكنك استخدام قارئ الباركود الخارجي أو كتابة اسم الصنف مباشرة
         </div>
     </div>
-</body>
-</html>
+
+    <!-- قارئ الباركود المباشر للجرد المتتابع -->
+    <div style="margin-bottom: 16px; background: #faf5ff; padding: 12px; border-radius: var(--radius-md); border: 1px dashed #d8b4fe;">
+        <label style="font-size: 13px; font-weight: 700; color: #6b21a8; display: block; margin-bottom: 4px;">
+            📷 مسح باركود الصنف بجهاز المسح / الكاميرا:
+        </label>
+        <input type="text" id="barcode-scanner-input" class="form-control" placeholder="امسح الباركود للتعرف المباشر على الصنف..." autocomplete="off">
+    </div>
+
+    <form method="POST">
+        <input type="hidden" name="action" value="add_line">
+        <div class="form-grid">
+            <div class="form-group" style="position: relative;">
+                <label for="item_search">البحث عن الصنف بالاسم أو الكود *</label>
+                <input type="text" id="item_search" class="form-control item-search-input"
+                       placeholder="اكتب اسم الصنف للبحث..." autocomplete="off"
+                       data-results-target="countSearchResults" data-code-target="count_code">
+                <div id="countSearchResults" style="display:none; position:absolute; top:100%; right:0; left:0; background:white; border:1px solid #cbd5e1; border-radius:8px; z-index:1000; box-shadow:var(--shadow-lg); max-height:220px; overflow-y:auto;"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="count_code">كود الصنف (SKU) *</label>
+                <input type="text" id="count_code" name="code" class="form-control" placeholder="مثال: sk-0102" required>
+            </div>
+
+            <div class="form-group">
+                <label for="quantity">الكمية الفعلية المعدودة على الرف *</label>
+                <input type="number" step="any" id="quantity" name="counted_quantity" class="form-control" placeholder="الكمية المعدودة" required>
+            </div>
+
+            <div class="form-group" style="display: flex; align-items: flex-end;">
+                <button type="submit" class="btn btn-primary btn-block" style="height: 42px;">
+                    ✅ تسجيل قراءة الصنف
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<!-- جدول بنود الجرد ومقارنة الأرصدة -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">📋 الأصناف المشمولة في الجرد ({{ session_obj.lines|length }})</div>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>كود الصنف SKU</th>
+                    <th>اسم الصنف</th>
+                    <th>الوحدة</th>
+                    <th>الرصيد الدفتري (النظام)</th>
+                    <th>الرصيد الفعلي (العد)</th>
+                    <th>فرق الكمية</th>
+                    <th>تكلفة الوحدة</th>
+                    <th>فرق التكلفة المالية</th>
+                    {% if session_obj.status == 'open' %}
+                    <th class="no-print">إجراء</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in session_obj.lines %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><code>{{ line.item.sku }}</code></td>
+                    <td>
+                        <strong>{{ line.item.name_ar }}</strong>
+                        {% if line.item.name_en %}
+                        <div style="font-size: 11px; color: var(--gray-400);">{{ line.item.name_en }}</div>
+                        {% endif %}
+                    </td>
+                    <td><span class="badge badge-draft">{{ line.item.storage_unit }}</span></td>
+                    <td>{{ line.book_quantity }}</td>
+                    <td style="font-weight: 700; font-size: 15px;">{{ line.counted_quantity }}</td>
+                    <td style="font-weight: 700; direction: ltr; text-align: right; color: {% if line.variance_quantity < 0 %}var(--danger){% elif line.variance_quantity > 0 %}var(--success){% else %}var(--gray-600){% endif %};">
+                        {% if line.variance_quantity > 0 %}+{% endif %}{{ line.variance_quantity }}
+                    </td>
+                    <td>{{ "{:,.2f}".format(line.item.cost or 0) }} ر.س</td>
+                    <td style="font-weight: 700; color: {% if line.variance_cost < 0 %}var(--danger){% elif line.variance_cost > 0 %}var(--success){% else %}var(--gray-600){% endif %};">
+                        {{ "{:,.2f}".format(line.variance_cost) }} ر.س
+                    </td>
+                    {% if session_obj.status == 'open' %}
+                    <td class="no-print">
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="delete_line">
+                            <input type="hidden" name="line_id" value="{{ line.id }}">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('حذف هذا البند من جلسة الجرد؟')">
+                                🗑️ حذف
+                            </button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="10" style="text-align: center; color: var(--gray-400); padding: 30px;">
+                        لم تتم إضافة أي أصناف للجرد بعد. ابدأ بمسح أو إضافة أول صنف أعلاه.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="background: var(--gray-50); font-weight: 700; font-size: 15px;">
+                    <td colspan="6" style="text-align: left;">صافي الأثر المالي لفروقات الجرد:</td>
+                    <td colspan="2">-</td>
+                    <td style="font-size: 17px; color: {% if session_obj.total_variance_cost < 0 %}var(--danger){% elif session_obj.total_variance_cost > 0 %}var(--success){% else %}var(--gray-800){% endif %};">
+                        {{ "{:,.2f}".format(session_obj.total_variance_cost) }} ر.س
+                    </td>
+                    {% if session_obj.status == 'open' %}
+                    <td class="no-print"></td>
+                    {% endif %}
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- إجراءات جلسة الجرد -->
+<div class="card no-print">
+    {% if session_obj.status == 'open' %}
+    <form method="POST">
+        <input type="hidden" name="action" value="close_session">
+        <button type="submit" class="btn btn-primary btn-block" style="padding: 14px; font-size: 16px;"
+                onclick="return confirm('هل أنت متأكد من إنهاء العد وإغلاق جلسة الجرد؟ سيتم تحويلها للمحاسب للمراجعة والاعتماد.')">
+            🔒 إنهاء العد وإغلاق الجرد وتحويله للمراجعة المالية &larr;
+        </button>
+    </form>
+    {% elif session_obj.status == 'pending_review' and user.role in ['admin', 'accountant'] %}
+    <div style="background: var(--warning-light); padding: 14px; border-radius: var(--radius-md); margin-bottom: 14px;">
+        ⏳ جلسة الجرد بانتظار اعتمادك لتطبيق التسويات المخزنية الدفترية.
+    </div>
+    <form method="POST">
+        <input type="hidden" name="action" value="approve_session">
+        <button type="submit" class="btn btn-success btn-block" style="padding: 14px; font-size: 16px;"
+                onclick="return confirm('هل تريد اعتماد نتائج الجرد وتعديل الأرصدة المخزنية في النظام لتطابق الكميات الفعلية المعدودة؟')">
+            ✅ اعتماد نتائج الجرد وتسوية أرصدة المستودع/الفرع
+        </button>
+    </form>
+    {% else %}
+    <div style="color: var(--gray-600); font-size: 14px;">
+        حالة الجلسة: <span class="badge badge-{{ session_obj.status }}">{{ session_obj.status_label_ar }}</span>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

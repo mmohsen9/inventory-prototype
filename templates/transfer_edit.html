@@ -1,28 +1,279 @@
-<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-    <meta charset="UTF-8">
-    <title>تحرير التحويل</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f5f5f5; }
-        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; }
-        .container { max-width: 900px; margin: 20px auto; padding: 0 20px; }
-        .card { background: white; padding: 20px; margin-bottom: 20px; border-radius: 8px; }
-        button { padding: 10px 15px; background: #667eea; color: white; border: none; cursor: pointer; }
-    </style>
-</head>
-<body>
-    <header><h1>✏️ تحويل #{{ transfer.id }}</h1></header>
-    <div class="container">
-        <div class="card">
-            <p>الحالة: {{ transfer.status }}</p>
+{% extends "base.html" %}
+
+{% block title %}{{ t('transfer_voucher') }} #{{ transfer.id }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>🚚 {{ t('transfer_voucher') }} #{{ transfer.id }}</h2>
+        <p>
+            {{ t('from_location') }}: <strong>{{ loc_name(transfer.from_location) }}</strong> &larr;
+            {{ t('to_location') }}: <strong>{{ loc_name(transfer.to_location) }}</strong>
+        </p>
+    </div>
+    <div class="page-actions">
+        <span class="badge badge-{{ transfer.status }}" style="font-size: 14px; padding: 6px 14px;">
+            {{ status_name(transfer) }}
+        </span>
+        <button type="button" class="btn btn-secondary" onclick="window.print()">
+            🖨️ {{ t('print') }}
+        </button>
+        <a href="{{ url_for('transfers_list') }}" class="btn btn-secondary">
+            🔙 {{ t('back_to_list') }}
+        </a>
+    </div>
+</div>
+
+<!-- ملخص التحويل العلوي مع إمكانية تعديل فرع الوجهة -->
+<div class="kpi-grid" style="margin-bottom: 20px;">
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <h4>{{ t('source_branch') }}</h4>
+            <div style="font-size: 18px; font-weight: 700; color: var(--gray-900);">{{ loc_name(transfer.from_location) }}</div>
+            <div class="kpi-desc">{{ t('details') }}: {{ transfer.creator.name if transfer.creator else '-' }}</div>
+        </div>
+        <div class="kpi-icon icon-purple">🏭</div>
+    </div>
+
+    <!-- بطاقة فرع الوجهة مع إمكانية التعديل قبل الحفظ -->
+    <div class="kpi-card" style="position: relative;">
+        <div class="kpi-content" style="width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <h4 style="margin: 0;">{{ t('destination_branch') }}</h4>
+                {% if transfer.status == 'draft' %}
+                <button type="button" id="btn-toggle-dest" class="btn btn-sm btn-outline-primary" style="font-size: 11px; padding: 2px 8px; cursor: pointer;">
+                    ✏️ {{ t('change_destination') }}
+                </button>
+                {% endif %}
+            </div>
+
+            <div id="dest-display" style="font-size: 18px; font-weight: 700; color: var(--gray-900);">
+                {{ loc_name(transfer.to_location) }}
+            </div>
+
             {% if transfer.status == 'draft' %}
-            <form method="POST">
-                <input type="hidden" name="action" value="send">
-                <button type="submit">📨 إرسال</button>
+            <form id="dest-form" method="POST" style="display: none; margin-top: 8px;">
+                <input type="hidden" name="action" value="update_destination">
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <select name="to_location_id" id="edit_to_location_id" class="form-control" style="font-size: 13px; padding: 5px 8px;" required>
+                        {% for loc in locations %}
+                        {% if loc.id != transfer.from_location_id %}
+                        <option value="{{ loc.id }}" {% if transfer.to_location_id == loc.id %}selected{% endif %}>
+                            {{ loc_name(loc) }} ({{ loc_type(loc) }})
+                        </option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-primary btn-sm" style="white-space: nowrap;">
+                        💾 {{ t('update_destination') }}
+                    </button>
+                    <button type="button" id="btn-cancel-dest" class="btn btn-secondary btn-sm">
+                        ✖️
+                    </button>
+                </div>
             </form>
             {% endif %}
+
+            <div class="kpi-desc">{{ t('details') }}: {{ transfer.confirmer.name if transfer.confirmer else ('قيد الانتظار' if lang == 'ar' else 'Pending') }}</div>
         </div>
+        <div class="kpi-icon icon-blue">🏪</div>
     </div>
-</body>
-</html>
+
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <h4>{{ t('date') }}</h4>
+            <div style="font-size: 18px; font-weight: 700; color: var(--gray-900);">{{ transfer.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+            <div class="kpi-desc">{{ t('shipped_items') }}: {{ transfer.lines|length }}</div>
+        </div>
+        <div class="kpi-icon icon-green">📅</div>
+    </div>
+</div>
+
+{% if transfer.status == 'draft' %}
+<!-- إضافة أصناف للشحنة -->
+<div class="card no-print" style="border: 2px solid var(--primary-light);">
+    <div class="card-header">
+        <div class="card-title">➕ {{ t('add_item_to_voucher') }}</div>
+    </div>
+
+    <!-- حقل قارئ الباركود الخارجي السريع -->
+    <div style="margin-bottom: 16px; background: #faf5ff; padding: 12px; border-radius: var(--radius-md); border: 1px dashed #d8b4fe;">
+        <label style="font-size: 13px; font-weight: 700; color: #6b21a8; display: block; margin-bottom: 4px;">
+            📷 {{ t('barcode_scanner') }}:
+        </label>
+        <input type="text" id="barcode-scanner-input" class="form-control" placeholder="{{ t('barcode_scanner_placeholder') }}" autocomplete="off">
+    </div>
+
+    <form method="POST">
+        <input type="hidden" name="action" value="add_line">
+        <div class="form-grid">
+            <div class="form-group" style="position: relative;">
+                <label for="item_search">{{ t('search') }} *</label>
+                <input type="text" id="item_search" class="form-control item-search-input"
+                       placeholder="{{ t('search_item_placeholder') }}" autocomplete="off"
+                       data-results-target="transferSearchResults" data-code-target="transfer_code">
+                <div id="transferSearchResults" style="display:none; position:absolute; top:100%; right:0; left:0; background:white; border:1px solid #cbd5e1; border-radius:8px; z-index:1000; box-shadow:var(--shadow-lg); max-height:220px; overflow-y:auto;"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="transfer_code">{{ t('sku_code') }} *</label>
+                <input type="text" id="transfer_code" name="code" class="form-control" placeholder="sk-0102" required>
+            </div>
+
+            <div class="form-group">
+                <label for="quantity">{{ t('qty_sent') }} *</label>
+                <input type="number" step="any" id="quantity" name="quantity" class="form-control" placeholder="{{ t('quantity') }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">{{ t('notes') }}</label>
+                <input type="text" id="notes" name="notes" class="form-control" placeholder="{{ t('notes') }}" style="width: 100%;">
+            </div>
+
+            <div class="form-group" style="display: flex; align-items: flex-end;">
+                <button type="submit" class="btn btn-primary btn-block" style="height: 42px;">
+                    ➕ {{ t('add_to_voucher') }}
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<!-- جدول أصناف الشحنة -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">📦 {{ t('shipped_items') }} ({{ transfer.lines|length }})</div>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>{{ t('sku_code') }}</th>
+                    <th>{{ t('items') }}</th>
+                    <th>{{ t('unit') }}</th>
+                    <th>{{ t('qty_sent') }}</th>
+                    <th>{{ t('notes') }}</th>
+                    {% if transfer.status in ['received', 'needs_review', 'approved', 'closed'] %}
+                    <th>{{ t('qty_received') }}</th>
+                    <th>{{ t('variance') }}</th>
+                    <th>{{ t('variance_reason') }}</th>
+                    {% endif %}
+                    {% if transfer.status == 'draft' %}
+                    <th class="no-print">{{ t('actions') }}</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in transfer.lines %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><code>{{ line.item.sku if line.item else '-' }}</code></td>
+                    <td>
+                        <strong>{{ item_name(line.item) if line.item else '-' }}</strong>
+                    </td>
+                    <td><span class="badge badge-draft">{{ line.item.storage_unit if line.item else '-' }}</span></td>
+                    <td style="font-weight: 700; font-size: 15px;">{{ line.qty_sent }}</td>
+                    <td style="font-size: 12px; color: var(--gray-600);">{{ line.notes or "-" }}</td>
+                    {% if transfer.status in ['received', 'needs_review', 'approved', 'closed'] %}
+                    <td style="font-weight: 700;">{{ line.qty_received if line.qty_received is not none else '-' }}</td>
+                    <td style="font-weight: 700; direction: ltr; text-align: right; color: {% if line.variance_qty and line.variance_qty != 0 %}var(--danger){% else %}var(--success){% endif %};">
+                        {{ line.variance_qty if line.variance_qty is not none else '0' }}
+                    </td>
+                    <td style="font-size: 12px; color: var(--gray-600);">{{ line.variance_reason or '-' }}</td>
+                    {% endif %}
+                    {% if transfer.status == 'draft' %}
+                    <td class="no-print">
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="delete_line">
+                            <input type="hidden" name="line_id" value="{{ line.id }}">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('{{ 'هل أنت متأكد من حذف هذا البند؟' if lang == 'ar' else 'Are you sure you want to delete this line?' }}')">
+                                🗑️ {{ t('delete') }}
+                            </button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--gray-400); padding: 30px;">
+                        {{ 'لم تتم إضافة أي أصناف لهذه الشحنة بعد.' if lang == 'ar' else 'No items added to this shipment yet.' }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- إجراءات الشحنة -->
+<div class="card no-print">
+    {% if transfer.status == 'draft' %}
+    <form method="POST">
+        <input type="hidden" name="action" value="send">
+        <input type="hidden" name="to_location_id" id="send_destination_id" value="{{ transfer.to_location_id }}">
+        <button type="submit" class="btn btn-primary btn-block" style="padding: 14px; font-size: 16px;"
+                onclick="return confirm('{{ 'هل أنت متأكد من صرف الشحنة وإرسالها؟ سيتم خصم الكميات من مستودع المصدر وتغيير الحالة إلى قيد النقل.' if lang == 'ar' else 'Are you sure you want to dispatch this shipment? Quantities will be deducted from source warehouse.' }}')">
+            🚚 {{ t('confirm_send_transfer') }} &larr;
+        </button>
+    </form>
+    {% elif transfer.status == 'in_transit' and (user.role in ['admin', 'branch_staff', 'accountant']) %}
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <p style="color: var(--gray-700); font-size: 14px;">
+            {{ t('transfer_in_transit_hint') }}
+        </p>
+        <a href="{{ url_for('transfer_receive', transfer_id=transfer.id) }}" class="btn btn-success" style="padding: 12px 24px;">
+            📥 {{ t('receive_materials') }}
+        </a>
+    </div>
+    {% elif transfer.status == 'needs_review' and user.role in ['admin', 'accountant'] %}
+    <div style="background: var(--warning-light); padding: 14px; border-radius: var(--radius-md); margin-bottom: 14px;">
+        ⚠️ {{ 'يوجد فرق بين الكميات المشحونة والمستلمة، يلزم اعتماد المحاسب لتسوية الرصيد وترحيل العملية.' if lang == 'ar' else 'Variance exists between sent and received quantities, awaiting accountant approval.' }}
+    </div>
+    <form method="POST" action="{{ url_for('transfer_approve', transfer_id=transfer.id) }}">
+        <button type="submit" class="btn btn-success btn-block" style="padding: 12px;" onclick="return confirm('{{ 'هل تريد اعتماد التحويل وإدخال الكميات المستلمة فعلياً لفرع الوجهة؟' if lang == 'ar' else 'Approve transfer and post actual received quantities?' }}')">
+            ✅ {{ 'اعتماد التحويل مع الفروقات وترحيله' if lang == 'ar' else 'Approve Transfer & Post' }}
+        </button>
+    </form>
+    {% else %}
+    <div style="color: var(--gray-600); font-size: 14px;">
+        {{ t('status') }}: <span class="badge badge-{{ transfer.status }}">{{ status_name(transfer) }}</span>
+        {% if transfer.foodics_reference %}
+        | Foodics: <code>{{ transfer.foodics_reference }}</code>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const btnToggle = document.getElementById("btn-toggle-dest");
+    const destDisplay = document.getElementById("dest-display");
+    const destForm = document.getElementById("dest-form");
+    const btnCancel = document.getElementById("btn-cancel-dest");
+    const destSelect = document.getElementById("edit_to_location_id");
+    const sendDestId = document.getElementById("send_destination_id");
+
+    if (btnToggle && destForm) {
+        btnToggle.addEventListener("click", function() {
+            destDisplay.style.display = "none";
+            destForm.style.display = "block";
+        });
+
+        if (btnCancel) {
+            btnCancel.addEventListener("click", function() {
+                destForm.style.display = "none";
+                destDisplay.style.display = "block";
+            });
+        }
+
+        if (destSelect && sendDestId) {
+            destSelect.addEventListener("change", function() {
+                sendDestId.value = this.value;
+            });
+        }
+    }
+});
+</script>
+{% endblock %}

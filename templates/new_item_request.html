@@ -1,40 +1,66 @@
-<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-    <meta charset="UTF-8">
-    <title>طلب صنف جديد</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f5f5f5; }
-        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; }
-        .container { max-width: 600px; margin: 20px auto; padding: 0 20px; }
-        .card { background: white; padding: 30px; border-radius: 8px; }
-        label { display: block; margin-bottom: 5px; font-weight: 500; }
-        input, select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 4px; }
-        button { width: 100%; padding: 10px; background: #667eea; color: white; border: none; cursor: pointer; }
-    </style>
-</head>
-<body>
-    <header><h1>✨ طلب صنف جديد</h1></header>
-    <div class="container">
-        <div class="card">
-            <form method="POST" enctype="multipart/form-data">
-                <label>الاسم العربي</label>
-                <input type="text" name="name_ar" required>
-                <label>الاسم الإنجليزي</label>
-                <input type="text" name="name_en" required>
-                <label>وحدة التخزين</label>
-                <input type="text" name="unit" required>
-                <label>معامل التحويل</label>
-                <input type="number" name="conversion_factor" value="1" step="0.01">
-                <label>التكلفة المتوقعة</label>
-                <input type="number" name="estimated_cost" step="0.01">
-                <label>المورد</label>
-                <input type="text" name="supplier">
-                <label>مرفق</label>
-                <input type="file" name="attachment">
-                <button type="submit">✅ إرسال</button>
-            </form>
-        </div>
+{% extends "base.html" %}
+
+{% block title %}طلب إضافة صنف جديد للمخزون{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>✨ طلب إضافة صنف جديد للمخزون</h2>
+        <p>أرسل بيانات الصنف غير المعرف في فوديكس للمحاسب للاعتماد وتوليد كود SKU رسمي</p>
     </div>
-</body>
-</html>
+    <div class="page-actions">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+            🔙 العودة للرئيسية
+        </a>
+    </div>
+</div>
+
+<div class="card" style="max-width: 700px; margin: 0 auto;">
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="name_ar">اسم الصنف باللغة العربية *</label>
+                <input type="text" id="name_ar" name="name_ar" class="form-control" placeholder="مثال: مناديل مبللة فاخرة" required>
+            </div>
+
+            <div class="form-group">
+                <label for="name_en">اسم الصنف باللغة الإنجليزية</label>
+                <input type="text" id="name_en" name="name_en" class="form-control" placeholder="e.g. Luxury Wet Wipes">
+            </div>
+
+            <div class="form-group">
+                <label for="unit">وحدة التخزين والاستلام *</label>
+                <input type="text" id="unit" name="unit" class="form-control" placeholder="مثال: كرتون، حبة، لتر، كجم" required>
+            </div>
+
+            <div class="form-group">
+                <label for="conversion_factor">معامل التحويل لوحدة المكونات</label>
+                <input type="number" step="any" id="conversion_factor" name="conversion_factor" class="form-control" value="1">
+                <small style="color: var(--gray-400); font-size: 11px;">عدد الوحدات الصغرى داخل وحدة التخزين (افتراضي: 1)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="estimated_cost">التكلفة المتوقعة للوحدة (ر.س)</label>
+                <input type="number" step="0.01" id="estimated_cost" name="estimated_cost" class="form-control" placeholder="0.00">
+            </div>
+
+            <div class="form-group">
+                <label for="supplier">اسم المورد المقترح</label>
+                <input type="text" id="supplier" name="supplier" class="form-control" placeholder="اسم الشركة أو المورد">
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label for="attachment">صورة الصنف أو الباركود أو فاتورة الشراء</label>
+                <input type="file" id="attachment" name="attachment" class="form-control" accept="image/*,application/pdf">
+            </div>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--gray-100); display: flex; justify-content: flex-end; gap: 10px;">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">إلغاء</a>
+            <button type="submit" class="btn btn-primary" style="padding: 12px 28px;">
+                🚀 إرسال طلب الصنف للاعتماد &larr;
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

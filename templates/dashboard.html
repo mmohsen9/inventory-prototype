@@ -1,103 +1,244 @@
-<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحكم - نظام المخزون</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f5f5;
-        }
-        header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        header h1 { font-size: 28px; margin-bottom: 10px; }
-        header p { font-size: 14px; opacity: 0.9; }
-        .header-actions { float: left; }
-        .header-actions a {
-            color: white;
-            text-decoration: none;
-            padding: 8px 15px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 5px;
-            transition: background 0.3s;
-        }
-        .header-actions a:hover { background: rgba(255, 255, 255, 0.3); }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .card {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s;
-        }
-        .card:hover { transform: translateY(-5px); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); }
-        .card h3 { color: #333; margin-bottom: 15px; font-size: 18px; }
-        .card-links a {
-            display: inline-block;
-            padding: 8px 12px;
-            background: #667eea;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 13px;
-            margin: 5px 5px 5px 0;
-            transition: background 0.2s;
-        }
-        .card-links a:hover { background: #764ba2; }
-    </style>
-</head>
-<body>
-    <header>
-        <div style="overflow: auto;">
-            <div>
-                <h1>🏭 لوحة التحكم</h1>
-                <p>أهلاً {{ user.name }} | الدور: <strong>{{ user.role }}</strong></p>
-            </div>
-            <div class="header-actions">
-                <a href="/logout">🚪 تسجيل الخروج</a>
+{% extends "base.html" %}
+
+{% block title %}{{ t('nav_dashboard') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>{{ t('welcome') }}، {{ user.name }} 👋</h2>
+        <p>
+            {{ t('logged_as') }}: <strong>{{ role_name(user) }}</strong>
+            {% if user.location %} | {{ t('location') }}: <strong>{{ loc_name(user.location) }}</strong>{% endif %}
+        </p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('purchase_new') }}" class="btn btn-primary">
+            ➕ {{ t('new_purchase') }}
+        </a>
+        {% if user.role in ['admin', 'warehouse', 'accountant'] %}
+        <a href="{{ url_for('transfer_new') }}" class="btn btn-secondary">
+            🚚 {{ t('new_transfer') }}
+        </a>
+        {% endif %}
+        <a href="{{ url_for('count_new') }}" class="btn btn-secondary">
+            📝 {{ t('start_count') }}
+        </a>
+        <a href="{{ url_for('reports_stock') }}" class="btn btn-success">
+            📈 {{ t('stock_report_btn') }}
+        </a>
+    </div>
+</div>
+
+<!-- بطاقات الإحصائيات (KPIs) -->
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <h4>{{ t('total_defined_items') }}</h4>
+            <div class="kpi-value">{{ total_items }}</div>
+            <div class="kpi-desc">{{ t('item_count_hint') }}</div>
+        </div>
+        <div class="kpi-icon icon-purple">📦</div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <h4>{{ t('total_stock_value') }}</h4>
+            <div class="kpi-value">{{ "{:,.2f}".format(total_stock_value) }} <span style="font-size: 14px; font-weight: normal;">{{ currency }}</span></div>
+            <div class="kpi-desc">{{ t('stock_value_hint') }}</div>
+        </div>
+        <div class="kpi-icon icon-green">💰</div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <h4>{{ t('pending_purchases') }}</h4>
+            <div class="kpi-value">{{ pending_purchases }}</div>
+            <div class="kpi-desc">
+                {% if pending_purchases > 0 %}
+                <a href="{{ url_for('accountant_review') }}" style="color: var(--warning); text-decoration: none; font-weight: 600;">
+                    {{ t('review_now') }} &larr;
+                </a>
+                {% else %}
+                -
+                {% endif %}
             </div>
         </div>
-    </header>
+        <div class="kpi-icon icon-amber">⏳</div>
+    </div>
 
-    <div class="container">
-        <div class="dashboard-grid">
-            <div class="card">
-                <h3>📦 المشتريات</h3>
-                <div class="card-links">
-                    <a href="/purchases">عرض المشتريات</a>
-                    {% if user.role != 'accountant' %}
-                        <a href="/purchases/new">شراء جديد</a>
-                    {% endif %}
-                </div>
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <h4>{{ t('pending_transfers') }}</h4>
+            <div class="kpi-value">{{ pending_transfers }}</div>
+            <div class="kpi-desc">
+                <a href="{{ url_for('transfers_list') }}" style="color: var(--secondary); text-decoration: none;">
+                    {{ t('nav_transfers') }} &larr;
+                </a>
             </div>
-            <div class="card">
-                <h3>🚚 التحويلات</h3>
-                <div class="card-links">
-                    <a href="/transfers">عرض التحويلات</a>
-                    {% if user.role in ['warehouse', 'accountant'] %}
-                        <a href="/transfers/new">تحويل جديد</a>
-                    {% endif %}
-                </div>
+        </div>
+        <div class="kpi-icon icon-blue">🚚</div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <h4>{{ 'تنبيهات نواقص المخزون' if lang == 'ar' else 'Low Stock Alerts' }}</h4>
+            <div class="kpi-value" style="color: {% if low_stock_count > 0 %}var(--danger){% else %}var(--gray-900){% endif %};">
+                {{ low_stock_count }}
             </div>
-            <div class="card">
-                <h3>📝 الجرد</h3>
-                <div class="card-links">
-                    <a href="/counts/new">جرد جديد</a>
-                </div>
+            <div class="kpi-desc">
+                <a href="{{ url_for('reports_stock', low_stock='1') }}" style="color: var(--danger); text-decoration: none;">
+                    {{ 'عرض الأصناف المنخفضة' if lang == 'ar' else 'View Low Stock Items' }} &larr;
+                </a>
             </div>
+        </div>
+        <div class="kpi-icon icon-rose">⚠️</div>
+    </div>
+</div>
+
+<!-- الجداول السريعة -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 24px;">
+    <!-- أحدث سندات استلام المشتريات -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">📦 {{ 'أحدث سندات الاستلام' if lang == 'ar' else 'Recent Receipt Vouchers' }}</div>
+            <a href="{{ url_for('purchases_list') }}" class="btn btn-secondary btn-sm">{{ 'عرض الكل' if lang == 'ar' else 'View All' }}</a>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>{{ t('supplier') }}</th>
+                        <th>{{ t('invoice_number') }}</th>
+                        <th>{{ t('total') }}</th>
+                        <th>{{ t('status') }}</th>
+                        <th>{{ t('actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in recent_purchases %}
+                    <tr>
+                        <td><strong>#{{ p.id }}</strong></td>
+                        <td>{{ p.supplier_name }}</td>
+                        <td>{{ p.invoice_number or '-' }}</td>
+                        <td>{{ "{:,.2f}".format(p.total_amount) }} {{ currency }}</td>
+                        <td>
+                            <span class="badge badge-{{ p.status }}">{{ status_name(p) }}</span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="btn btn-secondary btn-sm">
+                                {{ t('details') }}
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--gray-400); padding: 24px;">
+                            {{ 'لا توجد سندات استلام مسجلة بعد' if lang == 'ar' else 'No receipt vouchers recorded yet' }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
-</body>
-</html>
+
+    <!-- أحدث سندات صرف المواد -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">🚚 {{ 'أحدث سندات صرف المواد من المستودع' if lang == 'ar' else 'Recent Disbursement Vouchers' }}</div>
+            <a href="{{ url_for('transfers_list') }}" class="btn btn-secondary btn-sm">{{ 'عرض الكل' if lang == 'ar' else 'View All' }}</a>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>{{ t('from_location') }}</th>
+                        <th>{{ t('to_location') }}</th>
+                        <th>{{ t('status') }}</th>
+                        <th>{{ t('actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tr in recent_transfers %}
+                    <tr>
+                        <td><strong>#{{ tr.id }}</strong></td>
+                        <td>{{ loc_name(tr.from_location) }}</td>
+                        <td>{{ loc_name(tr.to_location) }}</td>
+                        <td>
+                            <span class="badge badge-{{ tr.status }}">{{ status_name(tr) }}</span>
+                        </td>
+                        <td>
+                            {% if tr.status == 'in_transit' and (user.role in ['admin', 'branch_staff', 'accountant']) %}
+                            <a href="{{ url_for('transfer_receive', transfer_id=tr.id) }}" class="btn btn-primary btn-sm">
+                                {{ t('receive_materials') }}
+                            </a>
+                            {% else %}
+                            <a href="{{ url_for('transfer_edit', transfer_id=tr.id) }}" class="btn btn-secondary btn-sm">
+                                {{ t('details') }}
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--gray-400); padding: 24px;">
+                            {{ 'لا توجد عمليات تحويل حديثة' if lang == 'ar' else 'No recent transfer operations' }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- سجل الحركات المخزنية الأخيرة -->
+<div class="card" style="margin-top: 24px;">
+    <div class="card-header">
+        <div class="card-title">📋 {{ 'آخر الحركات المخزنية المسجلة (دفتر الأستاذ)' if lang == 'ar' else 'Recent Stock Ledger Movements' }}</div>
+        <a href="{{ url_for('reports_movements') }}" class="btn btn-secondary btn-sm">{{ 'كشف الحركات الكامل' if lang == 'ar' else 'Full Movements Report' }}</a>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>{{ t('date') }}</th>
+                    <th>{{ t('location') }}</th>
+                    <th>{{ 'نوع الحركة' if lang == 'ar' else 'Movement Type' }}</th>
+                    <th>{{ t('items') }}</th>
+                    <th>{{ 'الكمية المتغيرة' if lang == 'ar' else 'Qty Changed' }}</th>
+                    <th>{{ 'الرصيد بعدها' if lang == 'ar' else 'Balance After' }}</th>
+                    <th>{{ t('notes') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in recent_movements %}
+                <tr>
+                    <td style="color: var(--gray-500); font-size: 13px;">{{ m.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td><strong>{{ loc_name(m.location) }}</strong></td>
+                    <td>
+                        <span class="badge badge-info">{{ status_name(m) }}</span>
+                    </td>
+                    <td>
+                        <strong>[{{ m.item.sku }}]</strong> {{ item_name(m.item) }}
+                    </td>
+                    <td style="direction: ltr; text-align: right; font-weight: 700; color: {% if m.quantity_change > 0 %}#15803d{% else %}#b91c1c{% endif %};">
+                        {% if m.quantity_change > 0 %}+{% endif %}{{ m.quantity_change }} {{ m.item.storage_unit }}
+                    </td>
+                    <td><strong>{{ m.balance_after }}</strong> {{ m.item.storage_unit }}</td>
+                    <td style="color: var(--gray-600); font-size: 13px;">{{ m.notes or '-' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--gray-400); padding: 24px;">
+                        {{ 'لا توجد حركات مخزنية مسجلة بعد' if lang == 'ar' else 'No stock movements recorded yet' }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

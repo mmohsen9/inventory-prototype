@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}إدارة المستخدمين والصلاحيات{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>👥 إدارة المستخدمين وصلاحيات النظام</h2>
+        <p>إضافة مستخدمين جدد، تعيين الأدوار والمواقع، وإدارة الصلاحيات التشغيلية</p>
+    </div>
+    <div class="page-actions">
+        <button type="button" class="btn btn-primary" data-modal-target="addUserModal">
+            ➕ إضافة مستخدم جديد
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">قائمة مستخدمي النظام ({{ users|length }})</div>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>اسم المستخدم</th>
+                    <th>الدور / الصلاحية</th>
+                    <th>الموقع / الفرع المرتبط</th>
+                    <th>البريد الإلكتروني</th>
+                    <th>الحالة</th>
+                    <th>تاريخ التسجيل</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td><strong>{{ u.id }}</strong></td>
+                    <td>
+                        <strong style="font-size: 15px;">{{ u.name }}</strong>
+                    </td>
+                    <td>
+                        <span class="role-pill {{ u.role }}">{{ u.role_label_ar }}</span>
+                    </td>
+                    <td>
+                        {% if u.location %}
+                        <span>🏢 {{ u.location.name_ar }}</span>
+                        {% else %}
+                        <span style="color: var(--gray-400);">عام (جميع المواقع)</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ u.email or '-' }}</td>
+                    <td>
+                        {% if u.active %}
+                        <span class="badge badge-success">نشط</span>
+                        {% else %}
+                        <span class="badge badge-danger">معطل</span>
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--gray-500); font-size: 13px;">
+                        {{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '-' }}
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" class="btn btn-secondary btn-sm"
+                                    onclick="openEditUserModal({{ u.id }}, '{{ u.name }}', '{{ u.role }}', '{{ u.location_id or '' }}', '{{ u.email or '' }}')">
+                                ✏️ تعديل
+                            </button>
+                            {% if u.id != user.id %}
+                            <form method="POST" action="{{ url_for('user_toggle_status', user_id=u.id) }}" style="display:inline;">
+                                <button type="submit" class="btn {% if u.active %}btn-danger{% else %}btn-success{% endif %} btn-sm"
+                                        onclick="return confirm('هل أنت متأكد من تغيير حالة هذا المستخدم؟')">
+                                    {% if u.active %}تعطيل{% else %}تفعيل{% endif %}
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- مصفوفة الصلاحيات للتوضيح -->
+<div class="card" style="background: #f8fafc; border: 1px dashed var(--gray-300);">
+    <h3 style="font-size: 16px; margin-bottom: 12px; color: var(--gray-800);">📋 دليل مصفوفة الصلاحيات والأدوار:</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; font-size: 13px;">
+        <div style="background: white; padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--gray-200);">
+            <strong style="color: #e11d48;">👑 مدير النظام (Admin):</strong>
+            <p style="color: var(--gray-600); margin-top: 4px;">صلاحيات كاملة للوصول لكافة الشاشات، إدارة المستخدمين، الاعتماد المالي، التحويلات، إعدادات الربط، والتقارير.</p>
+        </div>
+        <div style="background: white; padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--gray-200);">
+            <strong style="color: #0284c7;">💼 المحاسب (Accountant):</strong>
+            <p style="color: var(--gray-600); margin-top: 4px;">مراجعة واعتماد فواتير الشراء، اعتماد فروقات التحويلات، اعتماد طلبات الأصناف، معالجة طابور مزامنة Foodics، وإدارة المستخدمين والتقارير.</p>
+        </div>
+        <div style="background: white; padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--gray-200);">
+            <strong style="color: #059669;">🏭 أمين المستودع (Warehouse):</strong>
+            <p style="color: var(--gray-600); margin-top: 4px;">إدخال فواتير المشتريات المستلمة في المستودع، إنشاء تحويلات وصرف البضائع للفروع، وإجراء الجرد المخزني للمستودع.</p>
+        </div>
+        <div style="background: white; padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--gray-200);">
+            <strong style="color: #d97706;">🏪 موظف الفرع (Branch Staff):</strong>
+            <p style="color: var(--gray-600); margin-top: 4px;">استلام التحويلات الواردة للفرع وتأكيد الكميات أو إثبات الفروقات، إجراء الجرد الدوري للفرع، وطلب إضافة أصناف جديدة.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: إضافة مستخدم جديد -->
+<div class="modal-backdrop" id="addUserModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>➕ إضافة مستخدم جديد للنظام</h3>
+            <button type="button" class="modal-close" data-modal-close>&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('user_new') }}">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>اسم المستخدم الكامل *</label>
+                    <input type="text" name="name" class="form-control" placeholder="مثال: خالد العتيبي" required>
+                </div>
+                <div class="form-group">
+                    <label>الدور / الصلاحية *</label>
+                    <select name="role" class="form-control" required>
+                        <option value="branch_staff">موظف فرع (Branch Staff)</option>
+                        <option value="warehouse">أمين مستودع (Warehouse)</option>
+                        <option value="accountant">محاسب (Accountant)</option>
+                        <option value="admin">مدير النظام (Admin)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>الموقع / الفرع التابع له (اختياري)</label>
+                    <select name="location_id" class="form-control">
+                        <option value="">-- بدون موقع محدد (عام) --</option>
+                        {% for loc in locations %}
+                        <option value="{{ loc.id }}">{{ loc.name_ar }} ({{ loc.type_label_ar }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>البريد الإلكتروني</label>
+                    <input type="email" name="email" class="form-control" placeholder="user@rafa.com">
+                </div>
+                <div class="form-group">
+                    <label>كلمة المرور *</label>
+                    <input type="password" name="password" class="form-control" placeholder="كلمة المرور" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>إلغاء</button>
+                <button type="submit" class="btn btn-primary">✅ حفظ المستخدم</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: تعديل مستخدم -->
+<div class="modal-backdrop" id="editUserModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>✏️ تعديل بيانات المستخدم</h3>
+            <button type="button" class="modal-close" data-modal-close>&times;</button>
+        </div>
+        <form method="POST" id="editUserForm">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>اسم المستخدم *</label>
+                    <input type="text" id="edit_name" name="name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>الدور / الصلاحية *</label>
+                    <select id="edit_role" name="role" class="form-control" required>
+                        <option value="branch_staff">موظف فرع (Branch Staff)</option>
+                        <option value="warehouse">أمين مستودع (Warehouse)</option>
+                        <option value="accountant">محاسب (Accountant)</option>
+                        <option value="admin">مدير النظام (Admin)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>الموقع / الفرع التابع له</label>
+                    <select id="edit_location_id" name="location_id" class="form-control">
+                        <option value="">-- بدون موقع محدد (عام) --</option>
+                        {% for loc in locations %}
+                        <option value="{{ loc.id }}">{{ loc.name_ar }} ({{ loc.type_label_ar }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>البريد الإلكتروني</label>
+                    <input type="email" id="edit_email" name="email" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>كلمة المرور الجديدة (اتركها فارغة إذا لم ترغب في التغيير)</label>
+                    <input type="password" name="password" class="form-control" placeholder="••••••••">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>إلغاء</button>
+                <button type="submit" class="btn btn-primary">💾 حفظ التعديلات</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEditUserModal(id, name, role, locationId, email) {
+    document.getElementById('editUserForm').action = '/users/' + id + '/edit';
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_role').value = role;
+    document.getElementById('edit_location_id').value = locationId;
+    document.getElementById('edit_email').value = email;
+    document.getElementById('editUserModal').classList.add('show');
+}
+</script>
+{% endblock %}

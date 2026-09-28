@@ -1,32 +1,49 @@
-<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-    <meta charset="UTF-8">
-    <title>تحويل جديد</title>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f5f5f5; }
-        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; }
-        .container { max-width: 600px; margin: 20px auto; padding: 0 20px; }
-        .card { background: white; padding: 30px; border-radius: 8px; }
-        label { display: block; margin-bottom: 5px; font-weight: 500; }
-        select { width: 100%; padding: 10px; margin-bottom: 15px; }
-        button { width: 100%; padding: 10px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; }
-    </style>
-</head>
-<body>
-    <header><h1>➕ تحويل جديد</h1></header>
-    <div class="container">
-        <div class="card">
-            <form method="POST">
-                <label>إلى الموقع</label>
-                <select name="to_location_id" required>
-                    {% for loc in locations %}
-                    <option value="{{ loc.id }}">{{ loc.name_ar }}</option>
-                    {% endfor %}
-                </select>
-                <button type="submit">✅ إنشاء</button>
-            </form>
-        </div>
+{% extends "base.html" %}
+
+{% block title %}{{ t('new_transfer') }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>🚚 {{ t('new_transfer') }}</h2>
+        <p>{{ t('transfers_list_subtitle') }}</p>
     </div>
-</body>
-</html>
+    <div class="page-actions">
+        <a href="{{ url_for('transfers_list') }}" class="btn btn-secondary">
+            🔙 {{ t('back_to_list') }}
+        </a>
+    </div>
+</div>
+
+<div class="card" style="max-width: 650px; margin: 0 auto;">
+    <form method="POST">
+        <div class="form-group">
+            <label for="from_location_id">{{ t('from_location') }} *</label>
+            <select id="from_location_id" name="from_location_id" class="form-control" required>
+                {% for loc in locations %}
+                <option value="{{ loc.id }}" {% if user.location_id == loc.id or (not user.location_id and loc.type == 'warehouse') %}selected{% endif %}>
+                    {{ loc_name(loc) }} ({{ loc_type(loc) }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="to_location_id">{{ t('to_location') }} *</label>
+            <select id="to_location_id" name="to_location_id" class="form-control" required>
+                <option value="">-- {{ t('destination_select_hint') }} --</option>
+                {% for loc in locations %}
+                <option value="{{ loc.id }}">{{ loc_name(loc) }} ({{ loc_type(loc) }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--gray-100); display: flex; justify-content: flex-end; gap: 10px;">
+            <a href="{{ url_for('transfers_list') }}" class="btn btn-secondary">{{ t('cancel') }}</a>
+            <button type="submit" class="btn btn-primary" style="padding: 12px 28px;">
+                ✅ {{ t('proceed_add_items') }} &larr;
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

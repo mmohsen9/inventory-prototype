@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}تقرير فروقات الجرد والتحويلات{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>⚖️ تقرير فروقات الجرد والتحويلات</h2>
+        <p>تحليل العجز والفائض في جلسات الجرد وفروقات الشحنات بين المستودع والفروع</p>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('reports_export', type='variance') }}" class="btn btn-secondary">
+            📥 تصدير الفروقات إلى Excel
+        </a>
+        <button type="button" class="btn btn-primary" onclick="window.print()">
+            🖨️ طباعة
+        </button>
+    </div>
+</div>
+
+<!-- القسم الأول: فروقات جلسات الجرد -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">📝 جلسات الجرد الدوري وفروقات الأرصدة</div>
+        <a href="{{ url_for('count_new') }}" class="btn btn-primary btn-sm">➕ جلسة جرد جديدة</a>
+    </div>
+
+    {% for s in sessions %}
+    <div style="background: var(--gray-50); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px; border: 1px solid var(--gray-200);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <strong style="font-size: 16px; color: var(--gray-900);">جلسة جرد #{{ s.id }} - {{ s.location.name_ar if s.location else '-' }}</strong>
+                <span style="font-size: 13px; color: var(--gray-500); margin-right: 10px;">📅 {{ s.count_date }}</span>
+                <span style="font-size: 12px; color: var(--gray-500);">بواسطة: {{ s.creator.name if s.creator else '-' }}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="badge badge-{{ s.status }}">{{ s.status_label_ar }}</span>
+                <span style="font-weight: 700; font-size: 14px; color: {% if s.total_variance_cost < 0 %}var(--danger){% elif s.total_variance_cost > 0 %}var(--success){% else %}var(--gray-700){% endif %};">
+                    صافي الفروقات: {{ "{:,.2f}".format(s.total_variance_cost) }} ر.س
+                </span>
+                {% if s.status == 'pending_review' and user.role in ['admin', 'accountant'] %}
+                <form method="POST" action="{{ url_for('count_edit', session_id=s.id) }}" style="display:inline;">
+                    <input type="hidden" name="action" value="approve_session">
+                    <button type="submit" class="btn btn-success btn-sm">✅ اعتماد وتسوية الأرصدة</button>
+                </form>
+                {% endif %}
+                <a href="{{ url_for('count_edit', session_id=s.id) }}" class="btn btn-secondary btn-sm">تعديل / عرض</a>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table" style="font-size: 13px;">
+                <thead>
+                    <tr>
+                        <th>الصنف</th>
+                        <th>الرصيد الدفتري (النظام)</th>
+                        <th>الرصيد الفعلي (المعدود)</th>
+                        <th>فرق الكمية</th>
+                        <th>تكلفة الوحدة</th>
+                        <th>الأثر المالي للفرق</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in s.lines %}
+                    <tr>
+                        <td><strong>[{{ l.item.sku }}]</strong> {{ l.item.name_ar }}</td>
+                        <td>{{ l.book_quantity }} {{ l.item.storage_unit }}</td>
+                        <td style="font-weight: 700;">{{ l.counted_quantity }} {{ l.item.storage_unit }}</td>
+                        <td style="font-weight: 700; direction: ltr; text-align: right; color: {% if l.variance_quantity < 0 %}var(--danger){% elif l.variance_quantity > 0 %}var(--success){% else %}var(--gray-600){% endif %};">
+                            {% if l.variance_quantity > 0 %}+{% endif %}{{ l.variance_quantity }}
+                        </td>
+                        <td>{{ "{:,.2f}".format(l.item.cost or 0) }} ر.س</td>
+                        <td style="font-weight: 700; color: {% if l.variance_cost < 0 %}var(--danger){% elif l.variance_cost > 0 %}var(--success){% else %}var(--gray-600){% endif %};">
+                            {{ "{:,.2f}".format(l.variance_cost) }} ر.س
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--gray-400); padding: 12px;">لا توجد أصناف مدخلة في هذه الجلسة بعد</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div style="text-align: center; color: var(--gray-400); padding: 30px;">
+        لا توجد جلسات جرد سابقة مسجلة
+    </div>
+    {% endfor %}
+</div>
+
+<!-- القسم الثاني: فروقات التحويلات بين الفروع -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">🚚 شحنات التحويل المكتملة وتدقيق الفروقات</div>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th># التحويل</th>
+                    <th>من</th>
+                    <th>إلى</th>
+                    <th>تاريخ التحويل</th>
+                    <th>الحالة</th>
+                    <th>الأصناف التي بها فرق</th>
+                    <th>ملاحظات الفرع</th>
+                    <th>الإجراء</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in transfers %}
+                <tr>
+                    <td><strong>#{{ t.id }}</strong></td>
+                    <td>{{ t.from_location.name_ar if t.from_location else '-' }}</td>
+                    <td>{{ t.to_location.name_ar if t.to_location else '-' }}</td>
+                    <td style="color: var(--gray-500); font-size: 13px;">{{ t.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td><span class="badge badge-{{ t.status }}">{{ t.status_label_ar }}</span></td>
+                    <td>
+                        {% set var_count = [] %}
+                        {% for line in t.lines %}
+                            {% if line.variance_qty is not none and line.variance_qty != 0 %}
+                                {% set _ = var_count.append(1) %}
+                                <div style="font-size: 12px; color: var(--danger);">
+                                    • {{ line.item.name_ar }}: المصروف ({{ line.qty_sent }}) المستلم ({{ line.qty_received }}) فرق: ({{ line.variance_qty }})
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                        {% if var_count|length == 0 %}
+                        <span style="color: var(--success); font-size: 12px;">مطابق تماماً بدون فروقات</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size: 12px; color: var(--gray-600);">
+                        {% for line in t.lines %}
+                            {% if line.variance_reason %}
+                            <div>{{ line.variance_reason }}</div>
+                            {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('transfer_edit', transfer_id=t.id) }}" class="btn btn-secondary btn-sm">عرض</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align: center; color: var(--gray-400); padding: 24px;">لا توجد تحويلات مسجلة</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

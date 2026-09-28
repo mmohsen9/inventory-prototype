@@ -1,6 +1,195 @@
 {% extends "base.html" %}
 
+{% block title %}{{ t('new_purchase') }}{% endblock %}
+
 {% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>➕ {{ t('new_purchase') }}</h2>
+        <p>{{ t('purchases_list_subtitle') }}</p>
     </div>
-</body>
-</html>
+    <div class="page-actions">
+        <a href="{{ url_for('purchases_list') }}" class="btn btn-secondary">
+            🔙 {{ t('back_to_list') }}
+        </a>
+    </div>
+</div>
+
+<div class="card" style="max-width: 780px; margin: 0 auto;">
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-grid">
+            <!-- حقل المورد مع إمكانية البحث والإضافة السريعة -->
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <label for="supplier_name" style="margin-bottom: 0; font-weight: 700;">
+                        🏢 {{ t('supplier_name') }} *
+                    </label>
+                    <button type="button" id="btn-toggle-new-supplier" class="btn btn-sm btn-outline-primary" style="font-size: 12px; padding: 4px 10px; cursor: pointer;">
+                        ➕ {{ t('add_new_supplier') }}
+                    </button>
+                </div>
+
+                <!-- بطاقة إضافة مورد جديد سريعة -->
+                <div id="new-supplier-panel" style="display: none; background: var(--gray-50); border: 1px dashed var(--primary); padding: 14px; border-radius: var(--radius-md); margin-bottom: 12px;">
+                    <h5 style="margin-top: 0; margin-bottom: 10px; font-size: 14px; color: var(--primary);">
+                        ✨ {{ t('add_new_supplier') }}
+                    </h5>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 10px;">
+                        <div>
+                            <label style="font-size: 12px;">{{ t('supplier_name') }} *</label>
+                            <input type="text" id="quick_supplier_name" class="form-control" placeholder="{{ t('supplier_name') }}">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px;">{{ t('supplier_code') }}</label>
+                            <input type="text" id="quick_supplier_code" class="form-control" placeholder="SUP-001">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px;">{{ t('supplier_phone') }}</label>
+                            <input type="text" id="quick_supplier_phone" class="form-control" placeholder="05XXXXXXXX">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                        <button type="button" id="btn-cancel-new-supplier" class="btn btn-secondary btn-sm">{{ t('cancel') }}</button>
+                        <button type="button" id="btn-save-new-supplier" class="btn btn-primary btn-sm">💾 {{ t('save_new_supplier') }}</button>
+                    </div>
+                    <div id="quick-supplier-msg" style="display:none; font-size:12px; margin-top:6px;"></div>
+                </div>
+
+                <input type="text" id="supplier_name" name="supplier_name" list="suppliers_list" class="form-control"
+                       placeholder="{{ t('supplier_name_placeholder') }}" autocomplete="off" required>
+                <datalist id="suppliers_list">
+                    {% for s in suppliers %}
+                    <option value="{{ s }}">
+                    {% endfor %}
+                </datalist>
+                <small style="color: var(--gray-500); font-size: 12px; margin-top: 4px; display: block;">
+                    🔍 {{ 'ابحث في الموردين المعتمدين من فوديكس أو اختر مورد جديد' if lang == 'ar' else 'Search among approved Foodics suppliers or select a new one' }}
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label for="invoice_number">{{ t('invoice_number') }} *</label>
+                <input type="text" id="invoice_number" name="invoice_number" class="form-control" placeholder="INV-98241" required>
+            </div>
+
+            <div class="form-group">
+                <label for="invoice_date">{{ t('invoice_date') }} *</label>
+                <input type="date" id="invoice_date" name="invoice_date" class="form-control" value="{{ now.strftime('%Y-%m-%d') }}" required>
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label for="location_id">{{ t('receiving_location') }} *</label>
+                <select id="location_id" name="location_id" class="form-control" required>
+                    {% for loc in locations %}
+                    <option value="{{ loc.id }}" {% if user.location_id == loc.id %}selected{% endif %}>
+                        {{ loc_name(loc) }} ({{ loc_type(loc) }})
+                    </option>
+                    {% endfor %}
+                </select>
+                {% if user.role == 'branch_staff' and user.location %}
+                <small style="color: var(--primary); font-size: 12px; margin-top: 4px; display: block;">
+                    🏢 {{ 'تم ضبط الموقع تلقائياً على الفرع الخاص بك' if lang == 'ar' else 'Location automatically set to your branch' }}: ({{ loc_name(user.location) }}).
+                </small>
+                {% endif %}
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label for="attachment">{{ t('invoice_attachment') }}</label>
+                <input type="file" id="attachment" name="attachment" class="form-control" accept="image/*,application/pdf">
+                <small style="color: var(--gray-500); font-size: 12px; margin-top: 4px; display: block;">
+                    {{ t('invoice_attachment_hint') }}
+                </small>
+            </div>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--gray-100); display: flex; justify-content: flex-end; gap: 10px;">
+            <a href="{{ url_for('purchases_list') }}" class="btn btn-secondary">{{ t('cancel') }}</a>
+            <button type="submit" class="btn btn-primary" style="padding: 12px 28px;">
+                ✅ {{ t('proceed_add_items') }} &larr;
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const toggleBtn = document.getElementById("btn-toggle-new-supplier");
+    const cancelBtn = document.getElementById("btn-cancel-new-supplier");
+    const saveBtn = document.getElementById("btn-save-new-supplier");
+    const panel = document.getElementById("new-supplier-panel");
+    const supplierInput = document.getElementById("supplier_name");
+    const datalist = document.getElementById("suppliers_list");
+    const msgBox = document.getElementById("quick-supplier-msg");
+
+    if (toggleBtn && panel) {
+        toggleBtn.addEventListener("click", function() {
+            panel.style.display = panel.style.display === "none" ? "block" : "none";
+            if (panel.style.display === "block") {
+                document.getElementById("quick_supplier_name").focus();
+            }
+        });
+
+        cancelBtn.addEventListener("click", function() {
+            panel.style.display = "none";
+            msgBox.style.display = "none";
+        });
+
+        saveBtn.addEventListener("click", function() {
+            const name = document.getElementById("quick_supplier_name").value.trim();
+            const code = document.getElementById("quick_supplier_code").value.trim();
+            const phone = document.getElementById("quick_supplier_phone").value.trim();
+
+            if (!name) {
+                msgBox.textContent = "{{ 'يرجى كتابة اسم المورد أولاً' if lang == 'ar' else 'Please enter supplier name first' }}";
+                msgBox.style.color = "var(--danger)";
+                msgBox.style.display = "block";
+                return;
+            }
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = "...";
+
+            fetch("{{ url_for('api_add_supplier') }}", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: name, code: code, phone: phone })
+            })
+            .then(res => res.json())
+            .then(data => {
+                saveBtn.disabled = false;
+                saveBtn.textContent = "💾 {{ t('save_new_supplier') }}";
+                if (data.success) {
+                    const newName = data.supplier.name;
+                    // Add to datalist if not already there
+                    let exists = false;
+                    for (let opt of datalist.options) {
+                        if (opt.value === newName) { exists = true; break; }
+                    }
+                    if (!exists) {
+                        const opt = document.createElement("option");
+                        opt.value = newName;
+                        datalist.appendChild(opt);
+                    }
+                    supplierInput.value = newName;
+                    panel.style.display = "none";
+                    document.getElementById("quick_supplier_name").value = "";
+                    document.getElementById("quick_supplier_code").value = "";
+                    document.getElementById("quick_supplier_phone").value = "";
+                } else {
+                    msgBox.textContent = data.error || "Error adding supplier";
+                    msgBox.style.color = "var(--danger)";
+                    msgBox.style.display = "block";
+                }
+            })
+            .catch(err => {
+                saveBtn.disabled = false;
+                saveBtn.textContent = "💾 {{ t('save_new_supplier') }}";
+                msgBox.textContent = "Server error";
+                msgBox.style.color = "var(--danger)";
+                msgBox.style.display = "block";
+            });
+        });
+    }
+});
+</script>
+{% endblock %}
