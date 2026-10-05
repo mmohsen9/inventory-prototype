@@ -28,7 +28,9 @@
                     <th>{{ t('invoice_number') }}</th>
                     <th>{{ t('receiving_location') }}</th>
                     <th>{{ t('date') }}</th>
+                    {% if user.role != 'branch_staff' %}
                     <th>{{ t('total') }}</th>
+                    {% endif %}
                     <th>{{ t('items') }}</th>
                     <th>{{ t('status') }}</th>
                     <th>{{ t('actions') }}</th>
@@ -42,7 +44,9 @@
                     <td>{{ p.invoice_number or '-' }}</td>
                     <td>{{ loc_name(p.location) }}</td>
                     <td style="color: var(--gray-600); font-size: 13px;">{{ p.invoice_date or p.created_at.strftime('%Y-%m-%d') }}</td>
+                    {% if user.role != 'branch_staff' %}
                     <td style="font-weight: 700; color: #1e1b4b;">{{ "{:,.2f}".format(p.total_amount) }} {{ currency }}</td>
+                    {% endif %}
                     <td><span class="badge badge-draft">{{ p.lines|length }}</span></td>
                     <td>
                         <span class="badge badge-{{ p.status }}">{{ status_name(p) }}</span>
@@ -52,13 +56,13 @@
                     </td>
                     <td>
                         <a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="btn btn-secondary btn-sm">
-                            {% if p.status == 'draft' or (user.role == 'admin' and p.status not in ['posted', 'queued']) %}✏️ {{ t('edit') }}{% else %}👁️ {{ t('details') }}{% endif %}
+                            {% if p.status == 'draft' or user.role in ['admin', 'accountant'] %}✏️ {{ t('edit') }}{% else %}👁️ {{ t('details') }}{% endif %}
                         </a>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="9" style="text-align: center; color: var(--gray-400); padding: 30px;">
+                    <td colspan="{% if user.role != 'branch_staff' %}9{% else %}8{% endif %}" style="text-align: center; color: var(--gray-400); padding: 30px;">
                         {{ 'لا توجد سندات استلام مسجلة حتى الآن.' if lang == 'ar' else 'No receipt vouchers recorded yet.' }}
                     </td>
                 </tr>

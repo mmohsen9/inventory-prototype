@@ -29,6 +29,70 @@
     </div>
 </div>
 
+<!-- تنبيه الشحنات الواردة لموظف الفرع بانتظار تأكيد الاستلام -->
+{% if user.role == 'branch_staff' %}
+    {% if incoming_transfers %}
+    <div class="card" style="margin-bottom: 24px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 2px solid #3b82f6; border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-md);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <div style="font-size: 32px; background: white; width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm);">
+                    🚚
+                </div>
+                <div>
+                    <h3 style="margin: 0; font-size: 18px; font-weight: 800; color: #1e3a8a;">
+                        {{ 'شحنات واردة من المستودع بانتظار تأكيد الاستلام' if lang == 'ar' else 'Incoming Shipments Awaiting Receipt Confirmation' }} ({{ incoming_transfers|length }})
+                    </h3>
+                    <p style="margin: 4px 0 0 0; font-size: 13px; color: #1d4ed8;">
+                        {{ 'وصلت شحنات مرسلة إلى فرعك وتحتاج مطابقة الكميات وتأكيد الاستلام لإضافتها فوراً لرصيد الفرع.' if lang == 'ar' else 'Shipments have arrived at your branch awaiting quantity verification and confirmation.' }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive" style="background: white; border-radius: var(--radius-md); overflow: hidden; border: 1px solid #bfdbfe;">
+            <table class="data-table" style="margin: 0;">
+                <thead>
+                    <tr style="background: #f8fafc;">
+                        <th># سند الصرف</th>
+                        <th>المصدر (المستودع)</th>
+                        <th>تاريخ الإرسال</th>
+                        <th>عدد الأصناف</th>
+                        <th>الحالة</th>
+                        <th>الإجراء المطلوب</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tr in incoming_transfers %}
+                    <tr>
+                        <td><strong>#{{ tr.id }}</strong></td>
+                        <td><strong>{{ loc_name(tr.from_location) }}</strong></td>
+                        <td style="color: var(--gray-600); font-size: 13px;">{{ tr.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td><span class="badge badge-draft">{{ tr.lines|length }} أصناف</span></td>
+                        <td><span class="badge badge-in_transit">في الطريق 🚚</span></td>
+                        <td>
+                            <a href="{{ url_for('transfer_receive', transfer_id=tr.id) }}" class="btn btn-primary btn-sm" style="font-weight: 800; padding: 6px 16px; background: #2563eb; font-size: 13px;">
+                                📥 تأكيد استلام المواد ومطابقة الكميات &larr;
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="card" style="margin-bottom: 24px; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 14px 20px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 20px;">✅</span>
+            <span style="font-size: 14px; font-weight: 700; color: #166534;">
+                {{ 'لا توجد شحنات واردة معلقة بانتظار الاستلام لفرعك حالياً، جميع الشحنات مستلمة بالكامل.' if lang == 'ar' else 'No incoming shipments awaiting receipt at your branch.' }}
+            </span>
+        </div>
+        <a href="{{ url_for('transfers_list') }}" class="btn btn-secondary btn-sm">سجل التحويلات السابق</a>
+    </div>
+    {% endif %}
+{% endif %}
+
 <!-- بطاقات الإحصائيات (KPIs) -->
 <div class="kpi-grid">
     <div class="kpi-card">
@@ -40,14 +104,25 @@
         <div class="kpi-icon icon-purple">📦</div>
     </div>
 
+    {% if user.role != 'branch_staff' %}
     <div class="kpi-card">
         <div class="kpi-content">
             <h4>{{ t('total_stock_value') }}</h4>
-            <div class="kpi-value">{{ "{:,.2f}".format(total_stock_value) }} <span style="font-size: 14px; font-weight: normal;">{{ currency }}</span></div>
+            <div class="kpi-value">{{ "{:,.2f}".format(total_stock_value or 0) }} <span style="font-size: 14px; font-weight: normal;">{{ currency }}</span></div>
             <div class="kpi-desc">{{ t('stock_value_hint') }}</div>
         </div>
         <div class="kpi-icon icon-green">💰</div>
     </div>
+    {% else %}
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <h4>{{ 'إجمالي رصيد الفرع المتوفر' if lang == 'ar' else 'Branch In-Stock Units' }}</h4>
+            <div class="kpi-value" style="color: #2563eb;">{{ "{:,.1f}".format(branch_stock_units or 0) }} <span style="font-size: 14px; font-weight: normal;">وحدة</span></div>
+            <div class="kpi-desc">الرصيد الفعلي في {{ loc_name(user.location) }}</div>
+        </div>
+        <div class="kpi-icon icon-blue">🏢</div>
+    </div>
+    {% endif %}
 
     <div class="kpi-card">
         <div class="kpi-content">
@@ -68,8 +143,8 @@
 
     <div class="kpi-card">
         <div class="kpi-content">
-            <h4>{{ t('pending_transfers') }}</h4>
-            <div class="kpi-value">{{ pending_transfers }}</div>
+            <h4>{% if user.role == 'branch_staff' %}{{ 'شحنات بانتظار الاستلام' if lang == 'ar' else 'Incoming Awaiting Receipt' }}{% else %}{{ t('pending_transfers') }}{% endif %}</h4>
+            <div class="kpi-value" style="color: {% if pending_transfers > 0 %}#2563eb{% else %}var(--gray-900){% endif %};">{{ pending_transfers }}</div>
             <div class="kpi-desc">
                 <a href="{{ url_for('transfers_list') }}" style="color: var(--secondary); text-decoration: none;">
                     {{ t('nav_transfers') }} &larr;
@@ -110,7 +185,9 @@
                         <th>#</th>
                         <th>{{ t('supplier') }}</th>
                         <th>{{ t('invoice_number') }}</th>
+                        {% if user.role != 'branch_staff' %}
                         <th>{{ t('total') }}</th>
+                        {% endif %}
                         <th>{{ t('status') }}</th>
                         <th>{{ t('actions') }}</th>
                     </tr>
@@ -121,7 +198,9 @@
                         <td><strong>#{{ p.id }}</strong></td>
                         <td>{{ p.supplier_name }}</td>
                         <td>{{ p.invoice_number or '-' }}</td>
+                        {% if user.role != 'branch_staff' %}
                         <td>{{ "{:,.2f}".format(p.total_amount) }} {{ currency }}</td>
+                        {% endif %}
                         <td>
                             <span class="badge badge-{{ p.status }}">{{ status_name(p) }}</span>
                         </td>
@@ -133,7 +212,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" style="text-align: center; color: var(--gray-400); padding: 24px;">
+                        <td colspan="{% if user.role != 'branch_staff' %}6{% else %}5{% endif %}" style="text-align: center; color: var(--gray-400); padding: 24px;">
                             {{ 'لا توجد سندات استلام مسجلة بعد' if lang == 'ar' else 'No receipt vouchers recorded yet' }}
                         </td>
                     </tr>
@@ -194,6 +273,7 @@
     </div>
 </div>
 
+{% if user.role != 'branch_staff' %}
 <!-- سجل الحركات المخزنية الأخيرة -->
 <div class="card" style="margin-top: 24px;">
     <div class="card-header">
@@ -241,4 +321,5 @@
         </table>
     </div>
 </div>
+{% endif %}
 {% endblock %}

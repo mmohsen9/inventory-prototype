@@ -87,20 +87,25 @@
                     <td><strong>{{ p.supplier_name }}</strong></td>
                     <td>{{ loc_name(p.location) }}</td>
                     <td>{{ p.invoice_number or '-' }}</td>
-                    <td style="color: var(--gray-600); font-size: 13px;">{{ p.invoice_date or p.created_at.strftime('%Y-%m-%d') }}</td>
-                    <td style="font-weight: 700; color: #1e1b4b;">{{ "{:,.2f}".format(p.total_amount) }} {{ currency }}</td>
-                    <td><a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="btn btn-secondary btn-sm">{{ p.lines|length }} ({{ t('preview_edit') }})</a></td>
+                    <td style="color: var(--gray-600); font-size: 13px;">{{ p.invoice_date or
+                        p.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td style="font-weight: 700; color: #1e1b4b;">{{ "{:,.2f}".format(p.total_amount) }} {{ currency }}
+                    </td>
+                    <td><a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="btn btn-secondary btn-sm">{{
+                            p.lines|length }} ({{ t('preview_edit') }})</a></td>
                     <td>
                         <div style="display: flex; gap: 6px; align-items: center;">
                             <form method="POST" action="{{ url_for('purchase_review', purchase_id=p.id) }}">
                                 <input type="hidden" name="action" value="approve">
-                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('{{ t('approve_receipt_confirm') }}')">
+                                <button type="submit" class="btn btn-success btn-sm"
+                                    onclick="return confirm('{{ t('approve_receipt_confirm') }}')">
                                     ✅ {{ t('approve_btn') }}
                                 </button>
                             </form>
                             <form method="POST" action="{{ url_for('purchase_review', purchase_id=p.id) }}">
                                 <input type="hidden" name="action" value="reject">
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('{{ t('reject_receipt_confirm') }}')">
+                                <button type="submit" class="btn btn-danger btn-sm"
+                                    onclick="return confirm('{{ t('reject_receipt_confirm') }}')">
                                     ❌ {{ t('reject_btn') }}
                                 </button>
                             </form>
@@ -146,25 +151,28 @@
                     <td style="color: var(--gray-600); font-size: 13px;">{{ tr.created_at.strftime('%Y-%m-%d') }}</td>
                     <td>
                         {% for line in tr.lines %}
-                            {% if line.variance_qty is not none and line.variance_qty != 0 %}
-                            <div style="color: var(--danger); font-size: 12px; font-weight: 600;">
-                                • {{ item_name(line.item) }}: {{ t('qty_sent') }} ({{ line.qty_sent }}) {{ t('qty_received') }} ({{ line.qty_received }}) {{ t('variance') }}: ({{ line.variance_qty }})
-                            </div>
-                            {% endif %}
+                        {% if line.variance_qty is not none and line.variance_qty != 0 %}
+                        <div style="color: var(--danger); font-size: 12px; font-weight: 600;">
+                            • {{ item_name(line.item) }}: {{ t('qty_sent') }} ({{ line.qty_sent }}) {{ t('qty_received')
+                            }} ({{ line.qty_received }}) {{ t('variance') }}: ({{ line.variance_qty }})
+                        </div>
+                        {% endif %}
                         {% endfor %}
                     </td>
                     <td style="font-size: 12px; color: var(--gray-700);">
                         {% for line in tr.lines %}
-                            {% if line.variance_reason %}
-                            <div>{{ line.variance_reason }}</div>
-                            {% endif %}
+                        {% if line.variance_reason %}
+                        <div>{{ line.variance_reason }}</div>
+                        {% endif %}
                         {% endfor %}
                     </td>
                     <td>
                         <div style="display: flex; gap: 6px;">
-                            <a href="{{ url_for('transfer_edit', transfer_id=tr.id) }}" class="btn btn-secondary btn-sm">{{ t('preview_btn') }}</a>
+                            <a href="{{ url_for('transfer_edit', transfer_id=tr.id) }}"
+                                class="btn btn-secondary btn-sm">{{ t('preview_btn') }}</a>
                             <form method="POST" action="{{ url_for('transfer_approve', transfer_id=tr.id) }}">
-                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('{{ t('approve_transfer_confirm') }}')">
+                                <button type="submit" class="btn btn-success btn-sm"
+                                    onclick="return confirm('{{ t('approve_transfer_confirm') }}')">
                                     ✅ {{ t('approve_btn') }}
                                 </button>
                             </form>
@@ -209,15 +217,19 @@
                     <td style="color: var(--gray-600); font-size: 13px;">{{ s.count_date }}</td>
                     <td>{{ s.creator.name if s.creator else '-' }}</td>
                     <td>{{ s.lines|length }} {{ t('items') }}</td>
-                    <td style="font-weight: 700; color: {% if s.total_variance_cost < 0 %}var(--danger){% else %}var(--success){% endif %};">
+                    <td
+                        style="font-weight: 700; color: {% if s.total_variance_cost < 0 %}var(--danger){% else %}var(--success){% endif %};">
                         {{ "{:,.2f}".format(s.total_variance_cost) }} {{ currency }}
                     </td>
                     <td>
                         <div style="display: flex; gap: 6px;">
-                            <a href="{{ url_for('count_edit', session_id=s.id) }}" class="btn btn-secondary btn-sm">{{ t('review_lines_btn') }}</a>
+                            <a href="{{ url_for('count_edit', session_id=s.id) }}" class="btn btn-secondary btn-sm">{{
+                                t('review_lines_btn') }}</a>
                             <form method="POST" action="{{ url_for('count_edit', session_id=s.id) }}">
                                 <input type="hidden" name="action" value="approve_session">
-                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('{{ t('approve_count_confirm') }}')">
+                                <input type="hidden" name="sync_now" value="1">
+                                <button type="submit" class="btn btn-success btn-sm"
+                                    onclick="return confirm('{{ t('approve_count_confirm') }}')">
                                     ✅ {{ t('approve_settle_btn') }}
                                 </button>
                             </form>
@@ -266,7 +278,8 @@
                     <td>{{ "{:,.2f}".format(req.estimated_cost or 0) }} {{ currency }}</td>
                     <td>
                         {% if req.attachment_path %}
-                        <a href="{{ req.attachment_path }}" target="_blank" class="btn btn-secondary btn-sm">📎 {{ t('view_attachment') }}</a>
+                        <a href="{{ req.attachment_path }}" target="_blank" class="btn btn-secondary btn-sm">📎 {{
+                            t('view_attachment') }}</a>
                         {% else %}
                         -
                         {% endif %}
@@ -275,13 +288,15 @@
                         <div style="display: flex; gap: 6px;">
                             <form method="POST" action="{{ url_for('decide_new_item', req_id=req.id) }}">
                                 <input type="hidden" name="action" value="approve">
-                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('{{ t('approve_sku_confirm') }}')">
+                                <button type="submit" class="btn btn-success btn-sm"
+                                    onclick="return confirm('{{ t('approve_sku_confirm') }}')">
                                     ✅ {{ t('approve_sku_btn') }}
                                 </button>
                             </form>
                             <form method="POST" action="{{ url_for('decide_new_item', req_id=req.id) }}">
                                 <input type="hidden" name="action" value="reject">
-                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('{{ t('reject_item_confirm') }}')">
+                                <button type="submit" class="btn btn-danger btn-sm"
+                                    onclick="return confirm('{{ t('reject_item_confirm') }}')">
                                     ❌ {{ t('reject_btn') }}
                                 </button>
                             </form>
@@ -321,7 +336,15 @@
                 {% for job, log in failed_jobs %}
                 <tr>
                     <td><strong>#{{ job.id }}</strong></td>
-                    <td><span class="badge badge-draft">{{ job.source_type }}</span></td>
+                    <td>
+                        <span class="badge badge-draft">
+                            {% if job.source_type == 'purchase' %}{{ t('nav_purchases') }}
+                            {% elif job.source_type == 'transfer' %}{{ t('nav_transfers') }}
+                            {% elif job.source_type == 'count' %}{{ t('nav_count') }}
+                            {% elif job.source_type == 'new_item' %}{{ t('nav_item_request') }}
+                            {% else %}{{ job.source_type }}{% endif %}
+                        </span>
+                    </td>
                     <td>#{{ job.source_id }}</td>
                     <td style="color: var(--danger); font-weight: 600;">
                         {{ log.translated_error_ar or (t('error_msg') + ': N/A') }}
@@ -350,8 +373,11 @@
 <!-- 6. Foodics API Settings (Admin only) -->
 {% if user.role == 'admin' %}
 <div class="card" style="margin-top: 24px;">
-    <div class="card-header">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
         <div class="card-title">🔌 {{ t('foodics_api_settings') }}</div>
+        <a href="{{ url_for('foodics_hub') }}" class="btn btn-primary btn-sm">
+            ⚡ الانتقال لمركز تكامل فوديكس المتقدم
+        </a>
     </div>
     <div style="padding: 20px;">
         <form method="POST" action="{{ url_for('foodics_settings') }}">
@@ -360,13 +386,19 @@
                     <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">
                         {{ t('foodics_base_url_label') }}
                     </label>
-                    <input type="text" name="foodics_base_url" class="form-control" value="https://api.foodics.com/v5" placeholder="https://api.foodics.com/v5">
+                    <select name="foodics_base_url" class="form-control">
+                        <option value="https://api-sandbox.foodics.com/v5">🧪 بيئة الاختبار (Sandbox) -
+                            api-sandbox.foodics.com</option>
+                        <option value="https://api.foodics.com/v5">🚀 بيئة الإنتاج (Production) - api.foodics.com
+                        </option>
+                    </select>
                 </div>
                 <div>
                     <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">
                         {{ t('foodics_token_label') }}
                     </label>
-                    <input type="password" name="foodics_token" class="form-control" placeholder="{{ t('foodics_token_placeholder') }}">
+                    <input type="password" name="foodics_token" class="form-control"
+                        placeholder="{{ t('foodics_token_placeholder') }}">
                 </div>
             </div>
             <div style="display: flex; gap: 10px;">

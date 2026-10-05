@@ -47,6 +47,7 @@ class User(db.Model):
 class Location(db.Model):
     __tablename__ = "locations"
     id = db.Column(db.Integer, primary_key=True)
+    foodics_id = db.Column(db.String(80), unique=True, nullable=True)
     name_ar = db.Column(db.String(100), nullable=False)
     name_en = db.Column(db.String(100), nullable=False)
     type = db.Column(db.String(20), nullable=False)  # warehouse / branch
@@ -97,6 +98,10 @@ class Item(db.Model):
     def get_total_stock(self):
         balances = StockBalance.query.filter_by(item_id=self.id).all()
         return sum(b.quantity for b in balances)
+
+    @property
+    def suppliers(self):
+        return [assoc.supplier for assoc in self.item_suppliers if assoc.supplier]
 
 
 class StockBalance(db.Model):
@@ -175,6 +180,30 @@ class Supplier(db.Model):
     phone = db.Column(db.String(50), nullable=True)
     email = db.Column(db.String(120), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def items(self):
+        return [assoc.item for assoc in self.supplier_items if assoc.item]
+
+
+class ItemSupplier(db.Model):
+    __tablename__ = "item_suppliers"
+    id = db.Column(db.Integer, primary_key=True)
+    item_id = db.Column(db.Integer, db.ForeignKey("items.id"), nullable=False)
+    supplier_id = db.Column(db.Integer, db.ForeignKey("suppliers.id"), nullable=False)
+    order_unit = db.Column(db.String(40), nullable=True)
+    order_to_storage = db.Column(db.Float, default=1.0)
+    order_quantity = db.Column(db.Float, nullable=True)
+    cost_per_order_unit = db.Column(db.Float, nullable=True)
+    item_supplier_code = db.Column(db.String(80), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("item_id", "supplier_id", name="uq_item_supplier"),
+    )
+
+    item = db.relationship("Item", backref=db.backref("item_suppliers", cascade="all, delete-orphan"))
+    supplier = db.relationship("Supplier", backref=db.backref("supplier_items", cascade="all, delete-orphan"))
 
 
 class NewItemRequest(db.Model):
@@ -347,7 +376,8 @@ class CountSession(db.Model):
     location_id = db.Column(db.Integer, db.ForeignKey("locations.id"))
     count_date = db.Column(db.Date, default=datetime.utcnow)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
-    status = db.Column(db.String(20), default="open")  # open / pending_review / approved / posted
+    status = db.Column(db.String(20), default="open")  # open / pending_review / approved / queued / posted / failed
+    foodics_reference = db.Column(db.String(80), nullable=True)
 
     location = db.relationship("Location")
     creator = db.relationship("User", foreign_keys=[created_by])
@@ -359,7 +389,9 @@ class CountSession(db.Model):
             "open": "جلسة مفتوحة",
             "pending_review": "بانتظار المراجعة",
             "approved": "معتمد",
-            "posted": "مرحل",
+            "queued": "في طابور الترحيل",
+            "posted": "مرحل لفوديكس ✅",
+            "failed": "تعثر الترحيل ⚠️",
         }
         return labels.get(self.status, self.status)
 
@@ -369,7 +401,9 @@ class CountSession(db.Model):
             "open": "Open",
             "pending_review": "Pending Review",
             "approved": "Approved",
-            "posted": "Posted",
+            "queued": "Queued",
+            "posted": "Posted to Foodics",
+            "failed": "Sync Failed",
         }
         return labels.get(self.status, self.status)
 

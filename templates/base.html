@@ -37,6 +37,11 @@
                 </a>
                 <a href="{{ url_for('transfers_list') }}" class="nav-item {% if 'transfer' in request.endpoint %}active{% endif %}">
                     🚚 {{ t('nav_transfers') }}
+                    {% if user.role == 'branch_staff' and branch_incoming_count > 0 %}
+                    <span style="background: #2563eb; color: white; border-radius: 10px; padding: 2px 7px; font-size: 11px; font-weight: 700;">
+                        {{ branch_incoming_count }}
+                    </span>
+                    {% endif %}
                 </a>
                 <a href="{{ url_for('count_new') }}" class="nav-item {% if 'count' in request.endpoint %}active{% endif %}">
                     📝 {{ t('nav_count') }}
@@ -55,6 +60,9 @@
                         {{ pending_reviews_count }}
                     </span>
                     {% endif %}
+                </a>
+                <a href="{{ url_for('foodics_hub') }}" class="nav-item {% if 'foodics' in request.endpoint %}active{% endif %}">
+                    ⚡ تكامل فوديكس
                 </a>
                 {% endif %}
                 {% if user.role != 'accountant' %}

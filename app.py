@@ -16,7 +16,7 @@ from models import (
     db, User, Location, Item, PurchaseTransaction, PurchaseLine,
     TransferOrder, TransferLine, NewItemRequest, CountSession, CountLine,
     SyncQueue, SyncLog, StockBalance, StockMovement, SystemSetting, record_stock_movement,
-    Supplier,
+    Supplier, ItemSupplier,
 )
 import validation_gate as vg
 import sync_queue as sq
@@ -121,7 +121,7 @@ def ensure_seed_data():
 
 
 def ensure_suppliers_seed():
-    """تحميل الموردين من ملف suppliers_export.csv إذا لم تكن قاعدة البيانات تحتوي على موردين."""
+    """تحميل الموردين وأصنافهم من ملفات الـ CSV إذا لم تكن موجودة."""
     try:
         if Supplier.query.count() == 0:
             csv_path = os.path.join(BASE_DIR, "suppliers_export.csv")
@@ -158,16 +158,75 @@ def ensure_suppliers_seed():
                                     phone=phone or None,
                                 ))
                 db.session.commit()
+
+        # استيراد أصناف الموردين إذا كان الجدول فارغاً
+        if ItemSupplier.query.count() == 0:
+            import import_supplier_items
+            import_supplier_items.run_import()
     except Exception as e:
-        print(f"تحذير: تعذّر تحميل الموردين من suppliers_export.csv: {e}")
+        print(f"تحذير: تعذّر استيراد الموردين أو أصنافهم: {e}")
+
+
+def normalize_arabic(s):
+    """توحيد الأحرف العربية (الياء والألف المقصورة، التاء المربوطة، والهمزات) للمطابقة الدقيقة."""
+    if not s:
+        return ""
+    import re
+    s = s.strip().lower()
+    s = re.sub(r"[إأآا]", "ا", s)
+    s = re.sub(r"[ىي]", "ي", s)
+    s = re.sub(r"[ةه]", "ه", s)
+    s = re.sub(r"[\u064B-\u065F]", "", s)  # الحركات
+    s = re.sub(r"[^\w\s]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def find_supplier_by_name(name):
+    """البحث الذكي عن مورد بالاسم أو الكود مع مراعاة كافة الاختلافات الإملائية."""
+    if not name:
+        return None
+    clean = name.strip()
+
+    # 1. تطابق مباشر بالاسم الصريح أو الكود
+    s = Supplier.query.filter(
+        db.or_(
+            db.func.lower(Supplier.name) == clean.lower(),
+            Supplier.code == clean
+        )
+    ).first()
+    if s:
+        return s
+
+    # 2. بحث جزئي في قاعدة البيانات
+    s = Supplier.query.filter(Supplier.name.ilike(f"%{clean}%")).first()
+    if s:
+        return s
+
+    # 3. مطابقة ذكية بالأحرف العربية الموحدة
+    target_norm = normalize_arabic(clean)
+    if not target_norm:
+        return None
+
+    all_suppliers = Supplier.query.all()
+    for sup in all_suppliers:
+        if normalize_arabic(sup.name) == target_norm:
+            return sup
+
+    for sup in all_suppliers:
+        sn = normalize_arabic(sup.name)
+        if sn and (target_norm in sn or sn in target_norm):
+            return sup
+
+    return None
 
 
 def add_or_get_supplier(name, code=None, phone=None):
-    """إرجاع مورد أو إضافته للنظام ولملف suppliers_export.csv."""
+    """إرجاع مورد موجود أو إضافته للنظام ولملف suppliers_export.csv."""
     clean_name = (name or "").strip()
     if not clean_name:
         return None
-    supplier = Supplier.query.filter(db.func.lower(Supplier.name) == clean_name.lower()).first()
+    supplier = find_supplier_by_name(clean_name)
     if not supplier:
         supplier = Supplier(name=clean_name, code=code or None, phone=phone or None)
         db.session.add(supplier)
@@ -179,6 +238,9 @@ def add_or_get_supplier(name, code=None, phone=None):
                 writer.writerow(["", clean_name, code or "", "", "", phone or "", ""])
         except Exception:
             pass
+    elif code and not supplier.code:
+        supplier.code = code
+        db.session.commit()
     return supplier
 
 
@@ -707,10 +769,15 @@ def inject_globals():
             return obj.get_movement_type_label(lang)
         return str(obj)
 
+    branch_incoming_count = 0
+    if u and u.role == "branch_staff" and u.location_id:
+        branch_incoming_count = TransferOrder.query.filter_by(to_location_id=u.location_id, status="in_transit").count()
+
     return {
         "user": u,
         "current_user": u,
         "pending_reviews_count": pending_count,
+        "branch_incoming_count": branch_incoming_count,
         "now": datetime.utcnow(),
         "lang": lang,
         "t": t,
@@ -817,29 +884,53 @@ def dashboard():
     context["total_items"] = total_items
 
     # إحصائيات عامة
-    context["pending_purchases"] = PurchaseTransaction.query.filter_by(status="submitted").count()
-    context["pending_transfers"] = TransferOrder.query.filter_by(status="needs_review").count()
-    context["pending_items"] = NewItemRequest.query.filter_by(status="pending").count()
-    context["open_counts"] = CountSession.query.filter_by(status="open").count()
-    context["failed_sync"] = SyncQueue.query.filter_by(status="failed").count()
-    context["queued_sync"] = SyncQueue.query.filter(SyncQueue.status.in_(["queued", "retrying"])).count()
+    if u.role == "branch_staff" and u.location_id:
+        context["pending_purchases"] = PurchaseTransaction.query.filter_by(location_id=u.location_id, status="submitted").count()
+        # شحنات واردة بانتظار تأكيد الاستلام من المستودع
+        incoming_transfers = TransferOrder.query.filter_by(to_location_id=u.location_id, status="in_transit").order_by(TransferOrder.created_at.desc()).all()
+        context["incoming_transfers"] = incoming_transfers
+        context["incoming_transfers_count"] = len(incoming_transfers)
+        context["pending_transfers"] = len(incoming_transfers)
+        context["pending_items"] = NewItemRequest.query.filter_by(requested_by=u.id, status="pending").count()
+        context["open_counts"] = CountSession.query.filter_by(location_id=u.location_id, status="open").count()
+        context["failed_sync"] = 0
+        context["queued_sync"] = 0
+        context["total_stock_value"] = None
+        context["branch_stock_units"] = db.session.query(db.func.sum(StockBalance.quantity)).filter(StockBalance.location_id == u.location_id).scalar() or 0.0
 
-    # تقييم المخزون
-    total_val = db.session.query(
-        db.func.sum(StockBalance.quantity * Item.cost)
-    ).join(Item, StockBalance.item_id == Item.id).scalar() or 0.0
-    context["total_stock_value"] = round(total_val, 2)
+        # آخر العمليات الخاصة بفرع المستخدم حصراً
+        context["recent_purchases"] = PurchaseTransaction.query.filter_by(location_id=u.location_id).order_by(PurchaseTransaction.created_at.desc()).limit(5).all()
+        context["recent_transfers"] = TransferOrder.query.filter(
+            db.or_(TransferOrder.to_location_id == u.location_id, TransferOrder.from_location_id == u.location_id)
+        ).order_by(TransferOrder.created_at.desc()).limit(5).all()
+        context["recent_movements"] = []  # إخفاء دفتر الأستاذ بالكامل لموظف الفرع
+    else:
+        context["pending_purchases"] = PurchaseTransaction.query.filter_by(status="submitted").count()
+        context["pending_transfers"] = TransferOrder.query.filter_by(status="needs_review").count()
+        context["pending_items"] = NewItemRequest.query.filter_by(status="pending").count()
+        context["open_counts"] = CountSession.query.filter_by(status="open").count()
+        context["failed_sync"] = SyncQueue.query.filter_by(status="failed").count()
+        context["queued_sync"] = SyncQueue.query.filter(SyncQueue.status.in_(["queued", "retrying"])).count()
+        context["incoming_transfers"] = []
+        context["incoming_transfers_count"] = 0
+
+        # تقييم المخزون العام
+        total_val = db.session.query(
+            db.func.sum(StockBalance.quantity * Item.cost)
+        ).join(Item, StockBalance.item_id == Item.id).scalar() or 0.0
+        context["total_stock_value"] = round(total_val, 2)
+        context["branch_stock_units"] = 0.0
+
+        # آخر العمليات العامة
+        context["recent_purchases"] = PurchaseTransaction.query.order_by(PurchaseTransaction.created_at.desc()).limit(5).all()
+        context["recent_transfers"] = TransferOrder.query.order_by(TransferOrder.created_at.desc()).limit(5).all()
+        context["recent_movements"] = StockMovement.query.order_by(StockMovement.created_at.desc()).limit(6).all()
 
     # تنبيهات انخفاض المخزون (أقل من 10)
     low_stock_query = StockBalance.query.filter(StockBalance.quantity <= 10.0)
     if u.role == "branch_staff" and u.location_id:
         low_stock_query = low_stock_query.filter(StockBalance.location_id == u.location_id)
     context["low_stock_count"] = low_stock_query.count()
-
-    # آخر العمليات
-    context["recent_purchases"] = PurchaseTransaction.query.order_by(PurchaseTransaction.created_at.desc()).limit(5).all()
-    context["recent_transfers"] = TransferOrder.query.order_by(TransferOrder.created_at.desc()).limit(5).all()
-    context["recent_movements"] = StockMovement.query.order_by(StockMovement.created_at.desc()).limit(6).all()
 
     return render_template("dashboard.html", **context)
 
@@ -854,6 +945,10 @@ def api_lookup_item():
     item = vg.check_item_exists(code)
     if not item:
         return jsonify({"found": False})
+    
+    u = current_user()
+    hide_cost = (u.role == "branch_staff")
+
     return jsonify({
         "found": True,
         "id": item.id,
@@ -861,7 +956,7 @@ def api_lookup_item():
         "name_ar": item.name_ar,
         "name_en": item.name_en,
         "unit": item.storage_unit,
-        "cost": item.cost,
+        "cost": 0.0 if hide_cost else (item.cost or 0.0),
         "barcode": item.barcode,
     })
 
@@ -870,32 +965,107 @@ def api_lookup_item():
 @login_required
 def api_search_items():
     query = request.args.get("q", "").strip()
-    if not query:
-        return jsonify([])
+    supplier_param = request.args.get("supplier", "").strip()
+    u = current_user()
+    hide_cost = (u.role == "branch_staff")
 
-    items = Item.query.filter(
-        db.or_(
-            Item.sku.ilike(f"%{query}%"),
-            Item.barcode.ilike(f"%{query}%"),
-            Item.name_ar.ilike(f"%{query}%"),
-            Item.name_en.ilike(f"%{query}%")
-        )
-    ).limit(30).all()
+    sup = None
+    item_ids = []
+    item_supp_map = {}
+    is_supplier_filtered = False
+
+    if supplier_param:
+        sup = find_supplier_by_name(supplier_param)
+        if sup:
+            for assoc in sup.supplier_items:
+                if assoc.item_id:
+                    item_ids.append(assoc.item_id)
+                    item_supp_map[assoc.item_id] = assoc
+
+        if item_ids:
+            # المورد مسجل ولديه أصناف معتمدة
+            is_supplier_filtered = True
+            if query:
+                # نبحث داخل أصناف المورد المعتمدة
+                items = Item.query.filter(
+                    Item.id.in_(item_ids),
+                    db.or_(
+                        Item.sku.ilike(f"%{query}%"),
+                        Item.barcode.ilike(f"%{query}%"),
+                        Item.name_ar.ilike(f"%{query}%"),
+                        Item.name_en.ilike(f"%{query}%")
+                    )
+                ).limit(50).all()
+            else:
+                # بدون استعلام: نعرض أصناف هذا المورد المعتمدة فقط
+                items = Item.query.filter(Item.id.in_(item_ids)).limit(100).all()
+        else:
+            # المورد ليس لديه أصناف معتمدة مربوطة بعد
+            if not query:
+                # لا نرجع أصناف عامة بل قائمة فارغة مع تنبيه واضح
+                return jsonify({
+                    "results": [],
+                    "is_supplier_filtered": False,
+                    "has_supplier_items": False,
+                    "supplier_name": sup.name if sup else supplier_param,
+                    "message": "لا توجد أصناف معتمدة مربوطة بهذا المورد في النظام حالياً"
+                })
+            else:
+                # المستخدم يبحث عن صنف عام لإضافته وربطه
+                items = Item.query.filter(
+                    db.or_(
+                        Item.sku.ilike(f"%{query}%"),
+                        Item.barcode.ilike(f"%{query}%"),
+                        Item.name_ar.ilike(f"%{query}%"),
+                        Item.name_en.ilike(f"%{query}%")
+                    )
+                ).limit(50).all()
+                is_supplier_filtered = False
+    else:
+        # بحث عام بدون تحديد مورد
+        if not query:
+            return jsonify({"results": []})
+        items = Item.query.filter(
+            db.or_(
+                Item.sku.ilike(f"%{query}%"),
+                Item.barcode.ilike(f"%{query}%"),
+                Item.name_ar.ilike(f"%{query}%"),
+                Item.name_en.ilike(f"%{query}%")
+            )
+        ).limit(50).all()
+        is_supplier_filtered = False
 
     results = []
     for it in items:
+        assoc = item_supp_map.get(it.id)
+        unit = (assoc.order_unit if assoc and assoc.order_unit else None) or (it.storage_unit or "حبة")
+        cost = 0.0
+        if not hide_cost:
+            if assoc and assoc.cost_per_order_unit is not None and assoc.cost_per_order_unit > 0:
+                cost = assoc.cost_per_order_unit
+            else:
+                cost = it.cost or 0.0
+
         results.append({
             "id": it.sku,
             "item_id": it.id,
             "sku": it.sku,
-            "text": f"[{it.sku}] {it.name_ar} ({it.name_en})",
+            "text": f"[{it.sku}] {it.name_ar}" + (f" ({it.name_en})" if it.name_en else ""),
             "name_ar": it.name_ar,
             "name_en": it.name_en or "",
-            "unit": it.storage_unit,
-            "cost": it.cost,
+            "unit": unit,
+            "cost": cost,
             "barcode": it.barcode or "",
+            "is_supplier_item": (it.id in item_supp_map),
         })
-    return jsonify({"results": results})
+
+    return jsonify({
+        "results": results,
+        "is_supplier_filtered": is_supplier_filtered,
+        "has_supplier_items": bool(item_ids),
+        "supplier_name": sup.name if sup else supplier_param,
+        "total_supplier_items": len(item_ids),
+    })
 
 
 # ---------------------------------------------------------------
@@ -1047,6 +1217,10 @@ def reports_stock():
 @login_required
 def reports_movements():
     u = current_user()
+    if u.role == "branch_staff":
+        flash("سجل دفتر الأستاذ مخصص للإدارة والمحاسبة", "warning")
+        return redirect(url_for("reports_stock"))
+
     locations = Location.query.all()
     items = Item.query.limit(50).all()
 
@@ -1186,7 +1360,7 @@ def purchases_list():
     q = PurchaseTransaction.query
     if u.role not in ["accountant", "admin"]:
         if u.role == "branch_staff" and u.location_id:
-            q = q.filter(db.or_(PurchaseTransaction.created_by == u.id, PurchaseTransaction.location_id == u.location_id))
+            q = q.filter(PurchaseTransaction.location_id == u.location_id)
         else:
             q = q.filter_by(created_by=u.id)
     purchases = q.order_by(PurchaseTransaction.created_at.desc()).all()
@@ -1247,11 +1421,79 @@ def purchase_new():
 def purchase_edit(purchase_id):
     purchase = PurchaseTransaction.query.get_or_404(purchase_id)
     u = current_user()
-    # Allow admin and accountant to edit in draft or submitted (before final approval/posted/queued)
-    can_modify = (purchase.status == "draft") or (u.role in ["admin", "accountant"] and purchase.status not in ["posted", "queued"])
+    if u.role == "branch_staff" and u.location_id and purchase.location_id != u.location_id:
+        flash("عفواً، لا تملك صلاحية الوصول لسند استلام يخص فرعاً آخر", "error")
+        return redirect(url_for("purchases_list"))
+
+    # Allow admin and accountant to edit or delete
+    can_modify = (purchase.status == "draft") or (u.role in ["admin", "accountant"])
 
     if request.method == "POST":
         action = request.form.get("action")
+
+        if action == "delete_purchase":
+            if u.role not in ["admin", "accountant"]:
+                flash("عذراً، حذف سند الاستلام متاح فقط لمدير النظام أو المحاسب", "error")
+                return redirect(url_for("purchase_edit", purchase_id=purchase.id))
+
+            # عكس أي حركات مخزنية تم تسجيلها لهذا السند
+            movements = StockMovement.query.filter_by(reference_type="purchase", reference_id=purchase.id).all()
+            for mov in movements:
+                bal = StockBalance.query.filter_by(item_id=mov.item_id, location_id=mov.location_id).first()
+                if bal:
+                    bal.quantity = round((bal.quantity or 0.0) - mov.quantity_change, 4)
+                    bal.last_updated = datetime.utcnow()
+                db.session.delete(mov)
+
+            # حذف أي سجلات في طابور الترحيل وسجلاته
+            q_items = SyncQueue.query.filter_by(source_type="purchase", source_id=purchase.id).all()
+            for q in q_items:
+                SyncLog.query.filter_by(queue_id=q.id).delete()
+                db.session.delete(q)
+
+            inv_ref = purchase.invoice_number or f"#{purchase.id}"
+            db.session.delete(purchase)
+            db.session.commit()
+            flash(f"تم حذف سند الاستلام {inv_ref} وجميع بنوده وسجلاته بنجاح 🗑️", "success")
+            return redirect(url_for("purchases_list"))
+
+        elif action == "edit_header":
+            if u.role not in ["admin", "accountant"]:
+                flash("عذراً، تعديل بيانات السند متاح فقط لمدير النظام أو المحاسب", "error")
+                return redirect(url_for("purchase_edit", purchase_id=purchase.id))
+
+            new_supplier = request.form.get("supplier_name", "").strip()
+            new_inv_num = request.form.get("invoice_number", "").strip()
+            new_inv_date = request.form.get("invoice_date", "").strip()
+            new_loc_id = request.form.get("location_id")
+
+            if new_supplier:
+                purchase.supplier_name = new_supplier
+            if new_inv_num:
+                purchase.invoice_number = new_inv_num
+            if new_inv_date:
+                try:
+                    purchase.invoice_date = datetime.strptime(new_inv_date, "%Y-%m-%d").date()
+                except ValueError:
+                    pass
+            if new_loc_id:
+                try:
+                    loc = db.session.get(Location, int(new_loc_id))
+                    if loc and loc.id != purchase.location_id:
+                        old_loc_id = purchase.location_id
+                        purchase.location_id = loc.id
+                        # تحديث حركات المخزون ذات الصلة
+                        StockMovement.query.filter_by(
+                            reference_type="purchase",
+                            reference_id=purchase.id,
+                            location_id=old_loc_id
+                        ).update({"location_id": loc.id})
+                except (ValueError, TypeError):
+                    pass
+
+            db.session.commit()
+            flash("تم تحديث بيانات سند الاستلام بنجاح", "success")
+            return redirect(url_for("purchase_edit", purchase_id=purchase.id))
 
         if action in ["add_line", "update_line", "delete_line", "upload_attachment"] and not can_modify:
             flash("لا يمكن تعديل هذا السند نظراً لحالته أو عدم توفر الصلاحية", "error")
@@ -1268,7 +1510,23 @@ def purchase_edit(purchase_id):
             if not item:
                 flash(msg, "error")
             else:
-                cost = float(unit_cost) if unit_cost and float(unit_cost) > 0 else (item.cost or 0)
+                # إذا كان المستخدم موظف فرع، لا يؤخذ السعر من المدخلات بل من التكلفة المعتمدة في النظام
+                if u.role == "branch_staff":
+                    cost = item.cost or 0.0
+                else:
+                    cost = float(unit_cost) if unit_cost and float(unit_cost) > 0 else (item.cost or 0)
+
+                # ربط الصنف بالمورد تلقائياً إذا لم يكن مربوطاً مسبقاً
+                if purchase.supplier_name:
+                    sup = find_supplier_by_name(purchase.supplier_name)
+                    if sup and not ItemSupplier.query.filter_by(item_id=item.id, supplier_id=sup.id).first():
+                        db.session.add(ItemSupplier(
+                            item_id=item.id,
+                            supplier_id=sup.id,
+                            order_unit=item.storage_unit,
+                            cost_per_order_unit=cost
+                        ))
+
                 line = PurchaseLine(
                     purchase_id=purchase.id,
                     item_id=item.id,
@@ -1277,6 +1535,20 @@ def purchase_edit(purchase_id):
                     notes=notes,
                 )
                 db.session.add(line)
+
+                # إذا كان السند معتمداً مسبقاً، إضافة حركة مخزنية للبند الجديد
+                if purchase.status in ["approved", "posted"]:
+                    record_stock_movement(
+                        item_id=item.id,
+                        location_id=purchase.location_id,
+                        movement_type="purchase_in",
+                        quantity_change=qty,
+                        reference_type="purchase",
+                        reference_id=purchase.id,
+                        notes=f"إضافة بند لسند معتمد #{purchase.invoice_number or purchase.id}",
+                        user_id=u.id
+                    )
+
                 db.session.commit()
                 flash(f"تمت إضافة الصنف: {item.name_ar}", "success")
                 if msg:
@@ -1290,11 +1562,28 @@ def purchase_edit(purchase_id):
             line = db.session.get(PurchaseLine, line_id)
             if line and line.purchase_id == purchase.id:
                 if new_qty > 0:
+                    diff = new_qty - line.quantity
                     line.quantity = new_qty
-                    if new_cost:
+                    if u.role != "branch_staff" and new_cost is not None and new_cost != "":
                         line.unit_cost = float(new_cost)
                     if new_notes is not None:
                         line.notes = new_notes
+
+                    # إذا كانت هناك حركات مخزنية مسجلة لهذا السند، يتم تعديل الأرصدة والحركات
+                    if diff != 0 and purchase.status in ["approved", "posted"]:
+                        mov = StockMovement.query.filter_by(
+                            reference_type="purchase",
+                            reference_id=purchase.id,
+                            item_id=line.item_id,
+                            location_id=purchase.location_id
+                        ).first()
+                        if mov:
+                            mov.quantity_change = round((mov.quantity_change or 0.0) + diff, 4)
+                        bal = StockBalance.query.filter_by(item_id=line.item_id, location_id=purchase.location_id).first()
+                        if bal:
+                            bal.quantity = round((bal.quantity or 0.0) + diff, 4)
+                            bal.last_updated = datetime.utcnow()
+
                     db.session.commit()
                     flash("تم تحديث البند بنجاح", "success")
                 else:
@@ -1304,6 +1593,21 @@ def purchase_edit(purchase_id):
             line_id = int(request.form.get("line_id"))
             line = db.session.get(PurchaseLine, line_id)
             if line and line.purchase_id == purchase.id:
+                # إذا كانت هناك حركات مخزنية، عكس الرصيد وحذف الحركة
+                if purchase.status in ["approved", "posted"]:
+                    mov = StockMovement.query.filter_by(
+                        reference_type="purchase",
+                        reference_id=purchase.id,
+                        item_id=line.item_id,
+                        location_id=purchase.location_id
+                    ).first()
+                    if mov:
+                        bal = StockBalance.query.filter_by(item_id=line.item_id, location_id=purchase.location_id).first()
+                        if bal:
+                            bal.quantity = round((bal.quantity or 0.0) - line.quantity, 4)
+                            bal.last_updated = datetime.utcnow()
+                        db.session.delete(mov)
+
                 db.session.delete(line)
                 db.session.commit()
                 flash("تم حذف البند", "info")
@@ -1331,10 +1635,84 @@ def purchase_edit(purchase_id):
                 flash("تم إرسال سند الاستلام بنجاح لمراجعة واعتماد المحاسب", "success")
                 return redirect(url_for("purchases_list"))
 
+        elif action == "change_location":
+            if u.role not in ["admin", "accountant"]:
+                flash("عذراً، تعديل فرع السند متاح فقط لمدير النظام أو المحاسب", "error")
+            elif purchase.status == "posted":
+                flash("لا يمكن تعديل الفرع لسند تم ترحيله بالفعل إلى فوديكس بنجاح", "error")
+            else:
+                new_loc_id = request.form.get("location_id")
+                new_loc = db.session.get(Location, int(new_loc_id)) if new_loc_id else None
+                if new_loc:
+                    old_loc_name = purchase.location.name_ar if purchase.location else "غير محدد"
+                    old_loc_id = purchase.location_id
+                    purchase.location_id = new_loc.id
+
+                    # تحديث سجلات حركة المخزون إن وجدت لتوافق الفرع الجديد
+                    StockMovement.query.filter_by(
+                        reference_type="purchase",
+                        reference_id=purchase.id,
+                        location_id=old_loc_id
+                    ).update({"location_id": new_loc.id})
+
+                    # إعادة ضبط طابور الترحيل في حال كان السند متعثراً
+                    sq_item = SyncQueue.query.filter_by(source_type="purchase", source_id=purchase.id).first()
+                    if sq_item:
+                        sq_item.status = "queued"
+                        sq_item.retry_count = 0
+                    elif purchase.status in ["approved", "failed"]:
+                        sq.enqueue("purchase", purchase.id)
+
+                    if purchase.status == "failed":
+                        purchase.status = "queued"
+
+                    db.session.commit()
+
+                    # إذا طلب المستخدم إعادة الترحيل الفوري
+                    if request.form.get("sync_now") == "1":
+                        sq.process_all_queued()
+                        db.session.refresh(purchase)
+                        if purchase.status == "posted":
+                            flash(f"تم تغيير موقع السند إلى '{new_loc.name_ar}' وتم ترحيله إلى فوديكس بنجاح! 🎉", "success")
+                        else:
+                            flash(f"تم تغيير موقع السند إلى '{new_loc.name_ar}' وجارٍ الترحيل.", "info")
+                    else:
+                        flash(f"تم تغيير موقع السند بنجاح من '{old_loc_name}' إلى '{new_loc.name_ar}'", "success")
+                else:
+                    flash("الموقع المحدد غير صالح", "error")
+
         return redirect(url_for("purchase_edit", purchase_id=purchase.id))
 
     attachments = json.loads(purchase.attachments or "[]")
-    return render_template("purchase_edit.html", purchase=purchase, attachments=attachments)
+    locations = Location.query.order_by(Location.id).all()
+    suppliers = Supplier.query.order_by(Supplier.name).all()
+    
+    # جلب المورد وأصنافه المعتمدة لهذا السند
+    supplier = None
+    supplier_items = []
+    if purchase.supplier_name:
+        supplier = find_supplier_by_name(purchase.supplier_name)
+        if supplier:
+            supplier_items = supplier.items
+            # ربط وحدة وتكلفة التوريد المحددة بهذا المورد إن وُجدت
+            supp_assoc_map = {assoc.item_id: assoc for assoc in supplier.supplier_items}
+            for it in supplier_items:
+                assoc = supp_assoc_map.get(it.id)
+                if assoc and assoc.order_unit:
+                    it.storage_unit = assoc.order_unit
+                if assoc and assoc.cost_per_order_unit is not None and u.role != "branch_staff":
+                    it.cost = assoc.cost_per_order_unit
+
+    return render_template(
+        "purchase_edit.html",
+        purchase=purchase,
+        attachments=attachments,
+        locations=locations,
+        suppliers=suppliers,
+        supplier=supplier,
+        supplier_items=supplier_items,
+        user=u
+    )
 
 
 @app.route("/purchases/<int:purchase_id>/review", methods=["POST"])
@@ -1386,8 +1764,8 @@ def purchase_review(purchase_id):
 def transfers_list():
     u = current_user()
     q = TransferOrder.query
-    if u.role == "branch_staff":
-        q = q.filter(db.or_(TransferOrder.to_location_id == u.location_id, TransferOrder.created_by == u.id))
+    if u.role == "branch_staff" and u.location_id:
+        q = q.filter(db.or_(TransferOrder.to_location_id == u.location_id, TransferOrder.from_location_id == u.location_id))
     elif u.role == "warehouse":
         q = q.filter(db.or_(TransferOrder.from_location_id == u.location_id, TransferOrder.created_by == u.id))
     transfers = q.order_by(TransferOrder.created_at.desc()).all()
@@ -1429,12 +1807,112 @@ def transfer_new():
 @login_required
 def transfer_edit(transfer_id):
     transfer = TransferOrder.query.get_or_404(transfer_id)
+    u = current_user()
+    if u.role == "branch_staff" and u.location_id and (transfer.to_location_id != u.location_id and transfer.from_location_id != u.location_id):
+        flash("عفواً، لا تملك صلاحية الوصول لسند تحويل يخص فرعاً آخر", "error")
+        return redirect(url_for("transfers_list"))
+
     locations = Location.query.all()
+
+    # Allow admin and accountant to edit or delete transfer orders
+    can_modify = (transfer.status == "draft") or (u.role in ["admin", "accountant"])
 
     if request.method == "POST":
         action = request.form.get("action")
 
-        if action == "update_destination":
+        if action == "delete_transfer":
+            if u.role not in ["admin", "accountant"]:
+                flash("عذراً، حذف سند صرف المواد متاح فقط لمدير النظام أو المحاسب", "error")
+                return redirect(url_for("transfer_edit", transfer_id=transfer.id))
+
+            # عكس أي حركات مخزنية تم تسجيلها لهذا التحويل
+            movements = StockMovement.query.filter_by(reference_type="transfer", reference_id=transfer.id).all()
+            for mov in movements:
+                bal = StockBalance.query.filter_by(item_id=mov.item_id, location_id=mov.location_id).first()
+                if bal:
+                    bal.quantity = round((bal.quantity or 0.0) - mov.quantity_change, 4)
+                    bal.last_updated = datetime.utcnow()
+                db.session.delete(mov)
+
+            # حذف أي سجلات في طابور الترحيل وسجلاته
+            q_items = SyncQueue.query.filter_by(source_type="transfer", source_id=transfer.id).all()
+            for q in q_items:
+                SyncLog.query.filter_by(queue_id=q.id).delete()
+                db.session.delete(q)
+
+            tr_id = transfer.id
+            db.session.delete(transfer)
+            db.session.commit()
+            flash(f"تم حذف سند صرف المواد #{tr_id} بالكامل وعكس أثره المخزني بنجاح 🗑️", "success")
+            return redirect(url_for("transfers_list"))
+
+        elif action == "edit_header":
+            if u.role not in ["admin", "accountant"]:
+                flash("عذراً، تعديل بيانات السند متاح فقط لمدير النظام أو المحاسب", "error")
+                return redirect(url_for("transfer_edit", transfer_id=transfer.id))
+
+            new_from_id = request.form.get("from_location_id")
+            new_to_id = request.form.get("to_location_id")
+
+            if new_from_id and new_to_id and int(new_from_id) == int(new_to_id):
+                flash("لا يمكن أن يكون فرع المصدر هو نفس فرع الوجهة", "error")
+                return redirect(url_for("transfer_edit", transfer_id=transfer.id))
+
+            if new_from_id:
+                new_from_id = int(new_from_id)
+                if new_from_id != transfer.from_location_id:
+                    old_from_id = transfer.from_location_id
+                    transfer.from_location_id = new_from_id
+                    movements_out = StockMovement.query.filter_by(
+                        reference_type="transfer",
+                        reference_id=transfer.id,
+                        movement_type="transfer_out",
+                        location_id=old_from_id
+                    ).all()
+                    for mov in movements_out:
+                        old_bal = StockBalance.query.filter_by(item_id=mov.item_id, location_id=old_from_id).first()
+                        if old_bal:
+                            old_bal.quantity = round((old_bal.quantity or 0.0) - mov.quantity_change, 4)
+                            old_bal.last_updated = datetime.utcnow()
+                        new_bal = StockBalance.query.filter_by(item_id=mov.item_id, location_id=new_from_id).first()
+                        if not new_bal:
+                            new_bal = StockBalance(item_id=mov.item_id, location_id=new_from_id, quantity=0.0)
+                            db.session.add(new_bal)
+                            db.session.flush()
+                        new_bal.quantity = round((new_bal.quantity or 0.0) + mov.quantity_change, 4)
+                        new_bal.last_updated = datetime.utcnow()
+                        mov.location_id = new_from_id
+
+            if new_to_id:
+                new_to_id = int(new_to_id)
+                if new_to_id != transfer.to_location_id:
+                    old_to_id = transfer.to_location_id
+                    transfer.to_location_id = new_to_id
+                    movements_in = StockMovement.query.filter_by(
+                        reference_type="transfer",
+                        reference_id=transfer.id,
+                        movement_type="transfer_in",
+                        location_id=old_to_id
+                    ).all()
+                    for mov in movements_in:
+                        old_bal = StockBalance.query.filter_by(item_id=mov.item_id, location_id=old_to_id).first()
+                        if old_bal:
+                            old_bal.quantity = round((old_bal.quantity or 0.0) - mov.quantity_change, 4)
+                            old_bal.last_updated = datetime.utcnow()
+                        new_bal = StockBalance.query.filter_by(item_id=mov.item_id, location_id=new_to_id).first()
+                        if not new_bal:
+                            new_bal = StockBalance(item_id=mov.item_id, location_id=new_to_id, quantity=0.0)
+                            db.session.add(new_bal)
+                            db.session.flush()
+                        new_bal.quantity = round((new_bal.quantity or 0.0) + mov.quantity_change, 4)
+                        new_bal.last_updated = datetime.utcnow()
+                        mov.location_id = new_to_id
+
+            db.session.commit()
+            flash("تم تحديث بيانات سند الصرف والمواقع بنجاح", "success")
+            return redirect(url_for("transfer_edit", transfer_id=transfer.id))
+
+        elif action == "update_destination":
             new_to_id = request.form.get("to_location_id")
             if new_to_id:
                 new_to_id = int(new_to_id)
@@ -1446,7 +1924,74 @@ def transfer_edit(transfer_id):
                     flash("تم تعديل فرع الوجهة (المستلم) بنجاح", "success")
             return redirect(url_for("transfer_edit", transfer_id=transfer.id))
 
-        if action == "add_line":
+        elif action == "update_line":
+            if not can_modify:
+                flash("لا تملك صلاحية تعديل بنود هذا السند", "error")
+                return redirect(url_for("transfer_edit", transfer_id=transfer.id))
+
+            line_id = int(request.form.get("line_id"))
+            line = db.session.get(TransferLine, line_id)
+            if line and line.transfer_id == transfer.id:
+                new_qty_sent = float(request.form.get("new_qty_sent") or line.qty_sent)
+                new_qty_rec = request.form.get("new_qty_received")
+                new_notes = request.form.get("new_notes", "").strip()
+                new_var_reason = request.form.get("new_variance_reason", "").strip()
+
+                if new_qty_sent <= 0:
+                    flash("الكمية المصروفة يجب أن تكون أكبر من صفر", "error")
+                    return redirect(url_for("transfer_edit", transfer_id=transfer.id))
+
+                diff_sent = new_qty_sent - line.qty_sent
+                if diff_sent != 0 and transfer.status in ["in_transit", "received", "needs_review", "approved", "posted"]:
+                    mov_out = StockMovement.query.filter_by(
+                        reference_type="transfer",
+                        reference_id=transfer.id,
+                        movement_type="transfer_out",
+                        item_id=line.item_id,
+                        location_id=transfer.from_location_id
+                    ).first()
+                    if mov_out:
+                        mov_out.quantity_change = round(mov_out.quantity_change - diff_sent, 4)
+                    bal_out = StockBalance.query.filter_by(item_id=line.item_id, location_id=transfer.from_location_id).first()
+                    if bal_out:
+                        bal_out.quantity = round((bal_out.quantity or 0.0) - diff_sent, 4)
+                        bal_out.last_updated = datetime.utcnow()
+
+                line.qty_sent = new_qty_sent
+                line.qty_requested = new_qty_sent
+                line.notes = new_notes
+
+                if new_qty_rec is not None and new_qty_rec != "":
+                    val_rec = float(new_qty_rec)
+                    diff_rec = val_rec - (line.qty_received if line.qty_received is not None else 0.0)
+                    if diff_rec != 0 and transfer.status in ["received", "approved", "posted"]:
+                        mov_in = StockMovement.query.filter_by(
+                            reference_type="transfer",
+                            reference_id=transfer.id,
+                            movement_type="transfer_in",
+                            item_id=line.item_id,
+                            location_id=transfer.to_location_id
+                        ).first()
+                        if mov_in:
+                            mov_in.quantity_change = round(mov_in.quantity_change + diff_rec, 4)
+                        bal_in = StockBalance.query.filter_by(item_id=line.item_id, location_id=transfer.to_location_id).first()
+                        if bal_in:
+                            bal_in.quantity = round((bal_in.quantity or 0.0) + diff_rec, 4)
+                            bal_in.last_updated = datetime.utcnow()
+                    line.qty_received = val_rec
+
+                if new_var_reason:
+                    line.variance_reason = new_var_reason
+
+                db.session.commit()
+                flash("تم تحديث بند التحويل بنجاح", "success")
+            return redirect(url_for("transfer_edit", transfer_id=transfer.id))
+
+        elif action == "add_line":
+            if not can_modify:
+                flash("لا تملك صلاحية إضافة بنود لهذا السند", "error")
+                return redirect(url_for("transfer_edit", transfer_id=transfer.id))
+
             code = request.form.get("code", "").strip()
             qty = float(request.form.get("quantity") or 0)
             notes = request.form.get("notes", "").strip()
@@ -1462,16 +2007,76 @@ def transfer_edit(transfer_id):
                     notes=notes,
                 )
                 db.session.add(line)
+
+                # إذا كانت الشحنة مرسلة مسبقاً، خصم الصنف من المصدر
+                if transfer.status in ["in_transit", "received", "needs_review", "approved", "posted"]:
+                    record_stock_movement(
+                        item_id=item.id,
+                        location_id=transfer.from_location_id,
+                        movement_type="transfer_out",
+                        quantity_change=-qty,
+                        reference_type="transfer",
+                        reference_id=transfer.id,
+                        notes=f"إضافة بند لتحويل صادر #{transfer.id}",
+                        user_id=u.id,
+                    )
+                # وإذا كانت مستلمة مسبقاً، إضافتها للوجهة
+                if transfer.status in ["received", "approved", "posted"]:
+                    line.qty_received = qty
+                    record_stock_movement(
+                        item_id=item.id,
+                        location_id=transfer.to_location_id,
+                        movement_type="transfer_in",
+                        quantity_change=qty,
+                        reference_type="transfer",
+                        reference_id=transfer.id,
+                        notes=f"إضافة بند لتحويل وارد #{transfer.id}",
+                        user_id=u.id,
+                    )
+
                 db.session.commit()
                 flash(f"تمت إضافة الصنف: {item.name_ar}", "success")
 
         elif action == "delete_line":
+            if not can_modify:
+                flash("لا تملك صلاحية حذف بنود من هذا السند", "error")
+                return redirect(url_for("transfer_edit", transfer_id=transfer.id))
+
             line_id = int(request.form.get("line_id"))
             line = db.session.get(TransferLine, line_id)
             if line and line.transfer_id == transfer.id:
+                # عكس حركات المخزون لهذا البند
+                mov_out = StockMovement.query.filter_by(
+                    reference_type="transfer",
+                    reference_id=transfer.id,
+                    movement_type="transfer_out",
+                    item_id=line.item_id,
+                    location_id=transfer.from_location_id
+                ).first()
+                if mov_out:
+                    bal_out = StockBalance.query.filter_by(item_id=line.item_id, location_id=transfer.from_location_id).first()
+                    if bal_out:
+                        bal_out.quantity = round((bal_out.quantity or 0.0) - mov_out.quantity_change, 4)
+                        bal_out.last_updated = datetime.utcnow()
+                    db.session.delete(mov_out)
+
+                mov_in = StockMovement.query.filter_by(
+                    reference_type="transfer",
+                    reference_id=transfer.id,
+                    movement_type="transfer_in",
+                    item_id=line.item_id,
+                    location_id=transfer.to_location_id
+                ).first()
+                if mov_in:
+                    bal_in = StockBalance.query.filter_by(item_id=line.item_id, location_id=transfer.to_location_id).first()
+                    if bal_in:
+                        bal_in.quantity = round((bal_in.quantity or 0.0) - mov_in.quantity_change, 4)
+                        bal_in.last_updated = datetime.utcnow()
+                    db.session.delete(mov_in)
+
                 db.session.delete(line)
                 db.session.commit()
-                flash("تم حذف البند", "info")
+                flash("تم حذف البند وعكس أثره المخزني", "info")
 
         elif action == "send":
             # تحديث فرع الوجهة إن تم اختياره قبل الضغط على الحفظ/الصرف
@@ -1507,7 +2112,7 @@ def transfer_edit(transfer_id):
 
         return redirect(url_for("transfer_edit", transfer_id=transfer.id))
 
-    return render_template("transfer_edit.html", transfer=transfer, locations=locations)
+    return render_template("transfer_edit.html", transfer=transfer, locations=locations, user=u)
 
 
 @app.route("/transfers/<int:transfer_id>/receive", methods=["GET", "POST"])
@@ -1515,6 +2120,10 @@ def transfer_edit(transfer_id):
 @role_required("branch_staff", "accountant", "admin")
 def transfer_receive(transfer_id):
     transfer = TransferOrder.query.get_or_404(transfer_id)
+    u = current_user()
+    if u.role == "branch_staff" and u.location_id and transfer.to_location_id != u.location_id:
+        flash("عفواً، هذه الشحنة مرسلة إلى فرع آخر ولا يمكنك تأكيد استلامها", "error")
+        return redirect(url_for("transfers_list"))
 
     if request.method == "POST":
         has_variance = False
@@ -1590,17 +2199,21 @@ def transfer_approve(transfer_id):
 @app.route("/new-item-request", methods=["GET", "POST"])
 @login_required
 def new_item_request():
+    u = current_user()
     if request.method == "POST":
         file = request.files.get("attachment")
         path = save_attachment(file, "new_items")
+        supplier_input = (request.form.get("supplier") or "").strip()
+        est_cost = float(request.form.get("estimated_cost") or 0) if u.role != "branch_staff" else 0.0
+
         req = NewItemRequest(
-            requested_by=current_user().id,
+            requested_by=u.id,
             name_ar=request.form.get("name_ar"),
             name_en=request.form.get("name_en"),
             unit=request.form.get("unit"),
             conversion_factor=float(request.form.get("conversion_factor") or 1),
-            estimated_cost=float(request.form.get("estimated_cost") or 0),
-            supplier=request.form.get("supplier"),
+            estimated_cost=est_cost,
+            supplier=supplier_input,
             attachment_path=path,
             status="pending",
         )
@@ -1609,7 +2222,8 @@ def new_item_request():
         flash("تم إرسال طلب الصنف الجديد بنجاح، بانتظار اعتماد المحاسب", "success")
         return redirect(url_for("dashboard"))
 
-    return render_template("new_item_request.html")
+    suppliers = Supplier.query.order_by(Supplier.name.asc()).all()
+    return render_template("new_item_request.html", suppliers=suppliers, user=u)
 
 
 def generate_next_sku(prefix="sk"):
@@ -1645,12 +2259,30 @@ def decide_new_item(req_id):
             sync_status="pending",
         )
         db.session.add(item)
+        db.session.flush()
+
+        # ربط الصنف الجديد بالمورد المحدد في الطلب
+        if req.supplier:
+            sup = find_supplier_by_name(req.supplier)
+            if not sup:
+                sup = Supplier(name=req.supplier)
+                db.session.add(sup)
+                db.session.flush()
+
+            link = ItemSupplier(
+                item_id=item.id,
+                supplier_id=sup.id,
+                order_unit=req.unit,
+                cost_per_order_unit=req.estimated_cost
+            )
+            db.session.add(link)
+
         req.status = "approved"
         req.approved_by = current_user().id
         req.foodics_sku = new_sku
         db.session.commit()
         sq.enqueue("new_item", req.id)
-        flash(f"تم اعتماد الصنف وتوليد الكود: {new_sku}", "success")
+        flash(f"تم اعتماد الصنف وتوليد الكود: {new_sku} وربطه بالمورد '{req.supplier or '-'}'", "success")
 
     elif action == "reject":
         req.status = "rejected"
@@ -1755,8 +2387,42 @@ def count_edit(session_id):
                     )
             session_obj.status = "approved"
             db.session.commit()
-            flash("تم اعتماد الجرد وتسوية الأرصدة المخزنية بنجاح", "success")
-            return redirect(url_for("reports_variance"))
+
+            # إدراج في طابور الترحيل لفوديكس
+            job = sq.enqueue("count", session_obj.id)
+            if request.form.get("sync_now") == "1":
+                sq.process_job(job)
+                db.session.refresh(session_obj)
+                if session_obj.status == "posted":
+                    flash(f"تم اعتماد الجرد وتسوية الأرصدة وترحيله إلى فوديكس بنجاح (رقم المرجع: {session_obj.foodics_reference}) 🎉", "success")
+                else:
+                    flash("تم اعتماد الجرد وتسوية الأرصدة، وجارٍ استكمال الترحيل لفوديكس عبر طابور المزامنة", "info")
+            else:
+                flash("تم اعتماد الجرد وتسوية الأرصدة المخزنية بنجاح وإدراجه في طابور الترحيل لفوديكس", "success")
+
+            return redirect(url_for("count_edit", session_id=session_obj.id))
+
+        elif action == "sync_now":
+            if current_user().role not in ["admin", "accountant"]:
+                flash("غير مصرح لك بترحيل الجرد", "error")
+            elif session_obj.status not in ["approved", "queued", "failed"]:
+                flash("يجب اعتماد جلسة الجرد أولاً قبل ترحيلها لفوديكس", "warning")
+            else:
+                sq_item = SyncQueue.query.filter_by(source_type="count", source_id=session_obj.id).first()
+                if not sq_item:
+                    sq_item = sq.enqueue("count", session_obj.id)
+                else:
+                    sq_item.status = "queued"
+                    sq_item.retry_count = 0
+                    db.session.commit()
+
+                sq.process_job(sq_item)
+                db.session.refresh(session_obj)
+                if session_obj.status == "posted":
+                    flash(f"تم ترحيل الجرد إلى فوديكس بنجاح! رقم المرجع: {session_obj.foodics_reference} 🎉", "success")
+                else:
+                    flash("تعثر ترحيل الجرد إلى فوديكس. يمكنك مراجعة مركز المراجعة أو سجل المزامنة لمعرفة التفاصيل.", "warning")
+            return redirect(url_for("count_edit", session_id=session_obj.id))
 
         return redirect(url_for("count_edit", session_id=session_obj.id))
 
@@ -1951,18 +2617,115 @@ def stock_import():
 
 
 # ---------------------------------------------------------------
-# إعدادات واختبار ربط Foodics API
+# مركز التكامل والربط مع Foodics API v5 (Foodics Hub)
 # ---------------------------------------------------------------
+@app.route("/foodics/hub")
+@login_required
+@role_required("admin", "accountant")
+def foodics_hub():
+    token = SystemSetting.get_val("foodics_token", "")
+    base_url = SystemSetting.get_val("foodics_base_url", "https://api-sandbox.foodics.com/v5")
+    business_name = SystemSetting.get_val("foodics_business_name", "")
+    sync_enabled = SystemSetting.get_val("foodics_sync_enabled", "0") == "1"
+    rate_remaining = SystemSetting.get_val("foodics_rate_remaining", "")
+    last_connected = SystemSetting.get_val("foodics_last_connected", "")
+
+    # Stats
+    locations_list = Location.query.order_by(Location.id).all()
+    locations_total = len(locations_list)
+    locations_mapped = sum(1 for loc in locations_list if loc.foodics_id)
+
+    items_total = Item.query.count()
+    items_mapped = Item.query.filter(Item.foodics_id.isnot(None)).count()
+
+    suppliers_total = Supplier.query.count()
+    suppliers_mapped = Supplier.query.filter(Supplier.foodics_id.isnot(None)).count()
+
+    queue_jobs = SyncQueue.query.order_by(SyncQueue.created_at.desc()).limit(30).all()
+    for j in queue_jobs:
+        j.latest_log = SyncLog.query.filter_by(queue_id=j.id).order_by(SyncLog.id.desc()).first()
+    failed_jobs = [j for j in queue_jobs if j.status == "failed"]
+
+    # Remote locations from Foodics for manual mapping dropdown
+    foodics_remote_locations = sq.get_foodics_locations_remote(token, base_url)
+
+    return render_template(
+        "foodics_hub.html",
+        token=token,
+        base_url=base_url,
+        business_name=business_name,
+        sync_enabled=sync_enabled,
+        rate_remaining=rate_remaining,
+        last_connected=last_connected,
+        locations_list=locations_list,
+        locations_total=locations_total,
+        locations_mapped=locations_mapped,
+        items_total=items_total,
+        items_mapped=items_mapped,
+        suppliers_total=suppliers_total,
+        suppliers_mapped=suppliers_mapped,
+        queue_jobs=queue_jobs,
+        failed_jobs=failed_jobs,
+        foodics_remote_locations=foodics_remote_locations,
+    )
+
+
+@app.route("/foodics/map_location", methods=["POST"])
+@login_required
+@role_required("admin", "accountant")
+def foodics_map_location():
+    location_id = request.form.get("location_id", type=int)
+    foodics_id = request.form.get("foodics_id", "").strip() or None
+    if not location_id:
+        flash("الموقع غير محدد", "error")
+        return redirect(url_for("foodics_hub"))
+    loc = Location.query.get_or_404(location_id)
+    loc.foodics_id = foodics_id
+    db.session.commit()
+    flash(f"تم تحديث ربط الموقع '{loc.name_ar}' بنجاح!", "success")
+    return redirect(url_for("foodics_hub"))
+
+
+@app.route("/foodics/sync/<entity>", methods=["POST"])
+@login_required
+@role_required("admin", "accountant")
+def foodics_sync_entity(entity):
+    token = SystemSetting.get_val("foodics_token", "")
+    base_url = SystemSetting.get_val("foodics_base_url", "https://api-sandbox.foodics.com/v5")
+
+    if not token:
+        flash("يرجى إدخال رمز الدخول (Token) وحفظه أولاً في إعدادات الاتصال", "error")
+        return redirect(url_for("foodics_hub"))
+
+    if entity == "branches":
+        ok, msg = sq.sync_branches_from_foodics(token, base_url)
+    elif entity == "items":
+        ok, msg = sq.sync_inventory_items_from_foodics(token, base_url)
+    elif entity == "suppliers":
+        ok, msg = sq.sync_suppliers_from_foodics(token, base_url)
+    else:
+        ok, msg = False, "نوع المورد غير معروف"
+
+    if ok:
+        flash(f"✅ {msg}", "success")
+    else:
+        flash(f"❌ {msg}", "error")
+
+    return redirect(url_for("foodics_hub"))
+
+
 @app.route("/foodics/settings", methods=["POST"])
 @login_required
 @role_required("admin")
 def foodics_settings():
     token = request.form.get("foodics_token", "").strip()
-    base_url = request.form.get("foodics_base_url", "").strip() or "https://api.foodics.com/v5"
+    base_url = request.form.get("foodics_base_url", "").strip() or "https://api-sandbox.foodics.com/v5"
     action = request.form.get("action", "save")
+    return_to = request.form.get("return_to", "accountant_review")
 
     if token:
         SystemSetting.set_val("foodics_token", token)
+        SystemSetting.set_val("foodics_sync_enabled", "1")
     SystemSetting.set_val("foodics_base_url", base_url)
 
     if action == "test":
@@ -1972,12 +2735,26 @@ def foodics_settings():
         else:
             ok, msg = sq.test_foodics_connection(current_tok, base_url)
             if ok:
+                SystemSetting.set_val("foodics_sync_enabled", "1")
                 flash(f"✅ {msg}", "success")
             else:
                 flash(f"❌ {msg}", "error")
     else:
-        flash("تم حفظ إعدادات الربط مع Foodics API بنجاح", "success")
+        SystemSetting.set_val("foodics_sync_enabled", "1")
+        if token:
+            # مزامنة وقائية فورية لكافة الماستر داتا لضمان مطابقة الرموز والمعرّفات ومنع أي أخطاء ترحيل لاحقة
+            try:
+                sq.sync_branches_from_foodics(token, base_url)
+                sq.sync_suppliers_from_foodics(token, base_url)
+                sq.sync_inventory_items_from_foodics(token, base_url)
+                flash("تم حفظ إعدادات الربط وتحديث مطابقة الفروع والموردين والأصناف من فوديكس تلقائياً! 🎉", "success")
+            except Exception:
+                flash("تم حفظ إعدادات الربط وتفعيل المزامنة مع Foodics API بنجاح", "success")
+        else:
+            flash("تم حفظ إعدادات الربط وتفعيل المزامنة مع Foodics API بنجاح", "success")
 
+    if return_to == "hub":
+        return redirect(url_for("foodics_hub"))
     return redirect(url_for("accountant_review"))
 
 

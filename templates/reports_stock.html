@@ -77,6 +77,7 @@
         <div class="kpi-icon icon-purple">📦</div>
     </div>
 
+    {% if user.role != 'branch_staff' %}
     <div class="kpi-card">
         <div class="kpi-content">
             <h4>{{ 'إجمالي القيمة التقديرية' if lang == 'ar' else 'Total Estimated Value' }}</h4>
@@ -85,6 +86,7 @@
         </div>
         <div class="kpi-icon icon-green">💰</div>
     </div>
+    {% endif %}
 </div>
 
 <div class="card">
@@ -98,8 +100,10 @@
                     <th>الباركود</th>
                     <th>وحدة التخزين</th>
                     <th>الرصيد الحالي</th>
+                    {% if user.role != 'branch_staff' %}
                     <th>تكلفة الوحدة</th>
                     <th>إجمالي القيمة</th>
+                    {% endif %}
                     <th>حالة المخزون</th>
                     {% if user.role in ['admin', 'accountant'] %}
                     <th>الإجراء</th>
@@ -119,10 +123,12 @@
                     <td style="font-weight: 700; font-size: 15px;">
                         {{ bal.quantity }}
                     </td>
+                    {% if user.role != 'branch_staff' %}
                     <td>{{ "{:,.2f}".format(it.cost or 0) }} {{ currency }}</td>
                     <td style="font-weight: 700; color: #1e1b4b;">
                         {{ "{:,.2f}".format(bal.total_value) }} {{ currency }}
                     </td>
+                    {% endif %}
                     <td>
                         {% if bal.quantity <= 0 %}
                         <span class="badge badge-danger">{{ 'نافد' if lang == 'ar' else 'Out of Stock' }}</span>

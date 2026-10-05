@@ -79,6 +79,21 @@
 
             <div class="form-group" style="grid-column: 1 / -1;">
                 <label for="location_id">{{ t('receiving_location') }} *</label>
+                {% if user.role == 'branch_staff' and user.location %}
+                <input type="hidden" name="location_id" value="{{ user.location_id }}">
+                <div style="padding: 12px 16px; background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <span style="font-weight: 800; color: #1e3a8a; font-size: 15px;">🏢 {{ loc_name(user.location) }}</span>
+                        <span style="color: #3b82f6; font-size: 13px; margin-right: 8px;">({{ loc_type(user.location) }})</span>
+                    </div>
+                    <span class="badge badge-draft" style="background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; font-weight: 700;">
+                        🔒 فرعك المعتمد إجبارياً
+                    </span>
+                </div>
+                <small style="color: var(--gray-500); font-size: 12px; margin-top: 4px; display: block;">
+                    💡 سند الاستلام مقيد إجبارياً بالفرع المسند إليك نظامياً.
+                </small>
+                {% else %}
                 <select id="location_id" name="location_id" class="form-control" required>
                     {% for loc in locations %}
                     <option value="{{ loc.id }}" {% if user.location_id == loc.id %}selected{% endif %}>
@@ -86,10 +101,6 @@
                     </option>
                     {% endfor %}
                 </select>
-                {% if user.role == 'branch_staff' and user.location %}
-                <small style="color: var(--primary); font-size: 12px; margin-top: 4px; display: block;">
-                    🏢 {{ 'تم ضبط الموقع تلقائياً على الفرع الخاص بك' if lang == 'ar' else 'Location automatically set to your branch' }}: ({{ loc_name(user.location) }}).
-                </small>
                 {% endif %}
             </div>
 

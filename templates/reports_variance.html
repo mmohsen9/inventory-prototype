@@ -35,13 +35,24 @@
             </div>
             <div style="display: flex; align-items: center; gap: 10px;">
                 <span class="badge badge-{{ s.status }}">{{ s.status_label_ar }}</span>
+                {% if s.foodics_reference %}
+                <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; font-size: 12px; font-weight: 700;">
+                    🔗 فوديكس: {{ s.foodics_reference }}
+                </span>
+                {% endif %}
                 <span style="font-weight: 700; font-size: 14px; color: {% if s.total_variance_cost < 0 %}var(--danger){% elif s.total_variance_cost > 0 %}var(--success){% else %}var(--gray-700){% endif %};">
                     صافي الفروقات: {{ "{:,.2f}".format(s.total_variance_cost) }} ر.س
                 </span>
                 {% if s.status == 'pending_review' and user.role in ['admin', 'accountant'] %}
                 <form method="POST" action="{{ url_for('count_edit', session_id=s.id) }}" style="display:inline;">
                     <input type="hidden" name="action" value="approve_session">
-                    <button type="submit" class="btn btn-success btn-sm">✅ اعتماد وتسوية الأرصدة</button>
+                    <input type="hidden" name="sync_now" value="1">
+                    <button type="submit" class="btn btn-success btn-sm">✅ اعتماد وترحيل لفوديكس</button>
+                </form>
+                {% elif s.status in ['approved', 'failed'] and user.role in ['admin', 'accountant'] %}
+                <form method="POST" action="{{ url_for('count_edit', session_id=s.id) }}" style="display:inline;">
+                    <input type="hidden" name="action" value="sync_now">
+                    <button type="submit" class="btn btn-primary btn-sm">⚡ ترحيل لفوديكس</button>
                 </form>
                 {% endif %}
                 <a href="{{ url_for('count_edit', session_id=s.id) }}" class="btn btn-secondary btn-sm">تعديل / عرض</a>

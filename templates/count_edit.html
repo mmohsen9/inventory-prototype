@@ -16,6 +16,11 @@
         <span class="badge badge-{{ session_obj.status }}" style="font-size: 14px; padding: 6px 14px;">
             {{ session_obj.status_label_ar }}
         </span>
+        {% if session_obj.foodics_reference %}
+        <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #7dd3fc; font-size: 13px; padding: 6px 12px; font-weight: 700;">
+            🔗 مرجع فوديكس: {{ session_obj.foodics_reference }}
+        </span>
+        {% endif %}
         <button type="button" class="btn btn-secondary" onclick="window.print()">
             🖨️ طباعة كشف الجرد
         </button>
@@ -90,8 +95,10 @@
                     <th>الرصيد الدفتري (النظام)</th>
                     <th>الرصيد الفعلي (العد)</th>
                     <th>فرق الكمية</th>
+                    {% if user.role != 'branch_staff' %}
                     <th>تكلفة الوحدة</th>
                     <th>فرق التكلفة المالية</th>
+                    {% endif %}
                     {% if session_obj.status == 'open' %}
                     <th class="no-print">إجراء</th>
                     {% endif %}
@@ -104,6 +111,11 @@
                     <td><code>{{ line.item.sku }}</code></td>
                     <td>
                         <strong>{{ line.item.name_ar }}</strong>
+                        {% if line.item.foodics_id %}
+                        <span class="badge badge-approved" style="font-size: 10px; padding: 2px 6px; margin-right: 4px;" title="معرّف فوديكس: {{ line.item.foodics_id }}">فوديكس ✅</span>
+                        {% else %}
+                        <span class="badge badge-pending" style="font-size: 10px; padding: 2px 6px; margin-right: 4px;" title="سيتم الربط والمطابقة تلقائياً عند الترحيل">ربط تلقائي ⚡</span>
+                        {% endif %}
                         {% if line.item.name_en %}
                         <div style="font-size: 11px; color: var(--gray-400);">{{ line.item.name_en }}</div>
                         {% endif %}
@@ -114,10 +126,12 @@
                     <td style="font-weight: 700; direction: ltr; text-align: right; color: {% if line.variance_quantity < 0 %}var(--danger){% elif line.variance_quantity > 0 %}var(--success){% else %}var(--gray-600){% endif %};">
                         {% if line.variance_quantity > 0 %}+{% endif %}{{ line.variance_quantity }}
                     </td>
+                    {% if user.role != 'branch_staff' %}
                     <td>{{ "{:,.2f}".format(line.item.cost or 0) }} ر.س</td>
                     <td style="font-weight: 700; color: {% if line.variance_cost < 0 %}var(--danger){% elif line.variance_cost > 0 %}var(--success){% else %}var(--gray-600){% endif %};">
                         {{ "{:,.2f}".format(line.variance_cost) }} ر.س
                     </td>
+                    {% endif %}
                     {% if session_obj.status == 'open' %}
                     <td class="no-print">
                         <form method="POST" style="display:inline;">
@@ -132,12 +146,13 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="10" style="text-align: center; color: var(--gray-400); padding: 30px;">
+                    <td colspan="{% if user.role != 'branch_staff' %}10{% else %}8{% endif %}" style="text-align: center; color: var(--gray-400); padding: 30px;">
                         لم تتم إضافة أي أصناف للجرد بعد. ابدأ بمسح أو إضافة أول صنف أعلاه.
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
+            {% if user.role != 'branch_staff' %}
             <tfoot>
                 <tr style="background: var(--gray-50); font-weight: 700; font-size: 15px;">
                     <td colspan="6" style="text-align: left;">صافي الأثر المالي لفروقات الجرد:</td>
@@ -150,6 +165,7 @@
                     {% endif %}
                 </tr>
             </tfoot>
+            {% endif %}
         </table>
     </div>
 </div>
@@ -166,15 +182,61 @@
     </form>
     {% elif session_obj.status == 'pending_review' and user.role in ['admin', 'accountant'] %}
     <div style="background: var(--warning-light); padding: 14px; border-radius: var(--radius-md); margin-bottom: 14px;">
-        ⏳ جلسة الجرد بانتظار اعتمادك لتطبيق التسويات المخزنية الدفترية.
+        ⏳ جلسة الجرد بانتظار اعتمادك لتطبيق التسويات المخزنية وترحيل الجرد لفوديكس.
     </div>
     <form method="POST">
         <input type="hidden" name="action" value="approve_session">
+        <div style="margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="sync_now_check" name="sync_now" value="1" checked style="width: 18px; height: 18px; cursor: pointer;">
+            <label for="sync_now_check" style="font-weight: 600; cursor: pointer; color: var(--gray-800); margin: 0;">
+                ⚡ ترحيل الجرد إلى فوديكس فوراً بعد الاعتماد
+            </label>
+        </div>
         <button type="submit" class="btn btn-success btn-block" style="padding: 14px; font-size: 16px;"
-                onclick="return confirm('هل تريد اعتماد نتائج الجرد وتعديل الأرصدة المخزنية في النظام لتطابق الكميات الفعلية المعدودة؟')">
-            ✅ اعتماد نتائج الجرد وتسوية أرصدة المستودع/الفرع
+                onclick="return confirm('هل تريد اعتماد نتائج الجرد وتعديل الأرصدة المخزنية وترحيلها إلى فوديكس؟')">
+            ✅ اعتماد نتائج الجرد وتسوية الأرصدة والترحيل
         </button>
     </form>
+    {% elif session_obj.status == 'posted' %}
+    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--radius-md); padding: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div>
+            <span style="font-size: 16px; font-weight: 700; color: #065f46;">
+                ✅ تم ترحيل هذه الجلسة إلى فوديكس بنجاح
+            </span>
+            <div style="font-size: 13px; color: #047857; margin-top: 4px;">
+                رقم المرجع في فوديكس: <strong style="font-size: 14px;">{{ session_obj.foodics_reference or '-' }}</strong>
+            </div>
+        </div>
+        {% if user.role in ['admin', 'accountant'] %}
+        <form method="POST" style="margin: 0;">
+            <input type="hidden" name="action" value="sync_now">
+            <button type="submit" class="btn btn-secondary btn-sm" onclick="return confirm('إعادة ترحيل الجلسة لفوديكس مرة أخرى؟')">
+                🔄 إعادة الإرسال لفوديكس
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    {% elif session_obj.status in ['approved', 'queued', 'failed'] and user.role in ['admin', 'accountant'] %}
+    <div style="background: {% if session_obj.status == 'failed' %}#fef2f2; border: 1px solid #fecaca{% else %}#eff6ff; border: 1px solid #bfdbfe{% endif %}; border-radius: var(--radius-md); padding: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div>
+            <span style="font-size: 15px; font-weight: 700; color: {% if session_obj.status == 'failed' %}#991b1b{% else %}#1e40af{% endif %};">
+                {% if session_obj.status == 'failed' %}
+                ⚠️ تعثر ترحيل الجرد إلى فوديكس
+                {% else %}
+                ⏳ الجرد معتمد وبانتظار الترحيل إلى فوديكس
+                {% endif %}
+            </span>
+            <div style="font-size: 13px; color: var(--gray-600); margin-top: 4px;">
+                يمكنك الضغط على زر الترحيل لإرسال كميات الجرد الفعلية مباشرة إلى الفرع في فوديكس.
+            </div>
+        </div>
+        <form method="POST" style="margin: 0;">
+            <input type="hidden" name="action" value="sync_now">
+            <button type="submit" class="btn btn-primary" style="padding: 10px 20px; font-weight: 700;">
+                ⚡ ترحيل الجرد إلى فوديكس فوراً
+            </button>
+        </form>
+    </div>
     {% else %}
     <div style="color: var(--gray-600); font-size: 14px;">
         حالة الجلسة: <span class="badge badge-{{ session_obj.status }}">{{ session_obj.status_label_ar }}</span>

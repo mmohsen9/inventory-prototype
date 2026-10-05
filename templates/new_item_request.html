@@ -39,14 +39,24 @@
                 <small style="color: var(--gray-400); font-size: 11px;">عدد الوحدات الصغرى داخل وحدة التخزين (افتراضي: 1)</small>
             </div>
 
+            {% if user.role != 'branch_staff' %}
             <div class="form-group">
                 <label for="estimated_cost">التكلفة المتوقعة للوحدة (ر.س)</label>
                 <input type="number" step="0.01" id="estimated_cost" name="estimated_cost" class="form-control" placeholder="0.00">
             </div>
+            {% else %}
+            <input type="hidden" id="estimated_cost" name="estimated_cost" value="0">
+            {% endif %}
 
             <div class="form-group">
-                <label for="supplier">اسم المورد المقترح</label>
-                <input type="text" id="supplier" name="supplier" class="form-control" placeholder="اسم الشركة أو المورد">
+                <label for="supplier">المورد التابع له هذا الصنف *</label>
+                <input type="text" list="suppliers_list" id="supplier" name="supplier" class="form-control" placeholder="اختر أو اكتب اسم المورد" required autocomplete="off">
+                <datalist id="suppliers_list">
+                    {% for s in suppliers %}
+                    <option value="{{ s.name_ar or s.name_en or s.name }}">
+                    {% endfor %}
+                </datalist>
+                <small style="color: var(--gray-500); font-size: 11px;">سيتم ربط الصنف تلقائياً بهذا المورد في سندات الاستلام عند اعتماده.</small>
             </div>
 
             <div class="form-group" style="grid-column: 1 / -1;">

@@ -20,6 +20,7 @@ from models import (
 class InventorySystemTestCase(unittest.TestCase):
     def setUp(self):
         app.config["TESTING"] = True
+        app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
         app.config["WTF_CSRF_ENABLED"] = False
         self.client = app.test_client()
         self.ctx = app.app_context()

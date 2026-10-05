@@ -64,59 +64,108 @@ function initItemAutocompletes() {
         const codeInput = document.getElementById(input.getAttribute('data-code-target') || 'code');
         const unitInput = document.getElementById(input.getAttribute('data-unit-target') || 'unit');
         const costInput = document.getElementById(input.getAttribute('data-cost-target') || 'unit_cost');
+        const supplier = input.getAttribute('data-supplier') || '';
 
         if (!resultsContainer) return;
+
+        function fetchAndShowItems(query) {
+            let url = `/api/search_items?q=${encodeURIComponent(query)}`;
+            if (supplier) {
+                url += `&supplier=${encodeURIComponent(supplier)}`;
+            }
+
+            fetch(url)
+                .then(res => res.json())
+                .then(data => {
+                    resultsContainer.innerHTML = '';
+                    const items = data.results || [];
+                    if (items.length === 0) {
+                        const emptyMsg = data.message || (supplier ? 'لا توجد أصناف معتمدة مربوطة بهذا المورد في النظام حالياً' : 'لا توجد أصناف مطابقة للبحث');
+                        resultsContainer.innerHTML = `<div style="padding: 12px 14px; color: #64748b; font-size: 13px; text-align: center;">ℹ️ ${emptyMsg}</div>`;
+                        resultsContainer.style.display = 'block';
+                        return;
+                    }
+
+                    if (supplier && !query) {
+                        const headerEl = document.createElement('div');
+                        headerEl.style.padding = '8px 14px';
+                        headerEl.style.background = '#f0fdf4';
+                        headerEl.style.borderBottom = '1px solid #bbf7d0';
+                        headerEl.style.fontSize = '12px';
+                        headerEl.style.fontWeight = '700';
+                        headerEl.style.color = '#166534';
+                        headerEl.innerHTML = `📦 أصناف المورد المعتمدة (${items.length} صنف):`;
+                        resultsContainer.appendChild(headerEl);
+                    } else if (supplier && query) {
+                        const headerEl = document.createElement('div');
+                        headerEl.style.padding = '8px 14px';
+                        headerEl.style.fontSize = '12px';
+                        headerEl.style.fontWeight = '700';
+                        if (data.is_supplier_filtered) {
+                            headerEl.style.background = '#f0fdf4';
+                            headerEl.style.borderBottom = '1px solid #bbf7d0';
+                            headerEl.style.color = '#166534';
+                            headerEl.innerHTML = `📦 نتائج البحث ضمن أصناف المورد (${items.length}):`;
+                        } else {
+                            headerEl.style.background = '#fef3c7';
+                            headerEl.style.borderBottom = '1px solid #fde68a';
+                            headerEl.style.color = '#92400e';
+                            headerEl.innerHTML = `🔍 نتائج بحث عامة في كل المخزون (${items.length}):`;
+                        }
+                        resultsContainer.appendChild(headerEl);
+                    }
+
+                    items.forEach(it => {
+                        const itemEl = document.createElement('div');
+                        itemEl.style.padding = '10px 14px';
+                        itemEl.style.cursor = 'pointer';
+                        itemEl.style.borderBottom = '1px solid #f1f5f9';
+                        itemEl.style.fontSize = '13px';
+                        const enName = it.name_en ? `<span style="color:#64748b; font-size: 12px; margin-right: 4px;"> - ${it.name_en}</span>` : '';
+                        itemEl.innerHTML = `<strong>[${it.sku}]</strong> ${it.name_ar}${enName} <span style="color:#64748b;">(وحدة: ${it.unit || '-'})</span>`;
+                        
+                        itemEl.addEventListener('mouseenter', () => itemEl.style.backgroundColor = '#f8fafc');
+                        itemEl.addEventListener('mouseleave', () => itemEl.style.backgroundColor = 'transparent');
+                        
+                        itemEl.addEventListener('click', () => {
+                            input.value = `[${it.sku}] ${it.name_ar}`;
+                            if (codeInput) codeInput.value = it.sku;
+                            if (unitInput) unitInput.value = it.unit || '';
+                            if (costInput && it.cost !== undefined && it.cost !== null) {
+                                costInput.value = it.cost;
+                            }
+                            resultsContainer.style.display = 'none';
+
+                            // Focus on quantity
+                            const qtyInput = document.getElementById('quantity');
+                            if (qtyInput) qtyInput.focus();
+                        });
+                        resultsContainer.appendChild(itemEl);
+                    });
+                    resultsContainer.style.display = 'block';
+                })
+                .catch(err => console.error('Error fetching items:', err));
+        }
 
         let debounceTimer;
         input.addEventListener('input', () => {
             clearTimeout(debounceTimer);
             const query = input.value.trim();
-            if (query.length < 2) {
+            if (query.length < 2 && !supplier) {
                 resultsContainer.style.display = 'none';
                 return;
             }
 
             debounceTimer = setTimeout(() => {
-                fetch(`/api/search_items?q=${encodeURIComponent(query)}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        resultsContainer.innerHTML = '';
-                        const items = data.results || [];
-                        if (items.length === 0) {
-                            resultsContainer.innerHTML = '<div style="padding: 10px; color: #64748b; font-size: 13px;">لا توجد أصناف مطابقة</div>';
-                            resultsContainer.style.display = 'block';
-                            return;
-                        }
-
-                        items.forEach(it => {
-                            const itemEl = document.createElement('div');
-                            itemEl.style.padding = '10px 14px';
-                            itemEl.style.cursor = 'pointer';
-                            itemEl.style.borderBottom = '1px solid #f1f5f9';
-                            itemEl.style.fontSize = '13px';
-                            const enName = it.name_en ? `<span style="color:#64748b; font-size: 12px; margin-right: 4px;"> - ${it.name_en}</span>` : '';
-                            itemEl.innerHTML = `<strong>[${it.sku}]</strong> ${it.name_ar}${enName} <span style="color:#64748b;">(وحدة: ${it.unit || '-'})</span>`;
-                            
-                            itemEl.addEventListener('mouseenter', () => itemEl.style.backgroundColor = '#f8fafc');
-                            itemEl.addEventListener('mouseleave', () => itemEl.style.backgroundColor = 'transparent');
-                            
-                            itemEl.addEventListener('click', () => {
-                                input.value = `[${it.sku}] ${it.name_ar}`;
-                                if (codeInput) codeInput.value = it.sku;
-                                if (unitInput) unitInput.value = it.unit || '';
-                                if (costInput && it.cost) costInput.value = it.cost;
-                                resultsContainer.style.display = 'none';
-
-                                // Focus on quantity
-                                const qtyInput = document.getElementById('quantity');
-                                if (qtyInput) qtyInput.focus();
-                            });
-                            resultsContainer.appendChild(itemEl);
-                        });
-                        resultsContainer.style.display = 'block';
-                    })
-                    .catch(err => console.error('Error fetching items:', err));
+                fetchAndShowItems(query);
             }, 250);
+        });
+
+        // عند النقر أو التركيز على حقل البحث وكان هناك مورد، عرض أصنافه فوراً
+        input.addEventListener('focus', () => {
+            if (supplier && input.value.trim().length === 0) {
+                fetchAndShowItems('');
+            }
         });
 
         // إخفاء القائمة عند النقر بالخارج
@@ -126,6 +175,36 @@ function initItemAutocompletes() {
             }
         });
     });
+
+    // القائمة المنسدلة السريعة لأصناف المورد المعتمدة
+    const quickSupplierSelect = document.getElementById('quick_supplier_item_select');
+    if (quickSupplierSelect) {
+        quickSupplierSelect.addEventListener('change', () => {
+            const opt = quickSupplierSelect.options[quickSupplierSelect.selectedIndex];
+            if (!opt || !opt.value) return;
+
+            const sku = opt.value;
+            const unit = opt.getAttribute('data-unit') || '';
+            const cost = opt.getAttribute('data-cost');
+            const label = opt.textContent.trim();
+
+            const itemSearch = document.getElementById('item_search');
+            const codeInput = document.getElementById('code');
+            const unitInput = document.getElementById('unit');
+            const costInput = document.getElementById('unit_cost');
+            const qtyInput = document.getElementById('quantity');
+
+            if (itemSearch) itemSearch.value = label;
+            if (codeInput) codeInput.value = sku;
+            if (unitInput) unitInput.value = unit;
+            if (costInput && cost !== undefined && cost !== null && cost !== '') {
+                costInput.value = cost;
+            }
+            if (qtyInput) {
+                qtyInput.focus();
+            }
+        });
+    }
 }
 
 // دعم قارئ الباركود الخارجي ومسح الكاميرا

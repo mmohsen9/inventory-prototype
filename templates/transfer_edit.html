@@ -9,12 +9,22 @@
         <p>
             {{ t('from_location') }}: <strong>{{ loc_name(transfer.from_location) }}</strong> &larr;
             {{ t('to_location') }}: <strong>{{ loc_name(transfer.to_location) }}</strong>
+            {% if user.role in ['admin', 'accountant'] %}
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openEditTransferHeaderModal()" style="padding: 2px 10px; font-size: 11px; margin-right: 8px; vertical-align: middle;">
+                ✏️ تعديل بيانات السند والمواقع
+            </button>
+            {% endif %}
         </p>
     </div>
     <div class="page-actions">
         <span class="badge badge-{{ transfer.status }}" style="font-size: 14px; padding: 6px 14px;">
             {{ status_name(transfer) }}
         </span>
+        {% if user.role in ['admin', 'accountant'] %}
+        <button type="button" class="btn btn-danger" onclick="openDeleteTransferModal()" style="padding: 6px 14px; font-weight: 700;">
+            🗑️ حذف السند
+        </button>
+        {% endif %}
         <button type="button" class="btn btn-secondary" onclick="window.print()">
             🖨️ {{ t('print') }}
         </button>
@@ -89,11 +99,14 @@
     </div>
 </div>
 
-{% if transfer.status == 'draft' %}
+{% if transfer.status == 'draft' or (user.role in ['admin', 'accountant'] and transfer.status != 'posted') %}
 <!-- إضافة أصناف للشحنة -->
 <div class="card no-print" style="border: 2px solid var(--primary-light);">
     <div class="card-header">
         <div class="card-title">➕ {{ t('add_item_to_voucher') }}</div>
+        {% if user.role in ['admin', 'accountant'] and transfer.status != 'draft' %}
+        <span style="font-size: 12px; color: var(--primary); font-weight: 700;">(صلاحية المحاسب والإدارة لتعديل السند)</span>
+        {% endif %}
     </div>
 
     <!-- حقل قارئ الباركود الخارجي السريع -->
@@ -160,7 +173,7 @@
                     <th>{{ t('variance') }}</th>
                     <th>{{ t('variance_reason') }}</th>
                     {% endif %}
-                    {% if transfer.status == 'draft' %}
+                    {% if transfer.status == 'draft' or (user.role in ['admin', 'accountant'] and transfer.status != 'posted') %}
                     <th class="no-print">{{ t('actions') }}</th>
                     {% endif %}
                 </tr>
@@ -172,18 +185,66 @@
                     <td><code>{{ line.item.sku if line.item else '-' }}</code></td>
                     <td>
                         <strong>{{ item_name(line.item) if line.item else '-' }}</strong>
+                        {% if line.item and line.item.foodics_id %}
+                        <span class="badge badge-approved" style="font-size: 10px; padding: 2px 6px; margin-right: 4px;" title="معرّف فوديكس: {{ line.item.foodics_id }}">فوديكس ✅</span>
+                        {% elif line.item %}
+                        <span class="badge badge-pending" style="font-size: 10px; padding: 2px 6px; margin-right: 4px;" title="سيتم الربط والمطابقة تلقائياً عند الترحيل">ربط تلقائي ⚡</span>
+                        {% endif %}
                     </td>
                     <td><span class="badge badge-draft">{{ line.item.storage_unit if line.item else '-' }}</span></td>
-                    <td style="font-weight: 700; font-size: 15px;">{{ line.qty_sent }}</td>
-                    <td style="font-size: 12px; color: var(--gray-600);">{{ line.notes or "-" }}</td>
+                    <td style="font-weight: 700; font-size: 15px;">
+                        {% if transfer.status == 'draft' or (user.role in ['admin', 'accountant'] and transfer.status != 'posted') %}
+                        <form method="POST" style="display: flex; gap: 4px; align-items: center;">
+                            <input type="hidden" name="action" value="update_line">
+                            <input type="hidden" name="line_id" value="{{ line.id }}">
+                            <input type="number" step="any" name="new_qty_sent" value="{{ line.qty_sent }}" class="form-control" style="width: 85px; padding: 4px 8px; font-size: 13px;" required>
+                            <input type="hidden" name="new_notes" value="{{ line.notes or '' }}">
+                            {% if line.qty_received is not none %}
+                            <input type="hidden" name="new_qty_received" value="{{ line.qty_received }}">
+                            {% endif %}
+                            <button type="submit" class="btn btn-secondary btn-sm" title="تحديث الكمية">💾</button>
+                        </form>
+                        {% else %}
+                        {{ line.qty_sent }}
+                        {% endif %}
+                    </td>
+                    <td style="font-size: 12px; color: var(--gray-600);">
+                        {% if transfer.status == 'draft' or (user.role in ['admin', 'accountant'] and transfer.status != 'posted') %}
+                        <form method="POST" style="display: flex; gap: 4px; align-items: center;">
+                            <input type="hidden" name="action" value="update_line">
+                            <input type="hidden" name="line_id" value="{{ line.id }}">
+                            <input type="hidden" name="new_qty_sent" value="{{ line.qty_sent }}">
+                            {% if line.qty_received is not none %}
+                            <input type="hidden" name="new_qty_received" value="{{ line.qty_received }}">
+                            {% endif %}
+                            <input type="text" name="new_notes" value="{{ line.notes or '' }}" class="form-control" style="width: 140px; padding: 4px 8px; font-size: 12px;">
+                            <button type="submit" class="btn btn-secondary btn-sm" title="حفظ الملاحظة">💾</button>
+                        </form>
+                        {% else %}
+                        {{ line.notes or "-" }}
+                        {% endif %}
+                    </td>
                     {% if transfer.status in ['received', 'needs_review', 'approved', 'closed'] %}
-                    <td style="font-weight: 700;">{{ line.qty_received if line.qty_received is not none else '-' }}</td>
+                    <td style="font-weight: 700;">
+                        {% if user.role in ['admin', 'accountant'] and transfer.status != 'posted' %}
+                        <form method="POST" style="display: flex; gap: 4px; align-items: center;">
+                            <input type="hidden" name="action" value="update_line">
+                            <input type="hidden" name="line_id" value="{{ line.id }}">
+                            <input type="hidden" name="new_qty_sent" value="{{ line.qty_sent }}">
+                            <input type="number" step="any" name="new_qty_received" value="{{ line.qty_received if line.qty_received is not none else line.qty_sent }}" class="form-control" style="width: 85px; padding: 4px 8px; font-size: 13px;" required>
+                            <input type="hidden" name="new_variance_reason" value="{{ line.variance_reason or '' }}">
+                            <button type="submit" class="btn btn-secondary btn-sm" title="تحديث المستلم">💾</button>
+                        </form>
+                        {% else %}
+                        {{ line.qty_received if line.qty_received is not none else '-' }}
+                        {% endif %}
+                    </td>
                     <td style="font-weight: 700; direction: ltr; text-align: right; color: {% if line.variance_qty and line.variance_qty != 0 %}var(--danger){% else %}var(--success){% endif %};">
                         {{ line.variance_qty if line.variance_qty is not none else '0' }}
                     </td>
                     <td style="font-size: 12px; color: var(--gray-600);">{{ line.variance_reason or '-' }}</td>
                     {% endif %}
-                    {% if transfer.status == 'draft' %}
+                    {% if transfer.status == 'draft' or (user.role in ['admin', 'accountant'] and transfer.status != 'posted') %}
                     <td class="no-print">
                         <form method="POST" style="display:inline;">
                             <input type="hidden" name="action" value="delete_line">
@@ -197,7 +258,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" style="text-align: center; color: var(--gray-400); padding: 30px;">
+                    <td colspan="{% if transfer.status in ['received', 'needs_review', 'approved', 'closed'] %}10{% else %}7{% endif %}" style="text-align: center; color: var(--gray-400); padding: 30px;">
                         {{ 'لم تتم إضافة أي أصناف لهذه الشحنة بعد.' if lang == 'ar' else 'No items added to this shipment yet.' }}
                     </td>
                 </tr>
@@ -244,7 +305,148 @@
         {% endif %}
     </div>
     {% endif %}
+
+    {% if user.role in ['admin', 'accountant'] %}
+    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--gray-200);">
+        <div style="font-size: 12px; font-weight: 700; color: var(--gray-500); margin-bottom: 8px;">صلاحيات الإدارة والمالية:</div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="openEditTransferHeaderModal()" style="flex: 1; font-weight: 700;">
+                ✏️ تعديل بيانات السند والمواقع
+            </button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="openDeleteTransferModal()" style="flex: 1; font-weight: 700;">
+                🗑️ حذف سند الصرف بالكامل
+            </button>
+        </div>
+    </div>
+    {% endif %}
 </div>
+
+{% if user.role in ['admin', 'accountant'] %}
+<!-- نافذة تعديل بيانات ومواقع سند الصرف -->
+<div id="editTransferHeaderModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:white; border-radius:16px; width:100%; max-width:500px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); overflow:hidden;">
+        <div style="background:#f8fafc; padding:18px 24px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0; font-size:16px; font-weight:800; color:#1e293b; display:flex; align-items:center; gap:8px;">
+                <span>✏️</span> <span>تعديل مواقع سند صرف المواد #{{ transfer.id }}</span>
+            </h3>
+            <button type="button" onclick="closeEditTransferHeaderModal()" style="background:none; border:none; font-size:24px; color:#94a3b8; cursor:pointer; line-height:1; padding:0;">&times;</button>
+        </div>
+        
+        <form method="POST" style="padding:24px;">
+            <input type="hidden" name="action" value="edit_header">
+            
+            <div style="margin-bottom:18px;">
+                <label for="header_from_location_id" style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">
+                    فرع المصدر (المستودع المصروف منه): *
+                </label>
+                <select name="from_location_id" id="header_from_location_id" class="form-control" required style="width:100%; padding:10px 12px; font-size:14px; border:2px solid #cbd5e1; border-radius:8px;">
+                    {% for loc in locations %}
+                    <option value="{{ loc.id }}" {% if loc.id == transfer.from_location_id %}selected{% endif %}>
+                        {{ loc.name_ar }} ({{ loc.name_en }}) - {{ loc.get_type_label('ar') }}
+                        {% if loc.foodics_id %} [متصل بفوديكس ✅]{% else %} [غير متصل]{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="margin-bottom:18px;">
+                <label for="header_to_location_id" style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">
+                    فرع الوجهة (المستلم): *
+                </label>
+                <select name="to_location_id" id="header_to_location_id" class="form-control" required style="width:100%; padding:10px 12px; font-size:14px; border:2px solid #cbd5e1; border-radius:8px;">
+                    {% for loc in locations %}
+                    <option value="{{ loc.id }}" {% if loc.id == transfer.to_location_id %}selected{% endif %}>
+                        {{ loc.name_ar }} ({{ loc.name_en }}) - {{ loc.get_type_label('ar') }}
+                        {% if loc.foodics_id %} [متصل بفوديكس ✅]{% else %} [غير متصل]{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% if transfer.status in ['in_transit', 'received', 'needs_review', 'approved', 'posted'] %}
+            <div style="margin-bottom:16px; background:#eff6ff; padding:12px; border-radius:8px; border:1px solid #bfdbfe; font-size:12px; color:#1e40af; line-height:1.5;">
+                💡 <strong>ملاحظة المخزون:</strong> تغيير الفرع سيقوم تلقائياً بتعديل حركات المخزون ونقل الكميات المصروفة/المستلمة إلى الفروع الجديدة فوراً.
+            </div>
+            {% endif %}
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px; border-top:1px solid #f1f5f9; padding-top:16px;">
+                <button type="button" class="btn btn-secondary" onclick="closeEditTransferHeaderModal()">
+                    إلغاء
+                </button>
+                <button type="submit" class="btn btn-primary" style="padding:10px 20px; font-weight:700;">
+                    💾 حفظ المواقع والتعديلات
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- نافذة تأكيد حذف سند صرف المواد -->
+<div id="deleteTransferModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:white; border-radius:16px; width:100%; max-width:460px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); overflow:hidden;">
+        <div style="background:#fef2f2; padding:18px 24px; border-bottom:1px solid #fee2e2; display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0; font-size:16px; font-weight:800; color:#991b1b; display:flex; align-items:center; gap:8px;">
+                <span>🗑️</span> <span>تأكيد حذف سند صرف المواد #{{ transfer.id }}</span>
+            </h3>
+            <button type="button" onclick="closeDeleteTransferModal()" style="background:none; border:none; font-size:24px; color:#f87171; cursor:pointer; line-height:1; padding:0;">&times;</button>
+        </div>
+        
+        <form method="POST" style="padding:24px;">
+            <input type="hidden" name="action" value="delete_transfer">
+            
+            <p style="font-size:14px; color:#374151; line-height:1.6; margin-bottom:16px;">
+                هل أنت متأكد من رغبتك في حذف سند صرف المواد من (<strong>{{ loc_name(transfer.from_location) }}</strong>) إلى (<strong>{{ loc_name(transfer.to_location) }}</strong>)؟
+            </p>
+
+            <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:8px; padding:12px 14px; font-size:13px; color:#9f1239; margin-bottom:20px; line-height:1.5;">
+                ⚠️ <strong>أثر الحذف:</strong>
+                <ul style="margin: 6px 0 0 16px; padding: 0;">
+                    <li>سيتم حذف جميع بنود السند ({{ transfer.lines|length }} صنف).</li>
+                    <li>سيتم عكس أي حركات صرف وإعادة الكميات المصروفة إلى رصيد مستودع المصدر.</li>
+                    <li>إذا كانت الكميات قد استلمت، فسيتم خصمها من فرع الوجهة.</li>
+                    <li>سيتم إلغاء أي مهام ترحيل معلقة لهذا التحويل.</li>
+                </ul>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #f1f5f9; padding-top:16px;">
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteTransferModal()">
+                    تراجع
+                </button>
+                <button type="submit" class="btn btn-danger" style="padding:10px 20px; font-weight:700;">
+                    🗑️ نعم، حذف السند نهائياً
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEditTransferHeaderModal() {
+    var modal = document.getElementById('editTransferHeaderModal');
+    if (modal) modal.style.display = 'flex';
+}
+function closeEditTransferHeaderModal() {
+    var modal = document.getElementById('editTransferHeaderModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function openDeleteTransferModal() {
+    var modal = document.getElementById('deleteTransferModal');
+    if (modal) modal.style.display = 'flex';
+}
+function closeDeleteTransferModal() {
+    var modal = document.getElementById('deleteTransferModal');
+    if (modal) modal.style.display = 'none';
+}
+
+window.addEventListener('click', function(e) {
+    var editModal = document.getElementById('editTransferHeaderModal');
+    var delModal = document.getElementById('deleteTransferModal');
+    if (editModal && e.target === editModal) closeEditTransferHeaderModal();
+    if (delModal && e.target === delModal) closeDeleteTransferModal();
+});
+</script>
+{% endif %}
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {

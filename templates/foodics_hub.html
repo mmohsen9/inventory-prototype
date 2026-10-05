@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+
+{% block title %}مركز التكامل مع فوديكس Foodics API{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>⚡ مركز التكامل والربط مع Foodics API v5</h2>
+        <p>إدارة بيئة الاختبار (Sandbox)، مطابقة الفروع والأصناف، ومراقبة ترحيل الحركات المخزنية الفورية.</p>
+    </div>
+    <div class="page-actions" style="display: flex; gap: 8px;">
+        <form method="POST" action="{{ url_for('sync_process') }}" style="display:inline;">
+            <button type="submit" class="btn btn-primary">
+                ⚡ ترحيل المعلقات الآن
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Status & Health Overview -->
+<div class="kpi-grid" style="margin-bottom: 24px;">
+    <div class="kpi-card" style="border-right: 4px solid {% if sync_enabled and token %}var(--success){% else %}var(--danger){% endif %};">
+        <div class="kpi-content">
+            <h4>حالة الربط الحالي</h4>
+            <div class="kpi-value" style="font-size: 18px; margin-top: 4px;">
+                {% if sync_enabled and token %}
+                    <span style="color: var(--success); font-weight: 800;">🟢 متصل وجاهز</span>
+                {% else %}
+                    <span style="color: var(--danger); font-weight: 800;">🔴 غير متصل</span>
+                {% endif %}
+            </div>
+            <div class="kpi-desc">
+                {{ 'بيئة Sandbox التجريبية' if 'sandbox' in base_url.lower() else 'بيئة الإنتاج Production' }}
+            </div>
+        </div>
+        <div class="kpi-icon {% if sync_enabled and token %}icon-green{% else %}icon-rose{% endif %}">🔌</div>
+    </div>
+
+    <div class="kpi-card" style="border-right: 4px solid var(--primary);">
+        <div class="kpi-content">
+            <h4>المنشأة المتصلة</h4>
+            <div class="kpi-value" style="font-size: 18px; margin-top: 4px; color: var(--primary);">
+                {{ business_name or 'نوفمبر كافيه' }}
+            </div>
+            <div class="kpi-desc">
+                {{ 'آخر اتصال: ' + last_connected if last_connected else 'لم يتم فحص الاتصال بعد' }}
+            </div>
+        </div>
+        <div class="kpi-icon icon-purple">🏢</div>
+    </div>
+
+    <div class="kpi-card" style="border-right: 4px solid var(--secondary);">
+        <div class="kpi-content">
+            <h4>الفروع والمستودعات المطابقة</h4>
+            <div class="kpi-value">{{ locations_mapped }} / {{ locations_total }}</div>
+            <div class="kpi-desc">{{ "%.0f"|format(locations_mapped / (locations_total or 1) * 100) }}% تم ربطها بـ Foodics ID</div>
+        </div>
+        <div class="kpi-icon icon-blue">📍</div>
+    </div>
+
+    <div class="kpi-card" style="border-right: 4px solid #8b5cf6;">
+        <div class="kpi-content">
+            <h4>الأصناف المطابقة (SKU)</h4>
+            <div class="kpi-value">{{ items_mapped }} / {{ items_total }}</div>
+            <div class="kpi-desc">{{ "%.0f"|format(items_mapped / (items_total or 1) * 100) }}% مربوطة بأرقام فوديكس</div>
+        </div>
+        <div class="kpi-icon icon-amber">📦</div>
+    </div>
+
+    <div class="kpi-card" style="border-right: 4px solid {% if failed_jobs|length > 0 %}var(--danger){% else %}var(--success){% endif %};">
+        <div class="kpi-content">
+            <h4>العمليات المتعثرة</h4>
+            <div class="kpi-value" style="color: {% if failed_jobs|length > 0 %}var(--danger){% else %}var(--success){% endif %};">
+                {{ failed_jobs|length }}
+            </div>
+            <div class="kpi-desc">المتبقي من Rate Limit: {{ rate_remaining or '90' }}/دقيقة</div>
+        </div>
+        <div class="kpi-icon {% if failed_jobs|length > 0 %}icon-rose{% else %}icon-green{% endif %}">⚠️</div>
+    </div>
+</div>
+
+<!-- 1. Connection & Token Settings -->
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="card-title">🔑 إعدادات وتوثيق الاتصال (Sandbox / Production Credentials)</div>
+        <span class="badge {% if 'sandbox' in base_url.lower() %}badge-draft{% else %}badge-approved{% endif %}">
+            {{ 'Sandbox Mode (بيئة الاختبار)' if 'sandbox' in base_url.lower() else 'Production Mode (الإنتاج الفعلي)' }}
+        </span>
+    </div>
+    <div style="padding: 24px;">
+        <form method="POST" action="{{ url_for('foodics_settings') }}">
+            <input type="hidden" name="return_to" value="hub">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 8px;">
+                        رابط بيئة فوديكس (Base URL)
+                    </label>
+                    <select name="foodics_base_url" id="base_url_select" class="form-control" style="font-weight: 600;">
+                        <option value="https://api-sandbox.foodics.com/v5" {% if 'sandbox' in base_url.lower() %}selected{% endif %}>
+                            🧪 بيئة الاختبار (Sandbox) - https://api-sandbox.foodics.com/v5
+                        </option>
+                        <option value="https://api.foodics.com/v5" {% if 'sandbox' not in base_url.lower() %}selected{% endif %}>
+                            🚀 بيئة الإنتاج الفعلي (Production) - https://api.foodics.com/v5
+                        </option>
+                    </select>
+                    <small style="color: var(--gray-500); display: block; margin-top: 6px;">
+                        أكدت فوديكس في إيميلها أن العمل على <strong>Sandbox</strong> إلزامي قبل النقل إلى Production.
+                    </small>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 8px;">
+                        رمز الدخول والوصول (Access Token)
+                    </label>
+                    <div style="position: relative;">
+                        <input type="password" name="foodics_token" id="token_input" class="form-control" 
+                               value="{{ token or '' }}" placeholder="ضع التوكن المرسل إلى بريد المالك talturki@novembercoffee.com">
+                        <button type="button" onclick="toggleTokenVisibility()" 
+                                style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 14px; color: var(--gray-500);">
+                            👁️
+                        </button>
+                    </div>
+                    <small style="color: var(--gray-500); display: block; margin-top: 6px;">
+                        تم إرسال هذا التوكن من فوديكس بصلاحيات المخزون والفروع.
+                    </small>
+                </div>
+            </div>
+
+            <!-- Scopes Checklist Display -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px;">
+                <div style="font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 8px;">
+                    الصلاحيات المطلوبة والمعتمدة في حساب Sandbox:
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px;">
+                    <span style="background: #ecfdf5; color: #047857; padding: 4px 10px; border-radius: 20px; font-weight: 600;">✓ general.read (الفروع والمستودعات)</span>
+                    <span style="background: #ecfdf5; color: #047857; padding: 4px 10px; border-radius: 20px; font-weight: 600;">✓ inventory.transactions.read (قراءة الحركات)</span>
+                    <span style="background: #ecfdf5; color: #047857; padding: 4px 10px; border-radius: 20px; font-weight: 600;">✓ inventory.transactions.write (ترحيل المشتريات والتحويلات)</span>
+                    <span style="background: #ecfdf5; color: #047857; padding: 4px 10px; border-radius: 20px; font-weight: 600;">✓ inventory.settings.read (قراءة الأصناف والموردين)</span>
+                    <span style="background: #ecfdf5; color: #047857; padding: 4px 10px; border-radius: 20px; font-weight: 600;">✓ inventory.settings.write (تحديث الإعدادات)</span>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <button type="submit" name="action" value="save" class="btn btn-primary">
+                    💾 حفظ الإعدادات
+                </button>
+                <button type="submit" name="action" value="test" class="btn btn-secondary">
+                    ⚡ فحص واختبار الاتصال اللحظي (Test Connection)
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 2. Master Data Synchronization Cards -->
+<div style="margin-bottom: 24px;">
+    <h3 style="margin-bottom: 14px; font-size: 17px; font-weight: 800; color: #1e1b4b;">
+        🔄 مطابقة ومزامنة البيانات التأسيسية (Master Data Mapping)
+    </h3>
+    <p style="color: var(--gray-600); margin-bottom: 16px; font-size: 13px;">
+        لضمان نجاح ترحيل فواتير المشتريات وأوامر التحويل، يجب ربط كل موقع وصنف في نظامكم بمعرفه المقابل في فوديكس:
+    </p>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px;">
+        <!-- Card: Locations -->
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="card-title">📍 الفروع والمستودعات</div>
+                <span class="badge {% if locations_mapped == locations_total %}badge-approved{% else %}badge-submitted{% endif %}">
+                    {{ locations_mapped }} / {{ locations_total }} مربوط
+                </span>
+            </div>
+            <div style="padding: 18px;">
+                <p style="font-size: 13px; color: var(--gray-600); margin-bottom: 16px;">
+                    يقوم بجلب فروع ومستودعات حساب فوديكس ومطابقتها مع المواقع الحالية وحفظ معرفاتها <code>foodics_id</code>.
+                </p>
+                <form method="POST" action="{{ url_for('foodics_sync_entity', entity='branches') }}">
+                    <button type="submit" class="btn btn-secondary btn-sm" style="width: 100%;">
+                        🔄 مزامنة الفروع من فوديكس
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Card: Items -->
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="card-title">📦 أصناف المخزون الخام</div>
+                <span class="badge {% if items_mapped > 0 %}badge-approved{% else %}badge-submitted{% endif %}">
+                    {{ items_mapped }} / {{ items_total }} مربوط
+                </span>
+            </div>
+            <div style="padding: 18px;">
+                <p style="font-size: 13px; color: var(--gray-600); margin-bottom: 16px;">
+                    يقوم بمطابقة الأصناف عبر كود الصنف (SKU) وجلب معرف الصنف ووحدات القياس والتكلفة المسجلة في فوديكس.
+                </p>
+                <form method="POST" action="{{ url_for('foodics_sync_entity', entity='items') }}">
+                    <button type="submit" class="btn btn-secondary btn-sm" style="width: 100%;">
+                        🔄 مزامنة الأصناف من فوديكس
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Card: Suppliers -->
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="card-title">🤝 الموردين ({{ suppliers_total }})</div>
+                <span class="badge {% if suppliers_mapped > 0 %}badge-approved{% else %}badge-draft{% endif %}">
+                    {{ suppliers_mapped }} / {{ suppliers_total }} مربوط
+                </span>
+            </div>
+            <div style="padding: 18px;">
+                <p style="font-size: 13px; color: var(--gray-600); margin-bottom: 16px;">
+                    يقوم بتصدير الموردين غير المربوطين إلى حساب فوديكس ومطابقتهم لحفظ معرفاتهم واستخدامها في فواتير الشراء.
+                </p>
+                <form method="POST" action="{{ url_for('foodics_sync_entity', entity='suppliers') }}">
+                    <button type="submit" class="btn btn-secondary btn-sm" style="width: 100%;">
+                        🔄 تصدير ومزامنة الموردين ({{ suppliers_total }} مورد)
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Mapped Locations Preview Table -->
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="card-title">📋 جدول المواقع ومطابقتها مع فروع فوديكس (Locations Mapping)</div>
+        <form method="POST" action="{{ url_for('foodics_sync_entity', entity='branches') }}" style="display:inline;">
+            <button type="submit" class="btn btn-secondary btn-sm">
+                🔄 إعادة مطابقة الفروع تلقائياً
+            </button>
+        </form>
+    </div>
+    
+    <div style="padding: 14px 20px; background: #eff6ff; border-bottom: 1px solid #dbeafe; font-size: 13px; color: #1e40af;">
+        ℹ️ <strong>توضيح بخصوص بيئة Sandbox:</strong> أنشأت فوديكس في حساب الاختبار <strong>3 مواقع فقط</strong> (Warehouse 1، Branch 1، Branch 2). تم ربط المواقع الـ 3 بنجاح، ويمكنك أدناه ربط أي فرع إضافي بأحد فروع فوديكس المتاحة للتجربة، وعند الانتقال للإنتاج الفعلي (Production) ستتوفر جميع فروعكم الرسمية تلقائياً.
+    </div>
+
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>اسم الموقع بالنظام (عربي)</th>
+                    <th>اسم الموقع (إنجليزي)</th>
+                    <th>النوع</th>
+                    <th>الموقع المقابل في فوديكس</th>
+                    <th>حالة الربط</th>
+                    <th>تعديل الربط</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loc in locations_list %}
+                <tr>
+                    <td><strong>#{{ loc.id }}</strong></td>
+                    <td><strong>{{ loc.name_ar }}</strong></td>
+                    <td>{{ loc.name_en }}</td>
+                    <td><span class="badge badge-draft">{{ loc.get_type_label('ar') }}</span></td>
+                    <td>
+                        {% if loc.foodics_id %}
+                            <code style="font-size: 11px;">{{ loc.foodics_id }}</code>
+                        {% else %}
+                            <span style="color: var(--gray-400); font-size: 12px;">غير مربوط</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if loc.foodics_id %}
+                            <span style="color: var(--success); font-weight: 700;">✅ مربوط</span>
+                        {% else %}
+                            <span style="color: var(--warning); font-weight: 700;">⚠️ غير مربوط</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('foodics_map_location') }}" style="display: flex; gap: 6px; align-items: center;">
+                            <input type="hidden" name="location_id" value="{{ loc.id }}">
+                            <select name="foodics_id" class="form-control" style="font-size: 12px; padding: 4px 8px; width: 220px;">
+                                <option value="">-- اختر فرع فوديكس --</option>
+                                {% for r_loc in foodics_remote_locations %}
+                                <option value="{{ r_loc.id }}" {% if loc.foodics_id == r_loc.id %}selected{% endif %}>
+                                    {{ r_loc.name }} ({{ r_loc.type_label }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-primary btn-sm" style="padding: 4px 10px; font-size: 12px;">
+                                ربط
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 4. Sync Queue & Error Tracking -->
+<div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="card-title">⚙️ سجل وطابور الترحيل (Sync Queue & Logs)</div>
+        <form method="POST" action="{{ url_for('sync_process') }}" style="display:inline;">
+            <button type="submit" class="btn btn-primary btn-sm">
+                ⚡ تشغيل الترحيل الآن
+            </button>
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>نوع الحركة</th>
+                    <th>رقم السند</th>
+                    <th>الحالة</th>
+                    <th>مفتاح التحقق (Idempotency)</th>
+                    <th>رسالة الخطأ / النتيجة</th>
+                    <th>الإجراء</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in queue_jobs %}
+                <tr>
+                    <td><strong>#{{ job.id }}</strong></td>
+                    <td>
+                        <span class="badge {% if job.source_type == 'purchase' %}badge-approved{% elif job.source_type == 'transfer' %}badge-submitted{% else %}badge-draft{% endif %}">
+                            {{ 'توريد مشتريات' if job.source_type == 'purchase' else ('تحويل مواد' if job.source_type == 'transfer' else job.source_type) }}
+                        </span>
+                    </td>
+                    <td><strong>#{{ job.source_id }}</strong></td>
+                    <td>
+                        <span class="badge {% if job.status == 'success' %}badge-approved{% elif job.status == 'failed' %}badge-rejected{% else %}badge-submitted{% endif %}">
+                            {{ job.status }}
+                        </span>
+                    </td>
+                    <td style="font-size: 11px; color: var(--gray-500);"><code>{{ job.idempotency_key }}</code></td>
+                    <td>
+                        {% if job.status == 'success' %}
+                            <span style="color: var(--success); font-weight: 600;">✅ تم الترحيل بنجاح</span>
+                        {% elif job.status == 'failed' %}
+                            <span style="color: var(--danger); font-weight: 600; font-size: 12px;">❌ {{ job.latest_log.translated_error_ar if job.latest_log else 'تعثر الترحيل' }}</span>
+                        {% else %}
+                            <span style="color: var(--warning);">⏳ قيد الانتظار أو المعالجة</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if job.status == 'failed' %}
+                        <form method="POST" action="{{ url_for('sync_retry', job_id=job.id) }}">
+                            <button type="submit" class="btn btn-secondary btn-sm">
+                                🔄 إعادة المحاولة
+                            </button>
+                        </form>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--gray-400); padding: 24px;">
+                        لا توجد عمليات في طابور الترحيل حالياً.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleTokenVisibility() {
+    var input = document.getElementById("token_input");
+    if (input.type === "password") {
+        input.type = "text";
+    } else {
+        input.type = "password";
+    }
+}
+</script>
+{% endblock %}

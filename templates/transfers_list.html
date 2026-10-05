@@ -17,6 +17,25 @@
     </div>
 </div>
 
+{% set pending_incoming = transfers | selectattr('status', 'equalto', 'in_transit') | selectattr('to_location_id', 'equalto', user.location_id) | list if (user.role == 'branch_staff' and user.location_id) else [] %}
+{% if user.role == 'branch_staff' and pending_incoming %}
+<div class="card" style="margin-bottom: 20px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 2px solid #3b82f6; padding: 16px 20px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 28px;">🚚</span>
+            <div>
+                <div style="font-weight: 800; color: #1e3a8a; font-size: 15px;">
+                    يوجد لديك ({{ pending_incoming|length }}) شحنة واردة من المستودع بانتظار تأكيد الاستلام
+                </div>
+                <div style="font-size: 13px; color: #1d4ed8; margin-top: 2px;">
+                    يرجى الضغط على زر "📥 {{ t('receive_materials') }}" بجانب السند لمطابقة الكميات الفعلية وإضافتها لرصيد الفرع.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="card">
     <div class="card-header">
         <div class="card-title">{{ t('transfers_records') }} ({{ transfers|length }})</div>
@@ -50,7 +69,7 @@
                     <td>
                         <div style="display: flex; gap: 6px;">
                             <a href="{{ url_for('transfer_edit', transfer_id=tr.id) }}" class="btn btn-secondary btn-sm">
-                                {% if tr.status == 'draft' %}✏️ {{ t('edit') }}{% else %}👁️ {{ t('details') }}{% endif %}
+                                {% if tr.status == 'draft' or user.role in ['admin', 'accountant'] %}✏️ {{ t('edit') }}{% else %}👁️ {{ t('details') }}{% endif %}
                             </a>
                             {% if tr.status == 'in_transit' and (user.role in ['admin', 'branch_staff', 'accountant']) %}
                             <a href="{{ url_for('transfer_receive', transfer_id=tr.id) }}" class="btn btn-primary btn-sm">
