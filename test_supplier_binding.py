@@ -10,18 +10,21 @@ with app.app_context():
     sup = Supplier.query.filter(Supplier.name.ilike('%سحاب%')).first()
     print(f"Supplier: {sup.name} (Items count: {len(sup.items)})")
     
-    # 1. Check or create a test draft purchase
-    p = PurchaseTransaction.query.filter_by(supplier_name=sup.name).first()
+    staff_user = User.query.filter_by(role='branch_staff').first()
+    admin_user = User.query.filter_by(role='admin').first()
+
+    # 1. Check or create a test draft purchase for branch staff's location
+    p = PurchaseTransaction.query.filter_by(supplier_name=sup.name, location_id=staff_user.location_id).first()
     if not p:
         p = PurchaseTransaction(
             supplier_name=sup.name,
             invoice_number='TEST-INV-101',
-            location_id=1,
+            location_id=staff_user.location_id,
             status='draft'
         )
         db.session.add(p)
         db.session.commit()
-    print(f"Purchase Voucher #{p.id} for {p.supplier_name}")
+    print(f"Purchase Voucher #{p.id} for {p.supplier_name} (Location: {p.location_id})")
 
     client = app.test_client()
     staff_user = User.query.filter_by(role='branch_staff').first()

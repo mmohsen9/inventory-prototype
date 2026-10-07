@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
         body {
             font-family: {% if lang == 'en' %}'Inter', 'Segoe UI', sans-serif{% else %}'Tajawal', 'Segoe UI', sans-serif{% endif %};
@@ -545,5 +546,60 @@
     </div>
 
     {% block extra_js %}{% endblock %}
+
+    <script>
+        // الحقن التلقائي لرمز الحماية من تزوير الطلبات (CSRF) لكافة النماذج والطلبات
+        document.addEventListener("DOMContentLoaded", function() {
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (!token) return;
+
+            // 1. تزويد جميع نماذج POST بتوكن الحماية
+            document.querySelectorAll('form').forEach(function(form) {
+                if (form.method && form.method.toUpperCase() === 'POST') {
+                    if (!form.querySelector('input[name="csrf_token"]')) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'csrf_token';
+                        input.value = token;
+                        form.appendChild(input);
+                    }
+                }
+            });
+
+            // 2. اعتراض طلبات fetch وإضافة ترويسة X-CSRFToken تلقائياً
+            const originalFetch = window.fetch;
+            window.fetch = function(url, options = {}) {
+                options = options || {};
+                options.headers = options.headers || {};
+                const method = (options.method || 'GET').toUpperCase();
+                if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+                    if (typeof options.headers.set === 'function') {
+                        if (!options.headers.get('X-CSRFToken')) options.headers.set('X-CSRFToken', token);
+                    } else if (options.headers instanceof Headers) {
+                        if (!options.headers.has('X-CSRFToken')) options.headers.append('X-CSRFToken', token);
+                    } else {
+                        if (!options.headers['X-CSRFToken']) options.headers['X-CSRFToken'] = token;
+                    }
+                }
+                return originalFetch(url, options);
+            };
+
+            // 3. اعتراض طلبات XMLHttpRequest وإضافة ترويسة X-CSRFToken تلقائياً
+            const origOpen = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function(method, url) {
+                this._method = method;
+                return origOpen.apply(this, arguments);
+            };
+            const origSend = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.send = function() {
+                if (this._method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(this._method.toUpperCase())) {
+                    try {
+                        this.setRequestHeader('X-CSRFToken', token);
+                    } catch(e) {}
+                }
+                return origSend.apply(this, arguments);
+            };
+        });
+    </script>
 </body>
 </html>

@@ -133,20 +133,17 @@
         {% endwith %}
 
         <form method="POST" id="loginForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="name">اسم المستخدم</label>
-                <select id="name" name="name" class="form-control" required>
-                    <option value="">-- اختر المستخدم --</option>
-                    {% for u in users %}
-                    <option value="{{ u.name }}">{{ u.name }} ({{ u.role_label_ar }})</option>
-                    {% endfor %}
-                </select>
+                <input type="text" id="name" name="name" class="form-control" placeholder="أدخل اسم المستخدم"
+                    required autofocus autocomplete="username">
             </div>
 
             <div class="form-group">
                 <label for="password">كلمة المرور</label>
                 <input type="password" id="password" name="password" class="form-control" placeholder="••••••••"
-                    required>
+                    required autocomplete="current-password">
             </div>
 
             <button type="submit" class="btn btn-primary btn-block"
@@ -155,8 +152,9 @@
             </button>
         </form>
 
+        {% if not config.get('PRODUCTION') and not config.get('RENDER') and config.get('DEBUG') %}
         <div class="quick-users">
-            <h5>⚡ تجربة سريعة (الدخول بنقرة واحدة)</h5>
+            <h5>⚡ تجربة سريعة (بيئة التطوير فقط)</h5>
             <div class="quick-grid">
                 <button type="button" class="quick-btn" onclick="quickLogin('مدير النظام', 'admin')">
                     👑 مدير النظام
@@ -176,15 +174,18 @@
                 </button>
             </div>
         </div>
+        {% endif %}
     </div>
 
     <script>
         function quickLogin(name, pwd) {
-            const select = document.getElementById('name');
+            const userInput = document.getElementById('name');
             const passInput = document.getElementById('password');
-            select.value = name;
-            passInput.value = pwd;
-            document.getElementById('loginForm').submit();
+            if (userInput && passInput) {
+                userInput.value = name;
+                passInput.value = pwd;
+                document.getElementById('loginForm').submit();
+            }
         }
     </script>
 </body>

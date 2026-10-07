@@ -1,22 +1,36 @@
 # تسليم الجلسة (HANDOFF)
 
-# تسليم الجلسة (HANDOFF)
-
 - **آخر تحديث:** 2026-10-07
-- **الهدف الحالي:** تنفيذ المرحلة 1 من خطة النشر والتأمين (الجرد، النسخة المرجعية Baseline، النسخ الاحتياطي المشفر بـ SHA-256، وحماية التوكن).
+- **الهدف الحالي:** استكمال خطة النشر والتأمين (إنجاز المرحلة 1 والمرحلة 2: الأمن العاجل وسد الثغرات).
 - **ما تم إنجازه:**
-  1. حماية وتأمين ملف التوكن ومجلدات البيئات والنسخ الاحتياطية في `.gitignore` لمنع أي تسريب للأسرار في Git نهائياً.
-  2. تطوير وتشغيل أداة النسخ الاحتياطي والاسترجاع والتحقق [`backup_restore.py`](file:///d:/%D9%85%D8%AC%D9%84%D8%AF%20%D8%AC%D8%AF%D9%8A%D8%AF/OneDrive/scratch/inventory-prototype/backup_restore.py).
-  3. إنشاء النسخة المرجعية المعتمدة لقاعدة البيانات والمرفقات في `backups/backup_baseline_20261007_125307` مع فحص وتوثيق بصمة SHA-256 بنجاح 100%.
-  4. إعداد الدليل التشغيلي الشامل للنسخ والاسترجاع في [`BACKUP-RESTORE.md`](file:///d:/%D9%85%D8%AC%D9%84%D8%AF%20%D8%AC%D8%AF%D9%8A%D8%AF/OneDrive/scratch/inventory-prototype/BACKUP-RESTORE.md).
-  5. جرد وتوثيق المعمارية الحالية (50 مساراً، 15 نموذجاً وجدولاً، تدفقات العمليات) في [`ARCHITECTURE-CURRENT.md`](file:///d:/%D9%85%D8%AC%D9%84%D8%AF%20%D8%AC%D8%AF%D9%8A%D8%AF/OneDrive/scratch/inventory-prototype/ARCHITECTURE-CURRENT.md).
-  6. إنشاء سجل المخاطر الأمني المفصل مصنفاً حسب الخطورة في [`RISK-REGISTER.md`](file:///d:/%D9%85%D8%AC%D9%84%D8%AF%20%D8%AC%D8%AF%D9%8A%D8%AF/OneDrive/scratch/inventory-prototype/RISK-REGISTER.md).
-  7. إجراء فحص أمني شامل لسجل Git والملفات للتحقق من خلوها من أي أسرار أو مفاتيح صريحة.
-- **نقطة التوقف الحالية:** المرحلة 1 مكتملة بنجاح بنسبة 100% وجاهزة لبوابة الاعتماد (Acceptance Gate).
-- **الخطوة التالية:** الحصول على موافقة المستخدم لتثبيت النسخة المرجعية عبر Git Commit + Tag `baseline`، ثم الانتقال فوراً للمرحلة 2 (الأمن العاجل وسد الثغرات).
-- **فحوصات تم تنفيذها:**
-  - `python backup_restore.py verify backups/backup_baseline_20261007_125307` -> نجاح كامل ومطابقة البصمات 100% (`done+tested`).
-  - `python test_branch_restrictions.py` -> نجاح كامل بنسبة 100% (`done+tested`).
-  - `python test_voucher_edit_delete.py` -> نجاح كامل بنسبة 100% (`done+tested`).
-- **ملفات غير ملتزم بها (Uncommitted):** ملفات التوثيق والأداة وذاكرة المشروع (`.gitignore`, `ARCHITECTURE-CURRENT.md`, `BACKUP-RESTORE.md`, `RISK-REGISTER.md`, `backup_restore.py`, `docs/*`).
-- **قرارات مطلوبة من المستخدم:** الموافقة على اعتماد بوابة المرحلة 1 (تنفيذ Commit وإنشاء Tag `baseline` والدفع إلى مستودع GitHub)، ثم بدء المرحلة 2.
+  1. **المرحلة 1 مكتملة ومدفوعة إلى GitHub مع Tag `baseline`:**
+     - حماية وتأمين ملف التوكن ومجلدات البيئة في `.gitignore`.
+     - تطوير وتشغيل أداة النسخ الاحتياطي المشفر بـ SHA-256 [`backup_restore.py`](file:///d:/%D9%85%D8%AC%D9%84%D8%AF%20%D8%AC%D8%AF%D9%8A%D8%AF/OneDrive/scratch/inventory-prototype/backup_restore.py).
+     - توثيق المعمارية في [`ARCHITECTURE-CURRENT.md`](file:///d:/%D9%85%D8%AC%D9%84%D8%AF%20%D8%AC%D8%AF%D9%8A%D8%AF/OneDrive/scratch/inventory-prototype/ARCHITECTURE-CURRENT.md)، وسجل المخاطر في [`RISK-REGISTER.md`](file:///d:/%D9%85%D8%AC%D9%84%D8%AF%20%D8%AC%D8%AF%D9%8A%D8%AF/OneDrive/scratch/inventory-prototype/RISK-REGISTER.md)، ودليل النسخ في [`BACKUP-RESTORE.md`](file:///d:/%D9%85%D8%AC%D9%84%D8%AF%20%D8%AC%D8%AF%D9%8A%D8%AF/OneDrive/scratch/inventory-prototype/BACKUP-RESTORE.md).
+  2. **المرحلة 2: الأمن العاجل وسد الثغرات (مكتملة ومختبرة بنسبة 100%):**
+     - تشفير كلمات مرور المستخدمين الحالية والجديدة بنظام تجزئة آمن `werkzeug.security` ودعم الترقية التلقائية الشفافة في [`models.py`](file:///d:/%D9%85%D8%AC%D9%84%D8%AF%20%D8%AC%D8%AF%D9%8A%D8%AF/OneDrive/scratch/inventory-prototype/models.py).
+     - توفير وتشغيل سكربت ترحيل كلمات المرور القائمة [`migrate_passwords.py`](file:///d:/%D9%85%D8%AC%D9%84%D8%AF%20%D8%AC%D8%AF%D9%8A%D8%AF/OneDrive/scratch/inventory-prototype/migrate_passwords.py).
+     - حماية مسار المرفقات `/uploads/<path>` بفرض تسجيل الدخول ومنع Directory Traversal.
+     - فحص المحتوى الحقيقي (Magic Bytes/MIME) للمرفقات المرفوعة وتوليد أسماء عشوائية UUID في `save_attachment`.
+     - تفعيل حماية تزوير الطلبات عبر المواقع `Flask-WTF` لكافة نماذج التطبيق وطلبات AJAX مع استثناء Webhook.
+     - تفعيل `Flask-Limiter` لتقييد محاولات الدخول الخاطئة (10 محاولات في الدقيقة) لمنع Brute-force.
+     - استبدال قائمة المستخدمين المنسدلة في شاشة الدخول بحقل إدخال نصي نظيف وإخفاء أزرار الدخول السريع في الإنتاج.
+     - فرض `SECRET_KEY` إجبارياً في بيئة الإنتاج، وضبط كوكيز الجلسات الآمنة و`ProxyFix`.
+     - بناء وتفعيل صفحات أخطاء مخصصة `404`, `403`, `500` مع معرف مرجعي للأخطاء الداخلية [`templates/error.html`](file:///d:/%D9%85%D8%AC%D9%84%D8%AF%20%D8%AC%D8%AF%D9%8A%D8%AF/OneDrive/scratch/inventory-prototype/templates/error.html).
+     - حماية تقرير التصدير `/reports/export` بحجب التكاليف ودفتر الأستاذ عن موظفي الفروع، وحماية جلسات الجرد من ثغرات IDOR.
+     - إضافة أمر CLI لإعادة تعيين كلمة مرور المسؤول بأمان: `flask reset-admin <password>`.
+- **نقطة التوقف الحالية:** انتهاء المرحلة 2 بنجاح تام، واجتياز كافة الفحوصات الأمنية والوظيفية.
+- **الخطوة التالية:** اعتماد بوابة المرحلة 2 ثم البدء في المرحلة 3 (الاختبارات الآلية الشاملة Pytest).
+- **فحوصات تم تنفيذها في هذه الجلسة:**
+  - `python test_phase2_security.py` -> نجاح كامل 100% لكافة البنود الأمنية الـ 5 (`done+tested`).
+  - `python test_branch_restrictions.py` -> نجاح كامل 100% (`done+tested`).
+  - `python test_voucher_edit_delete.py` -> نجاح كامل 100% (`done+tested`).
+  - `python test_count_sync.py` -> نجاح كامل 100% (`done+tested`).
+  - `python test_supplier_binding.py` -> نجاح كامل 100% (`done+tested`).
+- **الملفات المعدلة وغير المثبتة (Uncommitted Files):**
+  - المعدلة: `app.py`, `models.py`, `requirements.txt`, `templates/base.html`, `templates/login.html`, `test_supplier_binding.py`, `docs/DECISIONS.md`, `docs/PROJECT-MAP.md`, `docs/CHANGELOG.md`, `docs/ROADMAP.md`, `docs/HANDOFF.md`, `.agents/rules/production-deployment-rules.md`.
+  - الجديدة: `migrate_passwords.py`, `templates/error.html`, `test_phase2_security.py`, `.agents/skills/inventory-ops/SKILL.md`.
+- **قرارات مطلوبة من المستخدم:** 
+  1. الموافقة على إنشاء Commit للمرحلة 2 على Git.
+  2. الإذن ببدء المرحلة 3 (الاختبارات الآلية الشاملة وتجهيز بيئة Pytest).
+

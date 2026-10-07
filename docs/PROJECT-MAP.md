@@ -1,6 +1,6 @@
 # خارطة المشروع: inventory-prototype
 
-> آخر تحقق: 2026-10-06 — مستخرج ومتحقق من الكود المصدري وقاعدة البيانات
+> آخر تحقق: 2026-10-07 — مستخرج ومتحقق من الكود المصدري وقاعدة البيانات واختبارات الأمان
 
 ## الغرض
 نظام متكامل لإدارة ومطابقة حركات المخزون والمشتريات والتحويلات والجرد الدوري لمستودعات وفروع شركة رفاء مع مزامنة فوديكس (Foodics API).
@@ -10,15 +10,19 @@
 |---|---|---|
 | إطار العمل ولغة البرمجة | Python 3.11+ / Flask / Jinja2 / Vanilla CSS | `app.py`, `requirements.txt` |
 | قاعدة البيانات | SQLite (`instance/rafa_inventory.db`) | `models.py`, `instance/` |
+| الأمان والتشفير | Werkzeug Hashing, Flask-WTF (CSRF), Flask-Limiter | `models.py`, `app.py`, `requirements.txt` |
 | أمر التشغيل المحلي | `python app.py` (يعمل افتراضياً على المنفذ 5000) | `app.py` |
-| أمر التحقق والاختبار | `python test_branch_restrictions.py` | `test_branch_restrictions.py` |
+| أمر فحص الأمان | `python test_phase2_security.py` | `test_phase2_security.py` |
+| أمر فحص الفروع | `python test_branch_restrictions.py` | `test_branch_restrictions.py` |
 | بيئة النشر المستهدفة | Render Web Service + Persistent Disk (`/var/data`) | `PRODUCTION-DEPLOYMENT-PLAN.md` |
 
 ## البنية والمكونات
-- `app.py`: موجه المسارات والمنطق التشغيلي للنظام والمصادقة والتقارير.
-- `models.py`: نماذج قاعدة البيانات (المستخدمين، المواقع، الأصناف، الفواتير، التحويلات، الجرد، طابور المزامنة).
+- `app.py`: موجه المسارات والمنطق التشغيلي، وضوابط الأمان (CSRF, Limiter, Secure Headers, Error Handlers, Safe Uploads).
+- `models.py`: نماذج قاعدة البيانات مع تشفير كلمات المرور والترقية التلقائية.
 - `sync_queue.py`: إدارة طابور مزامنة العمليات والترحيل إلى Foodics API مع آليات إعادة المحاولة ومعالجة الأخطاء.
-- `templates/`: قوالب واجهات المستخدم (لوحة التحكم، المشتريات، التحويلات، الجرد، إدارة المستخدمين، مراجعة المحاسب).
+- `backup_restore.py`: أداة النسخ الاحتياطي والتحقق والاستعادة المشفرة ببصمة SHA-256.
+- `migrate_passwords.py`: سكربت ترحيل كلمات المرور النصية القديمة إلى تجزئة مشفرة.
+- `templates/`: قوالب واجهات المستخدم ولوحة التحكم وصفحات الأخطاء المخصصة `error.html`.
 - `static/`: الأنماط (CSS) وسكربتات الواجهة والبحث الفوري والباركود.
 
 ## البيانات والعلاقات الرئيسية

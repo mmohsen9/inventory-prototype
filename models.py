@@ -3,6 +3,7 @@
 """
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
@@ -13,12 +14,35 @@ class User(db.Model):
     name = db.Column(db.String(100), nullable=False)
     role = db.Column(db.String(20), nullable=False)  # admin / warehouse / branch_staff / accountant
     location_id = db.Column(db.Integer, db.ForeignKey("locations.id"), nullable=True)
-    password = db.Column(db.String(100), nullable=False)  # نموذج أولي فقط
+    password = db.Column(db.String(255), nullable=False)  # تجزئة آمنة مشفرة عبر generate_password_hash
     active = db.Column(db.Boolean, default=True)
     email = db.Column(db.String(120), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     location = db.relationship("Location")
+
+    def set_password(self, raw_password):
+        """تجزئة وحفظ كلمة المرور بأمان تام باستخدام werkzeug.security."""
+        if not raw_password:
+            raise ValueError("كلمة المرور لا يمكن أن تكون فارغة")
+        self.password = generate_password_hash(str(raw_password))
+
+    def check_password(self, raw_password):
+        """التحقق من كلمة المرور مع ترقية كلمات المرور القديمة النصية تلقائياً."""
+        if not self.password or not raw_password:
+            return False
+        # التحقق من كلمات المرور المشفرة
+        if self.password.startswith(("scrypt:", "pbkdf2:")):
+            return check_password_hash(self.password, str(raw_password))
+        # ترقية شفافة وتلقائية لكلمات المرور القديمة غير المشفرة
+        if self.password == str(raw_password):
+            self.set_password(raw_password)
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+            return True
+        return False
 
     @property
     def role_label_ar(self):

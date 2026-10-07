@@ -3,6 +3,7 @@
 تشغيل: python app.py
 """
 import os
+import sys
 import io
 import csv
 import json
@@ -10,9 +11,17 @@ import uuid
 import random
 from datetime import datetime
 from flask import (
-    Flask, render_template, request, redirect, url_for, session, jsonify, flash, Response
+    Flask, render_template, request, redirect, url_for, session, jsonify, flash, Response, abort
 )
 from werkzeug.utils import secure_filename
+from werkzeug.middleware.proxy_fix import ProxyFix
+from dotenv import load_dotenv
+from flask_wtf.csrf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+# تحميل متغيرات البيئة من ملف .env إن وجد محلياً
+load_dotenv()
 
 from models import (
     db, User, Location, Item, PurchaseTransaction, PurchaseLine,
@@ -28,18 +37,53 @@ UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(os.path.join(BASE_DIR, "instance"), exist_ok=True)
 
+IS_PRODUCTION = os.environ.get("PRODUCTION", "").lower() in ("true", "1") or os.environ.get("RENDER", "").lower() in ("true", "1")
+
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
     "DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'rafa_inventory.db')}"
 )
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "change-this-secret-key-in-production")
+
+# فرض وجود مفتاح سري حقيقي في بيئة الإنتاج ومنع المفتاح الافتراضي
+secret_key = os.environ.get("SECRET_KEY")
+if not secret_key:
+    if IS_PRODUCTION:
+        raise RuntimeError("CRITICAL SECURITY ERROR: SECRET_KEY environment variable is mandatory in production!")
+    secret_key = "change-this-secret-key-in-production-local-dev-only"
+
+app.config["SECRET_KEY"] = secret_key
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # 20MB لكل رفع
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+if IS_PRODUCTION:
+    app.config["SESSION_COOKIE_SECURE"] = True
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+
+# تفعيل حماية تزوير الطلبات CSRF مع تعطيلها في الاختبارات الآلية لتسهيل الفحص
+is_test_env = (
+    app.config.get("TESTING")
+    or os.environ.get("TESTING") == "1"
+    or any("test" in arg.lower() for arg in sys.argv)
+)
+app.config["WTF_CSRF_ENABLED"] = True if IS_PRODUCTION else not is_test_env
+csrf = CSRFProtect(app)
+
+# تحديد معدل الطلبات لمنع الهجمات العنيفة
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["1000 per day", "300 per hour"],
+    storage_uri="memory://"
+)
 
 db.init_app(app)
 
 
 def ensure_seed_data():
-    """يهيئ البيانات الأولية الأساسية إذا كانت قاعدة البيانات فارغة."""
+    """يهيئ البيانات الأولية الأساسية إذا كانت قاعدة البيانات فارغة في بيئة التطوير فقط."""
+    if IS_PRODUCTION:
+        return
+
     if Location.query.count() == 0:
         default_locations = [
             ("المستودع الرئيسي", "Warehouse 1", "warehouse"),
@@ -94,7 +138,9 @@ def ensure_seed_data():
     ]
     for name, role, loc_id, pwd in default_users:
         if not User.query.filter_by(name=name).first():
-            db.session.add(User(name=name, role=role, location_id=loc_id, password=pwd, active=True))
+            u = User(name=name, role=role, location_id=loc_id, active=True)
+            u.set_password(pwd)
+            db.session.add(u)
 
     db.session.commit()
 
@@ -842,19 +888,44 @@ def api_add_supplier():
     })
 
 
+ALLOWED_ATTACHMENT_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf"}
+
 def save_attachment(file_storage, subfolder):
     """
-    يحفظ المرفق محلياً ويُرجع مساره.
-    يمكن استبدالها برفع Google Drive API الفعلي لاحقاً.
+    يحفظ المرفق محلياً بأمان بعد التحقق الصارم من الامتداد والمحتوى الفعلي (MIME Type)
+    وتوليد اسم عشوائي آمن (UUID) لمنع هجمات Path Traversal.
     """
-    if not file_storage or file_storage.filename == "":
+    if not file_storage or not file_storage.filename:
         return None
-    folder = os.path.join(UPLOAD_DIR, subfolder)
+
+    # 1. التحقق من الامتداد
+    _, ext = os.path.splitext(file_storage.filename)
+    ext = ext.lower()
+    if ext not in ALLOWED_ATTACHMENT_EXTENSIONS:
+        flash("نوع الملف غير مسموح به. الأنواع المصرح بها هي (JPG, PNG, PDF) فقط.", "error")
+        return None
+
+    # 2. التحقق من البصمة الرقمية للمحتوى (Magic Bytes)
+    header = file_storage.read(16)
+    file_storage.seek(0)
+    is_valid_content = False
+    if ext in (".jpg", ".jpeg") and header.startswith(b"\xff\xd8\xff"):
+        is_valid_content = True
+    elif ext == ".png" and header.startswith(b"\x89PNG\r\n\x1a\n"):
+        is_valid_content = True
+    elif ext == ".pdf" and header.startswith(b"%PDF"):
+        is_valid_content = True
+
+    if not is_valid_content:
+        flash("فشل التحقق من أمان الملف (المحتوى لا يطابق الامتداد المسموح به).", "error")
+        return None
+
+    folder = os.path.join(UPLOAD_DIR, secure_filename(subfolder))
     os.makedirs(folder, exist_ok=True)
-    filename = secure_filename(f"{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}_{file_storage.filename}")
-    path = os.path.join(folder, filename)
+    safe_name = f"{uuid.uuid4().hex}{ext}"
+    path = os.path.join(folder, safe_name)
     file_storage.save(path)
-    return f"/uploads/{subfolder}/{filename}"
+    return f"/uploads/{subfolder}/{safe_name}"
 
 
 # ---------------------------------------------------------------
@@ -866,17 +937,20 @@ def index():
 
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("10 per minute")
 def login():
     if request.method == "POST":
-        name = request.form.get("name")
-        password = request.form.get("password")
+        name = request.form.get("name", "").strip()
+        password = request.form.get("password", "").strip()
         user = User.query.filter_by(name=name, active=True).first()
-        if user and user.password == password:
+        if user and user.check_password(password):
             session["user_id"] = user.id
             flash(f"أهلاً بك يا {user.name} ({user.role_label_ar})", "success")
             return redirect(url_for("dashboard"))
         flash("اسم المستخدم أو كلمة المرور غير صحيحة", "error")
-    users = User.query.filter_by(active=True).all()
+    users = []
+    if not IS_PRODUCTION and app.debug:
+        users = User.query.filter_by(active=True).all()
     return render_template("login.html", users=users)
 
 
@@ -1123,11 +1197,11 @@ def user_new():
     user = User(
         name=name,
         role=role,
-        password=password,
         email=email or None,
         location_id=location_id,
         active=True
     )
+    user.set_password(password)
     db.session.add(user)
     db.session.commit()
     flash(f"تم إنشاء المستخدم {name} بنجاح", "success")
@@ -1156,7 +1230,7 @@ def user_edit(user_id):
     if role:
         user.role = role
     if password:
-        user.password = password
+        user.set_password(password)
     user.email = email or None
     user.location_id = location_id
 
@@ -1310,35 +1384,67 @@ def reports_variance():
 @app.route("/reports/export")
 @login_required
 def reports_export():
+    u = current_user()
     report_type = request.args.get("type", "stock")
+
+    # حماية أمنية: منع موظف الفرع من تصدير حركات دفتر الأستاذ نهائياً
+    if u.role == "branch_staff" and report_type == "movements":
+        flash("غير مصرح لك بتصدير دفتر الأستاذ العام وحركات المخزون", "error")
+        return redirect(url_for("reports_stock"))
+
     output = io.StringIO()
     # كتابة BOM ليتعرف Excel على ترميز UTF-8 العربي مباشرة
     output.write('\ufeff')
     writer = csv.writer(output)
 
     if report_type == "stock":
-        writer.writerow(["الموقع", "كود الصنف SKU", "الباركود", "اسم الصنف (عربي)", "اسم الصنف (إنجليزي)", "وحدة التخزين", "الكمية الحالية", "تكلفة الوحدة", "إجمالي القيمة"])
-        rows = db.session.query(StockBalance, Item, Location).join(
+        # إخفاء التكاليف عن موظف الفرع وتصفية بيانات فرعه فقط
+        hide_cost = (u.role == "branch_staff")
+        if hide_cost:
+            writer.writerow(["الموقع", "كود الصنف SKU", "الباركود", "اسم الصنف (عربي)", "اسم الصنف (إنجليزي)", "وحدة التخزين", "الكمية الحالية"])
+        else:
+            writer.writerow(["الموقع", "كود الصنف SKU", "الباركود", "اسم الصنف (عربي)", "اسم الصنف (إنجليزي)", "وحدة التخزين", "الكمية الحالية", "تكلفة الوحدة", "إجمالي القيمة"])
+
+        query = db.session.query(StockBalance, Item, Location).join(
             Item, StockBalance.item_id == Item.id
-        ).join(Location, StockBalance.location_id == Location.id).order_by(Location.name_ar.asc()).all()
+        ).join(Location, StockBalance.location_id == Location.id)
+
+        if u.role == "branch_staff" and u.location_id:
+            query = query.filter(Location.id == u.location_id)
+
+        rows = query.order_by(Location.name_ar.asc()).all()
 
         for bal, it, loc in rows:
-            writer.writerow([
-                loc.name_ar,
-                it.sku,
-                it.barcode or "",
-                it.name_ar,
-                it.name_en,
-                it.storage_unit,
-                bal.quantity,
-                it.cost or 0.0,
-                round((bal.quantity or 0) * (it.cost or 0), 2)
-            ])
+            if hide_cost:
+                writer.writerow([
+                    loc.name_ar,
+                    it.sku,
+                    it.barcode or "",
+                    it.name_ar,
+                    it.name_en,
+                    it.storage_unit,
+                    bal.quantity
+                ])
+            else:
+                writer.writerow([
+                    loc.name_ar,
+                    it.sku,
+                    it.barcode or "",
+                    it.name_ar,
+                    it.name_en,
+                    it.storage_unit,
+                    bal.quantity,
+                    it.cost or 0.0,
+                    round((bal.quantity or 0) * (it.cost or 0), 2)
+                ])
         filename = f"stock_report_{datetime.utcnow().strftime('%Y%m%d')}.csv"
 
     elif report_type == "movements":
         writer.writerow(["التاريخ والوقت", "الموقع", "نوع الحركة", "كود الصنف", "اسم الصنف", "الكمية المتغيرة", "الرصيد بعدها", "البيان / الملاحظات"])
-        movements = StockMovement.query.order_by(StockMovement.created_at.desc()).limit(1000).all()
+        query = StockMovement.query
+        if u.role == "warehouse" and u.location_id:
+            query = query.filter(StockMovement.location_id == u.location_id)
+        movements = query.order_by(StockMovement.created_at.desc()).limit(1000).all()
         for m in movements:
             writer.writerow([
                 m.created_at.strftime('%Y-%m-%d %H:%M'),
@@ -1353,19 +1459,38 @@ def reports_export():
         filename = f"inventory_movements_{datetime.utcnow().strftime('%Y%m%d')}.csv"
 
     else:
-        writer.writerow(["جلسة الجرد", "التاريخ", "الموقع", "الصنف", "الرصيد الدفتري", "الفعلي", "فرق الكمية", "فرق التكلفة"])
-        lines = CountLine.query.join(CountSession).order_by(CountSession.count_date.desc()).all()
+        hide_cost = (u.role == "branch_staff")
+        if hide_cost:
+            writer.writerow(["جلسة الجرد", "التاريخ", "الموقع", "الصنف", "الرصيد الدفتري", "الفعلي", "فرق الكمية"])
+        else:
+            writer.writerow(["جلسة الجرد", "التاريخ", "الموقع", "الصنف", "الرصيد الدفتري", "الفعلي", "فرق الكمية", "فرق التكلفة"])
+
+        query = CountLine.query.join(CountSession)
+        if u.role == "branch_staff" and u.location_id:
+            query = query.filter(CountSession.location_id == u.location_id)
+        lines = query.order_by(CountSession.count_date.desc()).all()
         for cl in lines:
-            writer.writerow([
-                f"جلسة #{cl.session_id}",
-                cl.session.count_date,
-                cl.session.location.name_ar if cl.session.location else "",
-                cl.item.name_ar if cl.item else "",
-                cl.book_quantity,
-                cl.counted_quantity,
-                cl.variance_quantity,
-                cl.variance_cost,
-            ])
+            if hide_cost:
+                writer.writerow([
+                    f"جلسة #{cl.session_id}",
+                    cl.session.count_date,
+                    cl.session.location.name_ar if cl.session.location else "",
+                    cl.item.name_ar if cl.item else "",
+                    cl.book_quantity,
+                    cl.counted_quantity,
+                    cl.variance_quantity
+                ])
+            else:
+                writer.writerow([
+                    f"جلسة #{cl.session_id}",
+                    cl.session.count_date,
+                    cl.session.location.name_ar if cl.session.location else "",
+                    cl.item.name_ar if cl.item else "",
+                    cl.book_quantity,
+                    cl.counted_quantity,
+                    cl.variance_quantity,
+                    cl.variance_cost,
+                ])
         filename = f"count_variance_{datetime.utcnow().strftime('%Y%m%d')}.csv"
 
     output.seek(0)
@@ -2325,12 +2450,20 @@ def decide_new_item(req_id):
 @app.route("/counts/new", methods=["GET", "POST"])
 @login_required
 def count_new():
+    u = current_user()
     locations = Location.query.all()
+    if u.role == "branch_staff" and u.location_id:
+        locations = Location.query.filter_by(id=u.location_id).all()
+
     if request.method == "POST":
-        location_id = int(request.form.get("location_id"))
+        location_id = int(request.form.get("location_id") or 0)
+        # فرض فرع الموظف إجبارياً لمنع التلاعب
+        if u.role == "branch_staff" and u.location_id:
+            location_id = u.location_id
+
         session_obj = CountSession(
             location_id=location_id,
-            created_by=current_user().id,
+            created_by=u.id,
             status="open",
             count_date=datetime.utcnow().date()
         )
@@ -2345,6 +2478,12 @@ def count_new():
 @login_required
 def count_edit(session_id):
     session_obj = CountSession.query.get_or_404(session_id)
+    u = current_user()
+
+    # حماية IDOR: منع موظف الفرع من الوصول لجلسة جرد تخص فرعاً آخر
+    if u.role == "branch_staff" and u.location_id and session_obj.location_id != u.location_id:
+        flash("عفواً، لا تملك صلاحية الوصول لجلسة جرد تخص فرعاً آخر", "error")
+        return redirect(url_for("dashboard"))
 
     if request.method == "POST":
         action = request.form.get("action")
@@ -2793,6 +2932,7 @@ def foodics_settings():
 # استقبال Webhook من فوديكس وإدارة الإشعارات اللحظية لمواد المخزون
 # ---------------------------------------------------------------
 @app.route("/api/foodics/webhook", methods=["POST"])
+@csrf.exempt
 def foodics_webhook():
     """
     نقطة استقبال الويب هوك (Foodics Webhook Endpoint).
@@ -2884,6 +3024,7 @@ def api_foodics_sync_now():
 
 
 @app.route("/api/foodics/test_webhook", methods=["POST"])
+@csrf.exempt
 @login_required
 @role_required("admin", "accountant")
 def foodics_test_webhook():
@@ -3127,26 +3268,75 @@ def api_resolve_item_observation():
 
 
 # ---------------------------------------------------------------
-# تقديم الملفات والمرفقات
+# تقديم الملفات والمرفقات بأمان
 # ---------------------------------------------------------------
 @app.route("/uploads/<path:filepath>")
+@login_required
 def serve_upload(filepath):
     from flask import send_from_directory
-    return send_from_directory(UPLOAD_DIR, filepath)
+    # حماية من هجمات Directory Traversal
+    clean_path = filepath.replace("\\", "/").strip("/")
+    if ".." in clean_path or clean_path.startswith("/"):
+        abort(403)
+
+    full_path = os.path.join(UPLOAD_DIR, clean_path)
+    if not os.path.exists(full_path):
+        abort(404)
+
+    return send_from_directory(UPLOAD_DIR, clean_path)
+
+
+# ---------------------------------------------------------------
+# صفحات الأخطاء المخصصة (Error Handlers)
+# ---------------------------------------------------------------
+@app.errorhandler(404)
+def handle_404(e):
+    return render_template("error.html", error_code=404, error_message="الصفحة أو الرابط المطلوب غير موجود بالنظام."), 404
+
+
+@app.errorhandler(403)
+def handle_403(e):
+    return render_template("error.html", error_code=403, error_message="عفواً، لا تملك الصلاحية اللازمة للوصول إلى هذا السجل أو المورد."), 403
+
+
+@app.errorhandler(500)
+def handle_500(e):
+    ref_id = uuid.uuid4().hex[:8].upper()
+    app.logger.error(f"Internal error [{ref_id}]: {str(e)}")
+    return render_template("error.html", error_code=500, error_message=f"حدث خطأ غير متوقع أثناء معالجة الطلب. رقم المرجع للدعم: {ref_id}"), 500
+
+
+# ---------------------------------------------------------------
+# أوامر سطر الأوامر (CLI Commands)
+# ---------------------------------------------------------------
+import click
+
+@app.cli.command("reset-admin")
+@click.argument("new_password")
+def reset_admin_cmd(new_password):
+    """إعادة تعيين كلمة مرور مستخدم مدير النظام بأمان وتشفيرها."""
+    admin = User.query.filter_by(role="admin").first()
+    if not admin:
+        click.echo("لم يتم العثور على مستخدم بصلاحية مدير النظام.")
+        return
+    admin.set_password(new_password)
+    db.session.commit()
+    click.echo(f"✅ تم تحديث وتشفير كلمة مرور المدير ({admin.name}) بنجاح.")
 
 
 # ---------------------------------------------------------------
 # تهيئة قاعدة البيانات عند الإقلاع
 # ---------------------------------------------------------------
 with app.app_context():
-    db.create_all()
-    try:
-        ensure_seed_data()
-    except Exception as _seed_err:
-        print(f"تحذير: تعذّر التحميل الأولي للبيانات: {_seed_err}")
+    if not IS_PRODUCTION:
+        db.create_all()
+        try:
+            ensure_seed_data()
+        except Exception as _seed_err:
+            print(f"تحذير: تعذّر التحميل الأولي للبيانات: {_seed_err}")
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    debug = os.environ.get("FLASK_DEBUG", "1") == "1"
+    debug = not IS_PRODUCTION and (os.environ.get("FLASK_DEBUG", "1") == "1")
     app.run(host="0.0.0.0", port=port, debug=debug)
