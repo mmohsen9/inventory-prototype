@@ -376,6 +376,7 @@ class CountSession(db.Model):
     location_id = db.Column(db.Integer, db.ForeignKey("locations.id"))
     count_date = db.Column(db.Date, default=datetime.utcnow)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(20), default="open")  # open / pending_review / approved / queued / posted / failed
     foodics_reference = db.Column(db.String(80), nullable=True)
 
@@ -479,6 +480,55 @@ class SystemSetting(db.Model):
             s.value = str(val) if val is not None else ""
         db.session.commit()
         return s
+
+
+class Notification(db.Model):
+    __tablename__ = "notifications"
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    type = db.Column(db.String(50), default="new_inventory_item")  # new_inventory_item, foodics_sync, warning, info
+    item_sku = db.Column(db.String(50), nullable=True)
+    related_id = db.Column(db.Integer, nullable=True)
+    has_supplier = db.Column(db.Boolean, default=False)
+    supplier_name = db.Column(db.String(150), nullable=True)
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def time_ago_ar(self):
+        diff = datetime.utcnow() - (self.created_at or datetime.utcnow())
+        seconds = max(0, int(diff.total_seconds()))
+        if seconds < 60:
+            return "الآن"
+        elif seconds < 3600:
+            m = seconds // 60
+            return f"منذ {m} دقيقة"
+        elif seconds < 86400:
+            h = seconds // 3600
+            return f"منذ {h} ساعة"
+        else:
+            d = seconds // 86400
+            return f"منذ {d} يوم"
+
+    @property
+    def time_ago_en(self):
+        diff = datetime.utcnow() - (self.created_at or datetime.utcnow())
+        seconds = max(0, int(diff.total_seconds()))
+        if seconds < 60:
+            return "Just now"
+        elif seconds < 3600:
+            m = seconds // 60
+            return f"{m}m ago"
+        elif seconds < 86400:
+            h = seconds // 3600
+            return f"{h}h ago"
+        else:
+            d = seconds // 86400
+            return f"{d}d ago"
+
+    def get_time_ago(self, lang="ar"):
+        return self.time_ago_en if lang == "en" else self.time_ago_ar
 
 
 def record_stock_movement(item_id, location_id, movement_type, quantity_change, reference_type=None, reference_id=None, notes=None, user_id=None):

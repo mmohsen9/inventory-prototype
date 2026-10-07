@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t('receipt_voucher') }} #{{ purchase.id }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>🧾 {{ t('receipt_voucher') }} #{{ purchase.id }} - {{ purchase.supplier_name }}</h2>
+        <p>{{ t('invoice_number') }}: <strong>{{ purchase.invoice_number or '-' }}</strong> | {{ t('receiving_location') }}: <strong>{{ loc_name(purchase.location) }}</strong></p>
+    </div>
+    <div class="page-actions">
+        <span class="badge badge-{{ purchase.status }}" style="font-size: 14px; padding: 6px 14px;">
+            {{ status_name(purchase) }}
+        </span>
+        <button type="button" class="btn btn-secondary" onclick="window.print()">
+            🖨️ {{ t('print') }}
+        </button>
+        <a href="{{ url_for('purchases_list') }}" class="btn btn-secondary">
+            🔙 {{ t('back_to_list') }}
+        </a>
+    </div>
+</div>
+
+<!-- ملخص السند العلوي -->
+<div class="kpi-grid" style="margin-bottom: 20px;">
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <h4>{{ t('supplier') }}</h4>
+            <div style="font-size: 18px; font-weight: 700; color: var(--gray-900);">{{ purchase.supplier_name }}</div>
+            <div class="kpi-desc">{{ t('invoice_ref_label') }}: {{ purchase.invoice_number or '-' }}</div>
+        </div>
+        <div class="kpi-icon icon-purple">🏢</div>
+    </div>
+    <div class="kpi-card" style="border: 2px solid #86efac; background: #f0fdf4;">
+        <div class="kpi-content">
+            <h4>{{ 'المستلم ووقت الاستلام' if lang == 'ar' else 'Received by & Time' }}</h4>
+            <div style="font-size: 16px; font-weight: 800; color: #166534;">
+                👤 {{ purchase.creator.name if purchase.creator else '-' }}
+            </div>
+            <div class="kpi-desc" style="color: #15803d; font-weight: 700; margin-top: 2px;">
+                🕒 {{ purchase.created_at.strftime('%Y-%m-%d %H:%M') }}
+            </div>
+        </div>
+        <div class="kpi-icon" style="background: #dcfce7; color: #166534;">📥</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <h4>{{ t('total') }}</h4>
+            <div class="kpi-value" style="color: var(--primary);">{{ "{:,.2f}".format(purchase.total_amount) }} <span style="font-size: 14px; font-weight: normal;">{{ currency }}</span></div>
+            <div class="kpi-desc">{{ t('items') }}: {{ purchase.lines|length }} | {{ t('invoice_date_label') }}: {{ purchase.invoice_date or purchase.created_at.strftime('%Y-%m-%d') }}</div>
+        </div>
+        <div class="kpi-icon icon-green">💰</div>
+    </div>
+</div>
+
+{% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+<!-- نموذج إضافة صنف للسند -->
+<div class="card no-print" style="border: 2px solid var(--primary-light);">
+    <div class="card-header">
+        <div class="card-title">➕ {{ t('add_item_search') }}</div>
+        <div style="font-size: 12px; color: var(--gray-500);">
+            💡 {{ t('add_item_search_hint') }}
+            {% if user.role == 'admin' and purchase.status != 'draft' %}
+            <span style="color: var(--primary); font-weight: 700; margin-right: 8px;">({{ t('admin_edit_hint') }})</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- حقل قارئ الباركود الخارجي السريع -->
+    <div style="margin-bottom: 16px; background: #faf5ff; padding: 12px; border-radius: var(--radius-md); border: 1px dashed #d8b4fe;">
+        <label style="font-size: 13px; font-weight: 700; color: #6b21a8; display: block; margin-bottom: 4px;">
+            📷 {{ t('barcode_scanner') }}:
+        </label>
+        <input type="text" id="barcode-scanner-input" class="form-control" placeholder="{{ t('barcode_scanner_placeholder') }}" autocomplete="off">
+    </div>
+
+    <form method="POST" id="addLineForm">
+        <input type="hidden" name="action" value="add_line">
+        <div class="form-grid">
+            <div class="form-group" style="position: relative;">
+                <label for="item_search">{{ t('search_item_by_name') }} *</label>
+                <input type="text" id="item_search" class="form-control item-search-input"
+                       placeholder="{{ t('search_item_by_name_placeholder') }}" autocomplete="off"
+                       data-supplier="{{ purchase.supplier_name }}"
+                       data-results-target="searchResults" data-code-target="code" data-unit-target="unit" data-cost-target="unit_cost">
+                <div id="searchResults" style="display:none; position:absolute; top:100%; right:0; left:0; background:white; border:1px solid #cbd5e1; border-radius:8px; z-index:1000; box-shadow:var(--shadow-lg); max-height:220px; overflow-y:auto;"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="code">{{ t('item_sku') }} *</label>
+                <input type="text" id="code" name="code" class="form-control" placeholder="sk-0102" required>
+            </div>
+
+            <div class="form-group">
+                <label for="unit">{{ t('unit_measure') }}</label>
+                <input type="text" id="unit" name="unit" class="form-control" placeholder="{{ t('unit_measure_auto') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="quantity">{{ t('supplied_qty') }} *</label>
+                <input type="number" step="any" id="quantity" name="quantity" class="form-control" placeholder="{{ t('quantity') }}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="unit_cost">{{ t('unit_cost') }} ({{ currency }})</label>
+                <input type="number" step="0.001" id="unit_cost" name="unit_cost" class="form-control" placeholder="{{ t('cost') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="notes">{{ t('notes') }}</label>
+                <input type="text" id="notes" name="notes" class="form-control" placeholder="{{ t('notes') }}">
+            </div>
+
+            <div class="form-group" style="display: flex; flex-direction: column; justify-content: flex-end;">
+                <div style="font-size: 13px; color: var(--gray-600); margin-bottom: 8px;">
+                    {{ t('line_total') }}: <strong id="line_total_preview" style="color: var(--primary); font-size: 16px;">0.00 {{ currency }}</strong>
+                </div>
+                <button type="submit" class="btn btn-primary" style="height: 42px;">
+                    ➕ {{ t('add_line_btn') }}
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<!-- جدول بنود الفاتورة -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">📋 {{ t('voucher_lines') }} ({{ purchase.lines|length }} {{ t('items') }})</div>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>{{ t('item_sku') }}</th>
+                    <th>{{ t('item_name') }}</th>
+                    <th>{{ t('unit_measure') }}</th>
+                    <th>{{ t('supplied_qty') }}</th>
+                    <th>{{ t('unit_cost') }}</th>
+                    <th>{{ t('notes') }}</th>
+                    <th>{{ t('total_cost') }}</th>
+                    {% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+                    <th class="no-print">{{ t('actions') }}</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for line in purchase.lines %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td><code>{{ line.item.sku if line.item else '-' }}</code></td>
+                    <td>
+                        <strong>{{ item_name(line.item) if line.item else '-' }}</strong>
+                    </td>
+                    <td><span class="badge badge-draft">{{ line.item.storage_unit if line.item else '-' }}</span></td>
+                    <td style="font-weight: 700; font-size: 15px;">
+                        {% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+                        <form method="POST" style="display: flex; gap: 4px; align-items: center;">
+                            <input type="hidden" name="action" value="update_line">
+                            <input type="hidden" name="line_id" value="{{ line.id }}">
+                            <input type="number" step="any" name="new_quantity" value="{{ line.quantity }}" class="form-control" style="width: 90px; padding: 4px 8px; font-size: 13px;" required>
+                            <input type="hidden" name="new_cost" value="{{ line.unit_cost }}">
+                            <button type="submit" class="btn btn-secondary btn-sm" title="{{ t('update_qty') }}">💾</button>
+                        </form>
+                        {% else %}
+                        {{ line.quantity }}
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 700; font-size: 15px;">
+                        {% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+                        <form method="POST" style="display: flex; gap: 4px; align-items: center;">
+                            <input type="hidden" name="action" value="update_line">
+                            <input type="hidden" name="line_id" value="{{ line.id }}">
+                            <input type="hidden" name="new_quantity" value="{{ line.quantity }}">
+                            <input type="number" step="0.001" name="new_cost" value="{{ line.unit_cost }}" class="form-control" style="width: 100px; padding: 4px 8px; font-size: 13px;" required>
+                            <button type="submit" class="btn btn-secondary btn-sm" title="{{ t('update_qty') }}">💾</button>
+                        </form>
+                        {% else %}
+                        {{ "{:,.2f}".format(line.unit_cost) }} {{ currency }}
+                        {% endif %}
+                    </td>
+                    <td style="font-size: 12px; color: var(--gray-600);">
+                        {% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+                        <form method="POST" style="display: flex; gap: 4px; align-items: center;">
+                            <input type="hidden" name="action" value="update_line">
+                            <input type="hidden" name="line_id" value="{{ line.id }}">
+                            <input type="hidden" name="new_quantity" value="{{ line.quantity }}">
+                            <input type="hidden" name="new_cost" value="{{ line.unit_cost }}">
+                            <input type="text" name="new_notes" value="{{ line.notes or '' }}" class="form-control" style="width: 150px; padding: 4px 8px; font-size: 13px;">
+                            <button type="submit" class="btn btn-secondary btn-sm">💾</button>
+                        </form>
+                        {% else %}
+                        {{ line.notes or '-' }}
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 700; color: #1e1b4b;">
+                        {{ "{:,.2f}".format(line.total_cost) }} {{ currency }}
+                    </td>
+                    {% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+                    <td class="no-print">
+                        <form method="POST" style="display:inline;">
+                            <input type="hidden" name="action" value="delete_line">
+                            <input type="hidden" name="line_id" value="{{ line.id }}">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('{{ t('delete_confirm') }}')">
+                                🗑️ {{ t('delete') }}
+                            </button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align: center; color: var(--gray-400); padding: 30px;">
+                        {{ t('no_lines_yet') }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="background: var(--gray-50); font-weight: 700; font-size: 15px;">
+                    <td colspan="4" style="text-align: left;">{{ t('total') }}:</td>
+                    <td>{{ purchase.lines|sum(attribute='quantity') }}</td>
+                    <td>-</td>
+                    <td style="color: var(--primary); font-size: 17px;">
+                        {{ "{:,.2f}".format(purchase.total_amount) }} {{ currency }}
+                    </td>
+                    {% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+                    <td class="no-print"></td>
+                    {% endif %}
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- بطاقة توثيق الاستلام والتوقيع (تظهر في العرض والطباعة) -->
+<div class="card" style="margin-bottom: 20px; background: #f8fafc; border: 1px solid var(--gray-200);">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; padding: 14px;">
+        <div style="background: white; padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--gray-200);">
+            <div style="font-weight: 700; color: #1e3a8a; margin-bottom: 6px; font-size: 13px;">
+                📥 {{ 'جهة الاستلام المستودعي:' if lang == 'ar' else 'Receiving Warehouse/Branch:' }}
+            </div>
+            <div style="font-size: 13px; color: var(--gray-700);"><strong>{{ t('receiving_location') }}:</strong> {{ loc_name(purchase.location) }}</div>
+            <div style="font-size: 13px; color: var(--gray-700); margin-top: 4px;"><strong>{{ t('supplier') }}:</strong> {{ purchase.supplier_name }}</div>
+        </div>
+
+        <div style="background: white; padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--gray-200);">
+            <div style="font-weight: 700; color: #047857; margin-bottom: 6px; font-size: 13px;">
+                ✍️ {{ 'بيانات من قام بالاستلام الفعلي:' if lang == 'ar' else 'Received By & Timestamp:' }}
+            </div>
+            <div style="font-size: 13px; color: var(--gray-700);">
+                <strong>{{ 'اسم المستلم:' if lang == 'ar' else 'Receiver Name:' }}</strong>
+                <span style="font-weight: 700; color: #166534;">👤 {{ purchase.creator.name if purchase.creator else '-' }}</span>
+            </div>
+            <div style="font-size: 13px; color: var(--gray-700); margin-top: 4px;">
+                <strong>{{ 'تاريخ ووقت الاستلام:' if lang == 'ar' else 'Receipt Date & Time:' }}</strong>
+                <span style="font-weight: 700; color: #166534;">🕒 {{ purchase.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+            <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--gray-200); font-size: 12px; color: var(--gray-500);">
+                توقيع المستلم: _______________________
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- المرفقات وإرسال الفاتورة للمراجعة -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 20px;">
+    <!-- بطاقة المرفقات -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">📎 {{ t('invoice_attachments') }} ({{ attachments|length }})</div>
+        </div>
+
+        {% if attachments %}
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+            {% for att in attachments %}
+            <div style="border: 1px solid var(--gray-200); border-radius: var(--radius-md); padding: 8px; text-align: center;">
+                <a href="{{ att }}" target="_blank" style="text-decoration: none;">
+                    {% if att.endswith('.pdf') %}
+                    <div style="font-size: 32px;">📄</div>
+                    <span style="font-size: 11px; color: var(--primary);">{{ t('view_pdf') }}</span>
+                    {% else %}
+                    <img src="{{ att }}" style="width: 100px; height: 100px; object-fit: cover; border-radius: var(--radius-sm);" alt="{{ t('invoice_attachment') }}">
+                    <div style="font-size: 11px; color: var(--gray-600); margin-top: 4px;">{{ t('zoom_image') }} 🔍</div>
+                    {% endif %}
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="color: var(--warning); font-size: 13px; margin-bottom: 16px; background: var(--warning-light); padding: 10px; border-radius: var(--radius-sm);">
+            ⚠️ {{ t('attachment_warning') }}
+        </div>
+        {% endif %}
+
+        {% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+        <form method="POST" enctype="multipart/form-data" style="border-top: 1px solid var(--gray-100); padding-top: 14px;">
+            <input type="hidden" name="action" value="upload_attachment">
+            <div class="form-group">
+                <label>{{ t('upload_additional') }}</label>
+                <input type="file" name="attachment" class="form-control" accept="image/*,application/pdf" required>
+            </div>
+            <button type="submit" class="btn btn-secondary btn-sm">📎 {{ t('upload_attachment_btn') }}</button>
+        </form>
+        {% endif %}
+    </div>
+
+    <!-- بطاقة إجراءات السند والاعتماد -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">⚙️ {{ t('voucher_actions') }}</div>
+        </div>
+
+        {% if purchase.status == 'draft' %}
+        <p style="font-size: 14px; color: var(--gray-600); margin-bottom: 16px;">
+            {{ t('draft_submit_hint') }}
+        </p>
+        <form method="POST">
+            <input type="hidden" name="action" value="submit_for_review">
+            <button type="submit" class="btn btn-primary btn-block" style="padding: 14px; font-size: 16px;"
+                    onclick="return confirm('{{ t('submit_confirm') }}')">
+                📨 {{ t('submit_btn') }} &larr;
+            </button>
+        </form>
+
+        {% elif purchase.status == 'submitted' and user.role in ['accountant', 'admin'] %}
+        <div style="background: var(--warning-light); padding: 14px; border-radius: var(--radius-md); margin-bottom: 16px; font-size: 13px;">
+            ⏳ {{ t('pending_accountant') }}
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <form method="POST" action="{{ url_for('purchase_review', purchase_id=purchase.id) }}" style="flex: 1;">
+                <input type="hidden" name="action" value="approve">
+                <button type="submit" class="btn btn-success btn-block" style="padding: 12px;" onclick="return confirm('{{ t('approve_confirm') }}')">
+                    ✅ {{ t('approve_invoice') }}
+                </button>
+            </form>
+            <form method="POST" action="{{ url_for('purchase_review', purchase_id=purchase.id) }}" style="flex: 1;">
+                <input type="hidden" name="action" value="reject">
+                <input type="text" name="reason" class="form-control" placeholder="{{ t('reject_reason_placeholder') }}" style="margin-bottom: 6px;" required>
+                <button type="submit" class="btn btn-danger btn-block" style="padding: 8px;">
+                    ❌ {{ t('reject_invoice') }}
+                </button>
+            </form>
+        </div>
+        {% else %}
+        <div style="font-size: 14px; color: var(--gray-700);">
+            <p>{{ t('status') }}: <span class="badge badge-{{ purchase.status }}">{{ status_name(purchase) }}</span></p>
+            {% if purchase.foodics_reference %}
+            <p style="margin-top: 8px;">Foodics API: <code>{{ purchase.foodics_reference }}</code></p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

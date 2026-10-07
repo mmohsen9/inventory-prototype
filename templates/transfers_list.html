@@ -49,7 +49,7 @@
                     <th>{{ t('to_location') }}</th>
                     <th>{{ t('date') }}</th>
                     <th>{{ t('items') }}</th>
-                    <th>{{ t('details') }}</th>
+                    <th>{{ 'مسؤول الإرسال والاستلام' if lang == 'ar' else 'Dispatch & Receipt' }}</th>
                     <th>{{ t('status') }}</th>
                     <th>{{ t('actions') }}</th>
                 </tr>
@@ -62,7 +62,27 @@
                     <td><strong>{{ loc_name(tr.to_location) }}</strong></td>
                     <td style="color: var(--gray-600); font-size: 13px;">{{ tr.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td><span class="badge badge-draft">{{ tr.lines|length }}</span></td>
-                    <td style="font-size: 13px; color: var(--gray-600);">{{ tr.creator.name if tr.creator else '-' }}</td>
+                    <td style="font-size: 12px; min-width: 150px;">
+                        <div style="color: var(--gray-700);">
+                            <span style="color: var(--gray-500);">{{ 'المُرسل:' if lang == 'ar' else 'Sender:' }}</span> {{ tr.creator.name if tr.creator else '-' }}
+                        </div>
+                        {% if tr.confirmer %}
+                        <div style="color: #047857; margin-top: 3px; font-weight: 600;">
+                            <span>{{ 'المُستلم:' if lang == 'ar' else 'Receiver:' }}</span> {{ tr.confirmer.name }}
+                            <div style="font-size: 11px; color: #059669; font-weight: normal;">
+                                🕒 {{ tr.confirmed_at.strftime('%Y-%m-%d %H:%M') if tr.confirmed_at else '-' }}
+                            </div>
+                        </div>
+                        {% elif tr.status == 'in_transit' %}
+                        <div style="color: #d97706; font-size: 11px; margin-top: 3px;">
+                            ⏳ {{ 'بانتظار استلام الفرع' if lang == 'ar' else 'Awaiting branch receipt' }}
+                        </div>
+                        {% else %}
+                        <div style="color: var(--gray-400); font-size: 11px; margin-top: 3px;">
+                            -
+                        </div>
+                        {% endif %}
+                    </td>
                     <td>
                         <span class="badge badge-{{ tr.status }}">{{ status_name(tr) }}</span>
                     </td>

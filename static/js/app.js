@@ -96,6 +96,16 @@ function initItemAutocompletes() {
                         headerEl.style.color = '#166534';
                         headerEl.innerHTML = `📦 أصناف المورد المعتمدة (${items.length} صنف):`;
                         resultsContainer.appendChild(headerEl);
+                    } else if (!supplier && !query) {
+                        const headerEl = document.createElement('div');
+                        headerEl.style.padding = '8px 14px';
+                        headerEl.style.background = '#f0fdf4';
+                        headerEl.style.borderBottom = '1px solid #bbf7d0';
+                        headerEl.style.fontSize = '12px';
+                        headerEl.style.fontWeight = '700';
+                        headerEl.style.color = '#166534';
+                        headerEl.innerHTML = `📦 الأصناف المتاحة في المخزون (${items.length}):`;
+                        resultsContainer.appendChild(headerEl);
                     } else if (supplier && query) {
                         const headerEl = document.createElement('div');
                         headerEl.style.padding = '8px 14px';
@@ -151,19 +161,19 @@ function initItemAutocompletes() {
         input.addEventListener('input', () => {
             clearTimeout(debounceTimer);
             const query = input.value.trim();
-            if (query.length < 2 && !supplier) {
-                resultsContainer.style.display = 'none';
+            if (query.length === 0) {
+                fetchAndShowItems('');
                 return;
             }
 
             debounceTimer = setTimeout(() => {
                 fetchAndShowItems(query);
-            }, 250);
+            }, 200);
         });
 
-        // عند النقر أو التركيز على حقل البحث وكان هناك مورد، عرض أصنافه فوراً
+        // عند النقر أو التركيز على حقل البحث، عرض الأصناف فوراً
         input.addEventListener('focus', () => {
-            if (supplier && input.value.trim().length === 0) {
+            if (input.value.trim().length === 0) {
                 fetchAndShowItems('');
             }
         });

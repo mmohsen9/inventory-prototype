@@ -19,7 +19,7 @@ except ImportError:
 from datetime import datetime, timedelta
 from models import (
     db, SyncQueue, SyncLog, PurchaseTransaction, TransferOrder, NewItemRequest, CountSession, SystemSetting,
-    Location, Item, Supplier
+    Location, Item, Supplier, Notification, ItemSupplier
 )
 
 ERROR_TRANSLATION_MAP = {
@@ -237,6 +237,147 @@ def sync_branches_from_foodics(token=None, base_url=None):
 # -----------------------------------------------------------------------------
 # مزامنة البيانات التأسيسية: أصناف المخزون الخام
 # -----------------------------------------------------------------------------
+def process_foodics_item_payload(item_data, trigger_notification=True):
+    """
+    معالجة صنف مخزون مستلم من فوديكس (عبر الويب هوك أو المزامنة المباشرة)
+    وإضافته إلى جدول Items وتوليد إشعار فوري في النظام.
+    """
+    if not item_data or not isinstance(item_data, dict):
+        return None, False, "بيانات الصنف غير صالحة"
+
+    f_id = str(item_data.get("id") or "").strip()
+    sku = (item_data.get("sku") or "").strip()
+    name = item_data.get("name") or ""
+    name_ar = item_data.get("name_localized") or name
+    storage_unit = item_data.get("storage_unit") or ""
+    ingredient_unit = str(item_data.get("ingredient_unit") or "")
+
+    try:
+        factor = float(item_data.get("storage_to_ingredient_factor") or 1.0)
+    except (ValueError, TypeError):
+        factor = 1.0
+
+    try:
+        cost = float(item_data.get("cost") or 0.0)
+    except (ValueError, TypeError):
+        cost = 0.0
+
+    barcode = str(item_data.get("barcode") or "").strip()
+
+    if not sku:
+        return None, False, "رمز الصنف (SKU) غير موجود"
+
+    item = None
+    if f_id:
+        item = Item.query.filter_by(foodics_id=f_id).first()
+    if not item and sku:
+        item = Item.query.filter_by(sku=sku).first()
+
+    is_new = False
+    if item:
+        if f_id:
+            item.foodics_id = f_id
+        if storage_unit:
+            item.storage_unit = storage_unit
+        if ingredient_unit:
+            item.ingredient_unit = ingredient_unit
+        if cost > 0:
+            item.cost = cost
+        if name:
+            item.name_en = name
+        if name_ar:
+            item.name_ar = name_ar
+        if barcode and not item.barcode:
+            item.barcode = barcode
+        item.sync_status = "synced"
+        item.last_synced_at = datetime.utcnow()
+    else:
+        is_new = True
+        item = Item(
+            foodics_id=f_id or None,
+            sku=sku,
+            name_ar=name_ar,
+            name_en=name,
+            storage_unit=storage_unit,
+            ingredient_unit=ingredient_unit,
+            storage_to_ingredient_factor=factor,
+            cost=cost,
+            barcode=barcode or None,
+            sync_status="synced",
+            last_synced_at=datetime.utcnow(),
+        )
+        db.session.add(item)
+        db.session.flush()
+
+    # فحص وربط المورد إذا وُجد في البيانات الواردة
+    incoming_supplier = None
+    sup_name = item_data.get("supplier_name") or item_data.get("supplier")
+    if isinstance(sup_name, dict):
+        sup_name = sup_name.get("name") or sup_name.get("name_ar")
+    if not sup_name and "suppliers" in item_data and isinstance(item_data["suppliers"], list) and len(item_data["suppliers"]) > 0:
+        first_s = item_data["suppliers"][0]
+        if isinstance(first_s, dict):
+            sup_name = first_s.get("name") or first_s.get("name_ar")
+        elif isinstance(first_s, str):
+            sup_name = first_s
+
+    if sup_name and isinstance(sup_name, str) and sup_name.strip():
+        clean_s_name = sup_name.strip()
+        existing_sup = Supplier.query.filter(
+            db.or_(
+                db.func.lower(Supplier.name) == clean_s_name.lower(),
+                Supplier.code == clean_s_name
+            )
+        ).first()
+        if not existing_sup:
+            existing_sup = Supplier(name=clean_s_name)
+            db.session.add(existing_sup)
+            db.session.flush()
+
+        link = ItemSupplier.query.filter_by(item_id=item.id, supplier_id=existing_sup.id).first()
+        if not link:
+            link = ItemSupplier(
+                item_id=item.id,
+                supplier_id=existing_sup.id,
+                order_unit=item.storage_unit,
+                cost_per_order_unit=item.cost
+            )
+            db.session.add(link)
+            db.session.flush()
+
+    # تحديد ما إذا كان الصنف مربوطاً بمورد أم لا
+    suppliers_list = [assoc.supplier for assoc in item.item_suppliers if assoc.supplier]
+    has_supplier = len(suppliers_list) > 0
+    supplier_display = "، ".join([s.name for s in suppliers_list]) if has_supplier else None
+
+    if is_new and trigger_notification:
+        item_display_name = name_ar or name or sku
+        if has_supplier:
+            sup_msg = f"🤝 المورد: {supplier_display} (مربوط بنجاح ✅)"
+            title_tag = "مربوط بمورد ✅"
+        else:
+            sup_msg = "⚠️ حالة المورد: غير مربوط بأي مورد حالياً (يلزم تعيين مورد للصنف)"
+            title_tag = "غير مربوط بمورد ⚠️"
+
+        notif = Notification(
+            title=f"تمت إضافة مادة مخزون جديدة من فوديكس ({title_tag}) 📦",
+            message=f"تم استلام الصنف الجديد '{item_display_name}' (كود SKU: {sku}) من فوديكس بوحدة تخزين '{storage_unit or 'قطعة'}' وتكلفة {cost:.2f} ر.س. {sup_msg}",
+            type="new_inventory_item",
+            item_sku=sku,
+            related_id=item.id,
+            has_supplier=has_supplier,
+            supplier_name=supplier_display,
+            is_read=False,
+            created_at=datetime.utcnow()
+        )
+        db.session.add(notif)
+
+    return item, is_new, "تمت المعالجة بنجاح"
+
+
+# -----------------------------------------------------------------------------
+# مزامنة البيانات التأسيسية: أصناف المخزون الخام
+# -----------------------------------------------------------------------------
 def sync_inventory_items_from_foodics(token=None, base_url=None):
     token = token or SystemSetting.get_val("foodics_token")
     base_url = (base_url or SystemSetting.get_val("foodics_base_url") or "https://api-sandbox.foodics.com/v5").rstrip("/")
@@ -251,6 +392,7 @@ def sync_inventory_items_from_foodics(token=None, base_url=None):
         matched_count = 0
         new_count = 0
         total_fetched = 0
+        new_item_names = []
 
         while page <= 10:  # حد أمان لقراءة حتى 500 صنف
             res = requests.get(f"{base_url}/inventory_items?page={page}", headers=headers, timeout=20)
@@ -265,48 +407,13 @@ def sync_inventory_items_from_foodics(token=None, base_url=None):
             total_fetched += len(items)
 
             for fi in items:
-                f_id = str(fi.get("id"))
-                sku = (fi.get("sku") or "").strip()
-                name = fi.get("name") or ""
-                name_ar = fi.get("name_localized") or name
-                storage_unit = fi.get("storage_unit") or ""
-                ingredient_unit = str(fi.get("ingredient_unit") or "")
-                factor = float(fi.get("storage_to_ingredient_factor") or 1.0)
-                cost = float(fi.get("cost") or 0.0)
-
-                item = None
-                if f_id:
-                    item = Item.query.filter_by(foodics_id=f_id).first()
-                if not item and sku:
-                    item = Item.query.filter_by(sku=sku).first()
-
-                if item:
-                    item.foodics_id = f_id
-                    if not item.storage_unit and storage_unit:
-                        item.storage_unit = storage_unit
-                    if not item.ingredient_unit and ingredient_unit:
-                        item.ingredient_unit = ingredient_unit
-                    if item.cost == 0 and cost > 0:
-                        item.cost = cost
-                    item.sync_status = "synced"
-                    item.last_synced_at = datetime.utcnow()
+                item_obj, is_new, _ = process_foodics_item_payload(fi, trigger_notification=True)
+                if is_new:
+                    new_count += 1
+                    if item_obj:
+                        new_item_names.append(item_obj.name_ar or item_obj.name_en or item_obj.sku)
+                elif item_obj:
                     matched_count += 1
-                else:
-                    if sku:
-                        new_item = Item(
-                            foodics_id=f_id,
-                            sku=sku,
-                            name_ar=name_ar,
-                            name_en=name,
-                            storage_unit=storage_unit,
-                            ingredient_unit=ingredient_unit,
-                            storage_to_ingredient_factor=factor,
-                            cost=cost,
-                            sync_status="synced",
-                            last_synced_at=datetime.utcnow()
-                        )
-                        db.session.add(new_item)
-                        new_count += 1
 
             meta = data.get("meta", {})
             last_page = meta.get("last_page", page)
@@ -315,7 +422,16 @@ def sync_inventory_items_from_foodics(token=None, base_url=None):
             page += 1
 
         db.session.commit()
-        return True, f"تم فحص {total_fetched} صنف من فوديكس: تم ربط ومطابقة {matched_count} صنف، وإضافة {new_count} صنف جديد."
+
+        if new_count > 0:
+            sample_names = "، ".join(new_item_names[:4])
+            if len(new_item_names) > 4:
+                sample_names += f" و{len(new_item_names) - 4} أصناف أخرى"
+            msg = f"تم فحص {total_fetched} صنف من فوديكس: تم ربط ومطابقة {matched_count} صنف، وإضافة {new_count} صنف جديد ({sample_names}) مع إشعار للمخزون."
+        else:
+            msg = f"تم فحص {total_fetched} صنف من فوديكس: تم ربط ومطابقة {matched_count} صنف، ولم يتم العثور على أصناف جديدة غير مضافة."
+
+        return True, msg
     except Exception as exc:
         db.session.rollback()
         return False, f"خطأ أثناء مزامنة أصناف المخزون: {str(exc)}"

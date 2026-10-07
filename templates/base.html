@@ -73,6 +73,71 @@
             </nav>
 
             <div class="nav-user">
+                <!-- جرس الإشعارات والتنبيهات المباشرة -->
+                <div class="notif-bell-wrapper" id="notifBellWrapper">
+                    <button type="button" class="btn-notif-bell" id="notifBellBtn" onclick="toggleNotifDropdown(event)" title="{{ 'الإشعارات والتنبيهات' if lang == 'ar' else 'Notifications' }}">
+                        🔔
+                        {% if unread_notifications_count > 0 %}
+                        <span class="notif-badge" id="navNotifBadge">{{ unread_notifications_count }}</span>
+                        {% else %}
+                        <span class="notif-badge" id="navNotifBadge" style="display: none;">0</span>
+                        {% endif %}
+                    </button>
+
+                    <div class="notif-dropdown" id="notifDropdown">
+                        <div class="notif-header">
+                            <h4>🔔 {{ 'إشعارات المخزون' if lang == 'ar' else 'Inventory Notifications' }}</h4>
+                            <button type="button" id="markAllReadBtn" onclick="markAllNotificationsRead()" class="btn-sm" style="background: none; border: none; color: #4f46e5; cursor: pointer; font-size: 11px; font-weight: 700; text-decoration: underline; {% if unread_notifications_count == 0 %}display: none;{% endif %}">
+                                {{ 'تحديد الكل كمقروء' if lang == 'ar' else 'Mark all as read' }}
+                            </button>
+                        </div>
+                        <ul class="notif-list" id="notifList">
+                            {% for n in unread_notifications %}
+                            <li class="notif-item unread" id="notifItem-{{ n.id }}" onclick="markNotifRead({{ n.id }})">
+                                <div class="notif-icon-box">
+                                    {% if n.type == 'new_inventory_item' %}📦{% else %}⚡{% endif %}
+                                </div>
+                                <div class="notif-content">
+                                    <div class="notif-title">{{ n.title }}</div>
+                                    <div class="notif-desc">{{ n.message }}</div>
+                                    <div class="notif-meta" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px;">
+                                        <span>🕒 {{ n.get_time_ago(lang) }}</span>
+                                        {% if n.item_sku %}
+                                        <span>• SKU: <code>{{ n.item_sku }}</code></span>
+                                        {% endif %}
+                                        {% if n.has_supplier %}
+                                        <span style="background: #ecfdf5; color: #047857; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 700; border: 1px solid #a7f3d0;">
+                                            🤝 مربوط بالمورد: {{ n.supplier_name }}
+                                        </span>
+                                        {% else %}
+                                        <span style="background: #fef2f2; color: #b91c1c; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 700; border: 1px solid #fecaca;">
+                                            ⚠️ غير مربوط بمورد
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    {% if n.item_sku %}
+                                    <div style="margin-top: 8px;">
+                                        <button type="button" class="btn-sm btn-primary" onclick="event.stopPropagation(); openResolveModal('{{ n.item_sku }}', {{ n.id }});" style="font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 700; background: #4f46e5; color: white; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                                            ⚙️ معالجة وربط المورد / تعديل
+                                        </button>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </li>
+                            {% else %}
+                            <li class="notif-empty" id="notifEmptyState">
+                                {{ 'لا توجد إشعارات جديدة حالياً' if lang == 'ar' else 'No new notifications' }}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        <div class="notif-footer">
+                            <a href="{{ url_for('foodics_hub') }}" style="font-size: 12px; font-weight: 700; color: #4f46e5; text-decoration: none;">
+                                ⚡ {{ 'مركز فوديكس ومتابعة الأصناف' if lang == 'ar' else 'Foodics Hub & Items' }} &larr;
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
                 <a href="{{ url_for('toggle_lang') }}" class="btn-sm" style="background: rgba(255,255,255,0.15); color: white; text-decoration: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Switch Language">
                     🌐 {{ t('switch_lang') }}
                 </a>
@@ -112,11 +177,373 @@
         {% block content %}{% endblock %}
     </main>
 
+    <!-- حاوية التنبيهات المنبثقة اللحظية (Toasts) -->
+    <div class="toast-container" id="toastContainer"></div>
+
     <footer>
         <p>نظام إدخال حركات المخزون - مساكن رفاء &copy; {{ now.year }} | متوافق مع Foodics API</p>
     </footer>
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+    // التحكم في قائمة الإشعارات المنسدلة والتحديث الحي
+    let knownNotifIds = new Set([
+        {% for n in unread_notifications %} {{ n.id }}, {% endfor %}
+    ]);
+
+    function toggleNotifDropdown(e) {
+        if (e) e.stopPropagation();
+        const dd = document.getElementById("notifDropdown");
+        if (dd) {
+            dd.classList.toggle("show");
+        }
+    }
+
+    document.addEventListener("click", function(e) {
+        const wrapper = document.getElementById("notifBellWrapper");
+        const dd = document.getElementById("notifDropdown");
+        if (wrapper && dd && !wrapper.contains(e.target)) {
+            dd.classList.remove("show");
+        }
+    });
+
+    function showLiveToast(title, message) {
+        const container = document.getElementById("toastContainer");
+        if (!container) return;
+        const toast = document.createElement("div");
+        toast.className = "toast-alert";
+        toast.innerHTML = `
+            <div style="font-size: 24px;">📦</div>
+            <div style="flex: 1;">
+                <div style="font-weight: 800; font-size: 13px; margin-bottom: 2px;">${title}</div>
+                <div style="font-size: 12px; color: #cbd5e1; line-height: 1.4;">${message}</div>
+            </div>
+            <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:white; font-size:16px; cursor:pointer;">&times;</button>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => {
+            if (toast.parentElement) toast.remove();
+        }, 8000);
+    }
+
+    function markNotifRead(id) {
+        fetch(`/api/notifications/mark_read/${id}`, { method: "POST" })
+            .then(res => res.json())
+            .then(() => {
+                const item = document.getElementById(`notifItem-${id}`);
+                if (item) {
+                    item.classList.remove("unread");
+                }
+                const badge = document.getElementById("navNotifBadge");
+                if (badge) {
+                    let cur = parseInt(badge.innerText || "0") - 1;
+                    if (cur <= 0) {
+                        badge.style.display = "none";
+                        badge.innerText = "0";
+                        const btn = document.getElementById("markAllReadBtn");
+                        if (btn) btn.style.display = "none";
+                    } else {
+                        badge.innerText = cur;
+                    }
+                }
+            })
+            .catch(() => {});
+    }
+
+    function markAllNotificationsRead() {
+        fetch('/api/notifications/mark_all_read', { method: "POST" })
+            .then(res => res.json())
+            .then(() => {
+                const items = document.querySelectorAll(".notif-item");
+                items.forEach(el => el.classList.remove("unread"));
+                const badge = document.getElementById("navNotifBadge");
+                if (badge) {
+                    badge.style.display = "none";
+                    badge.innerText = "0";
+                }
+                const btn = document.getElementById("markAllReadBtn");
+                if (btn) btn.style.display = "none";
+            })
+            .catch(() => {});
+    }
+
+    // فحص دوري كل 20 ثانية لجلب أي إشعارات جديدة أرسلتها فوديكس
+    setInterval(function() {
+        fetch('/api/notifications/unread')
+            .then(res => res.json())
+            .then(data => {
+                if (!data || data.status !== 'success') return;
+                const badge = document.getElementById("navNotifBadge");
+                const markBtn = document.getElementById("markAllReadBtn");
+                const list = document.getElementById("notifList");
+                
+                if (data.unread_count > 0) {
+                    if (badge) {
+                        badge.innerText = data.unread_count;
+                        badge.style.display = "flex";
+                    }
+                    if (markBtn) markBtn.style.display = "inline-block";
+                } else {
+                    if (badge) badge.style.display = "none";
+                    if (markBtn) markBtn.style.display = "none";
+                }
+
+                // الكشف عن الإشعارات الجديدة لعرض Toast
+                if (data.notifications && data.notifications.length > 0) {
+                    let hasNew = false;
+                    data.notifications.forEach(n => {
+                        if (!knownNotifIds.has(n.id)) {
+                            knownNotifIds.add(n.id);
+                            hasNew = true;
+                            showLiveToast(n.title, n.message);
+                        }
+                    });
+
+                    if (hasNew && list) {
+                        const empty = document.getElementById("notifEmptyState");
+                        if (empty) empty.remove();
+                        
+                        // إعادة بناء القائمة
+                        list.innerHTML = data.notifications.map(n => `
+                            <li class="notif-item unread" id="notifItem-${n.id}" onclick="markNotifRead(${n.id})">
+                                <div class="notif-icon-box">📦</div>
+                                <div class="notif-content">
+                                    <div class="notif-title">${n.title}</div>
+                                    <div class="notif-desc">${n.message}</div>
+                                    <div class="notif-meta" style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px;">
+                                        <span>🕒 ${n.time_ago}</span>
+                                        ${n.sku ? `<span>• SKU: <code>${n.sku}</code></span>` : ''}
+                                        ${n.has_supplier 
+                                            ? `<span style="background: #ecfdf5; color: #047857; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 700; border: 1px solid #a7f3d0;">🤝 مربوط بالمورد: ${n.supplier_name}</span>`
+                                            : `<span style="background: #fef2f2; color: #b91c1c; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 700; border: 1px solid #fecaca;">⚠️ غير مربوط بمورد</span>`
+                                        }
+                                    </div>
+                                    ${n.sku ? `
+                                    <div style="margin-top: 8px;">
+                                        <button type="button" class="btn-sm btn-primary" onclick="event.stopPropagation(); openResolveModal('${n.sku}', ${n.id});" style="font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 700; background: #4f46e5; color: white; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                                            ⚙️ معالجة وربط المورد / تعديل
+                                        </button>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            </li>
+                        `).join('');
+                    }
+                }
+            })
+            .catch(() => {});
+    }, 20000);
+
+    // ==========================================
+    // وظائف نافذة معالجة الصنف وربط المورد (Modal)
+    // ==========================================
+    function openResolveModal(sku, notifId) {
+        const modal = document.getElementById('resolveItemModal');
+        if (!modal) return;
+
+        document.getElementById('resolve_sku').value = sku || '';
+        document.getElementById('resolve_sku_display').value = sku || '';
+        document.getElementById('resolve_notif_id').value = notifId || '';
+        document.getElementById('resolve_name_ar').value = 'جاري التحميل...';
+        document.getElementById('resolve_storage_unit').value = '';
+        document.getElementById('resolve_cost').value = '';
+        document.getElementById('resolve_new_supplier_name').value = '';
+
+        const banner = document.getElementById('resolveCurrentStatusBanner');
+        banner.style.background = '#eff6ff';
+        banner.style.color = '#1e40af';
+        banner.style.border = '1px solid #bfdbfe';
+        banner.innerHTML = '⏳ جاري جلب بيانات الصنف وحالة المورد...';
+
+        modal.style.display = 'flex';
+
+        fetch('/api/items/' + encodeURIComponent(sku) + '/details')
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success' && data.item) {
+                    const item = data.item;
+                    document.getElementById('resolve_name_ar').value = item.name_ar || '';
+                    document.getElementById('resolve_sku_display').value = item.sku;
+                    document.getElementById('resolve_storage_unit').value = item.storage_unit || '';
+                    document.getElementById('resolve_cost').value = item.cost || 0;
+
+                    // تحديث قائمة الموردين
+                    if (data.suppliers && data.suppliers.length > 0) {
+                        const select = document.getElementById('resolve_supplier_id');
+                        const currentVal = select.value;
+                        select.innerHTML = '<option value="">-- اختر مورد من القائمة (أو اكتب اسم مورد جديد أدناه) --</option>';
+                        data.suppliers.forEach(s => {
+                            const opt = document.createElement('option');
+                            opt.value = s.id;
+                            opt.textContent = s.name + (s.code ? ' (' + s.code + ')' : '');
+                            if (item.supplier_id && item.supplier_id === s.id) {
+                                opt.selected = true;
+                            }
+                            select.appendChild(opt);
+                        });
+                    }
+
+                    if (item.has_supplier) {
+                        banner.style.background = '#ecfdf5';
+                        banner.style.color = '#047857';
+                        banner.style.border = '1px solid #a7f3d0';
+                        banner.innerHTML = '🤝 الصنف مربوط حالياً بالمورد: <strong>' + item.supplier_name + '</strong> (يمكنك تغييره أو تعديل بيانات الصنف)';
+                    } else {
+                        banner.style.background = '#fef2f2';
+                        banner.style.color = '#b91c1c';
+                        banner.style.border = '1px solid #fecaca';
+                        banner.innerHTML = '⚠️ الملاحظة الحالية: هذا الصنف غير مربوط بأي مورد حتى الآن! يرجى اختيار مورد أو كتابة اسمه لحل الملاحظة.';
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching item:', err);
+                banner.innerHTML = '⚠️ يمكنك تعديل بيانات الصنف وتعيين المورد وحفظها مباشرة.';
+            });
+    }
+
+    function closeResolveModal() {
+        const modal = document.getElementById('resolveItemModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function submitResolveItemForm(e) {
+        e.preventDefault();
+        const btn = document.getElementById('resolveSubmitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '⏳ جاري الحفظ والمعالجة...';
+
+        const formData = new FormData(document.getElementById('resolveItemForm'));
+        const payload = {};
+        formData.forEach((v, k) => payload[k] = v);
+
+        fetch('/api/items/resolve-observation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<span>💾 حفظ التعديل وربط المورد وحل الملاحظة</span>';
+            if (data.status === 'success') {
+                closeResolveModal();
+                showLiveToast('✅ نجاح المعالجة', data.message);
+                setTimeout(() => {
+                    window.location.reload();
+                }, 900);
+            } else {
+                alert('حدث خطأ: ' + (data.message || 'تعذر معالجة الملاحظة'));
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<span>💾 حفظ التعديل وربط المورد وحل الملاحظة</span>';
+            alert('حدث خطأ أثناء الاتصال بالخادم');
+        });
+    }
+    </script>
+
+    <!-- Modal معالجة صنف المخزون وتعيين المورد -->
+    <div id="resolveItemModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; padding: 16px;">
+        <div style="background: white; border-radius: 16px; width: 100%; max-width: 580px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid #e2e8f0; overflow: hidden;">
+            <!-- Modal Header -->
+            <div style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); color: white; padding: 18px 24px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 24px;">🏷️</span>
+                    <div>
+                        <h3 style="margin: 0; font-size: 17px; font-weight: 800; color: white;">معالجة صنف المخزون وتعيين المورد</h3>
+                        <div style="font-size: 12px; color: #cbd5e1;">ربط الصنف بمورد رسمي وتعديل بيانات التسعير ووحدات التخزين</div>
+                    </div>
+                </div>
+                <button type="button" onclick="closeResolveModal()" style="background: rgba(255,255,255,0.15); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;">&times;</button>
+            </div>
+
+            <!-- Form Body -->
+            <form id="resolveItemForm" onsubmit="submitResolveItemForm(event)" style="padding: 24px;">
+                <input type="hidden" name="sku" id="resolve_sku">
+                <input type="hidden" name="notification_id" id="resolve_notif_id">
+
+                <!-- Current Alert/Status Banner -->
+                <div id="resolveCurrentStatusBanner" style="padding: 10px 14px; border-radius: 8px; margin-bottom: 18px; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                </div>
+
+                <!-- Item Basic Info (Editable) -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 20px;">
+                    <h4 style="font-size: 13px; font-weight: 800; color: #1e293b; margin: 0 0 12px 0; display: flex; align-items: center; gap: 6px;">
+                        <span>📦 بيانات ومواصفات الصنف:</span>
+                    </h4>
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 10px;">
+                        <div>
+                            <label style="font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">اسم الصنف (عربي):</label>
+                            <input type="text" name="name_ar" id="resolve_name_ar" required class="form-control" style="font-size: 13px; font-weight: 700;">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">كود الصنف (SKU):</label>
+                            <input type="text" id="resolve_sku_display" readonly class="form-control" style="background: #e2e8f0; font-family: monospace; font-weight: 800; color: #0f172a; direction: ltr; text-align: center;">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label style="font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">وحدة التخزين:</label>
+                            <input type="text" name="storage_unit" id="resolve_storage_unit" class="form-control" placeholder="كجم / كرتون / حبة..." style="font-size: 13px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">التكلفة التقديرية (ر.س):</label>
+                            <input type="number" step="0.01" name="cost" id="resolve_cost" class="form-control" style="font-size: 13px; font-weight: 700; color: #059669;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Supplier Assignment (Resolve Note) -->
+                <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 10px; padding: 16px; margin-bottom: 20px;">
+                    <h4 style="font-size: 13px; font-weight: 800; color: #166534; margin: 0 0 12px 0; display: flex; align-items: center; gap: 6px;">
+                        <span>🤝 تحديد المورد المعتمد ومعالجة الملاحظة:</span>
+                    </h4>
+
+                    <div style="margin-bottom: 12px;">
+                        <label style="font-size: 12px; font-weight: 700; color: #15803d; display: block; margin-bottom: 4px;">
+                            اختر المورد من قائمة الموردين المعتمدين:
+                        </label>
+                        <select name="supplier_id" id="resolve_supplier_id" class="form-control" style="font-size: 13px; font-weight: 600; padding: 8px 12px; border: 1px solid #86efac; background: white;">
+                            <option value="">-- اختر مورد من القائمة (أو اكتب اسم مورد جديد أدناه) --</option>
+                            {% for sup in all_system_suppliers %}
+                            <option value="{{ sup.id }}">{{ sup.name }} {% if sup.code %}({{ sup.code }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
+                        <div style="flex: 1; height: 1px; background: #cbd5e1;"></div>
+                        <span style="font-size: 11px; font-weight: 700; color: #64748b;">أو إذا كان المورد جديد وغير مسجل:</span>
+                        <div style="flex: 1; height: 1px; background: #cbd5e1;"></div>
+                    </div>
+
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #15803d; display: block; margin-bottom: 4px;">
+                            كتابة اسم مورد جديد لإضافته واعتماده فوراً:
+                        </label>
+                        <input type="text" name="supplier_name" id="resolve_new_supplier_name" placeholder="اكتب اسم المورد الجديد هنا إن لم تجده بالقائمة..." class="form-control" style="font-size: 13px; background: white;">
+                    </div>
+                </div>
+
+                <!-- Footer Action Buttons -->
+                <div style="display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+                    <button type="button" onclick="closeResolveModal()" class="btn btn-secondary" style="padding: 9px 18px; font-size: 13px;">
+                        إلغاء
+                    </button>
+                    <button type="submit" id="resolveSubmitBtn" class="btn btn-primary" style="padding: 9px 24px; font-size: 13px; font-weight: 800; background: #059669; border-color: #059669; display: inline-flex; align-items: center; gap: 6px;">
+                        <span>💾 حفظ التعديل وربط المورد وحل الملاحظة</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

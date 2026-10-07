@@ -6,6 +6,8 @@ import os
 import io
 import csv
 import json
+import uuid
+import random
 from datetime import datetime
 from flask import (
     Flask, render_template, request, redirect, url_for, session, jsonify, flash, Response
@@ -16,7 +18,7 @@ from models import (
     db, User, Location, Item, PurchaseTransaction, PurchaseLine,
     TransferOrder, TransferLine, NewItemRequest, CountSession, CountLine,
     SyncQueue, SyncLog, StockBalance, StockMovement, SystemSetting, record_stock_movement,
-    Supplier, ItemSupplier,
+    Supplier, ItemSupplier, Notification
 )
 import validation_gate as vg
 import sync_queue as sq
@@ -122,6 +124,8 @@ def ensure_seed_data():
 
 def ensure_suppliers_seed():
     """تحميل الموردين وأصنافهم من ملفات الـ CSV إذا لم تكن موجودة."""
+    if app.config.get("TESTING"):
+        return
     try:
         if Supplier.query.count() == 0:
             csv_path = os.path.join(BASE_DIR, "suppliers_export.csv")
@@ -773,11 +777,23 @@ def inject_globals():
     if u and u.role == "branch_staff" and u.location_id:
         branch_incoming_count = TransferOrder.query.filter_by(to_location_id=u.location_id, status="in_transit").count()
 
+    unread_notifications = []
+    unread_notifications_count = 0
+    recent_foodics_items = []
+    if u:
+        unread_notifications = Notification.query.filter_by(is_read=False).order_by(Notification.created_at.desc()).limit(10).all()
+        unread_notifications_count = Notification.query.filter_by(is_read=False).count()
+        recent_foodics_items = Item.query.filter(Item.foodics_id.isnot(None)).order_by(Item.id.desc()).limit(5).all()
+
     return {
         "user": u,
         "current_user": u,
         "pending_reviews_count": pending_count,
         "branch_incoming_count": branch_incoming_count,
+        "unread_notifications": unread_notifications,
+        "unread_notifications_count": unread_notifications_count,
+        "recent_foodics_items": recent_foodics_items,
+        "all_system_suppliers": Supplier.query.order_by(Supplier.name.asc()).all() if u else [],
         "now": datetime.utcnow(),
         "lang": lang,
         "t": t,
@@ -1024,15 +1040,16 @@ def api_search_items():
     else:
         # بحث عام بدون تحديد مورد
         if not query:
-            return jsonify({"results": []})
-        items = Item.query.filter(
-            db.or_(
-                Item.sku.ilike(f"%{query}%"),
-                Item.barcode.ilike(f"%{query}%"),
-                Item.name_ar.ilike(f"%{query}%"),
-                Item.name_en.ilike(f"%{query}%")
-            )
-        ).limit(50).all()
+            items = Item.query.order_by(Item.name_ar.asc()).limit(50).all()
+        else:
+            items = Item.query.filter(
+                db.or_(
+                    Item.sku.ilike(f"%{query}%"),
+                    Item.barcode.ilike(f"%{query}%"),
+                    Item.name_ar.ilike(f"%{query}%"),
+                    Item.name_en.ilike(f"%{query}%")
+                )
+            ).limit(50).all()
         is_supplier_filtered = False
 
     results = []
@@ -1095,6 +1112,10 @@ def user_new():
         flash("يرجى ملء جميع الحقول الإلزامية", "error")
         return redirect(url_for("users_list"))
 
+    if role == "branch_staff" and not location_id:
+        flash("يجب اختيار وتحديد الفرع التابع له لموظف الفرع", "error")
+        return redirect(url_for("users_list"))
+
     if User.query.filter_by(name=name).first():
         flash("اسم المستخدم مستخدم بالفعل، يرجى اختيار اسم آخر", "error")
         return redirect(url_for("users_list"))
@@ -1124,6 +1145,11 @@ def user_edit(user_id):
     email = request.form.get("email", "").strip()
     location_id = request.form.get("location_id")
     location_id = int(location_id) if location_id and location_id != "" else None
+
+    target_role = role or user.role
+    if target_role == "branch_staff" and not location_id:
+        flash("يجب اختيار وتحديد الفرع التابع له لموظف الفرع", "error")
+        return redirect(url_for("users_list"))
 
     if name:
         user.name = name
@@ -2649,6 +2675,9 @@ def foodics_hub():
     # Remote locations from Foodics for manual mapping dropdown
     foodics_remote_locations = sq.get_foodics_locations_remote(token, base_url)
 
+    recent_notifications = Notification.query.order_by(Notification.created_at.desc()).limit(15).all()
+    webhook_url = request.host_url.rstrip("/") + "/api/foodics/webhook"
+
     return render_template(
         "foodics_hub.html",
         token=token,
@@ -2667,6 +2696,8 @@ def foodics_hub():
         queue_jobs=queue_jobs,
         failed_jobs=failed_jobs,
         foodics_remote_locations=foodics_remote_locations,
+        recent_notifications=recent_notifications,
+        webhook_url=webhook_url,
     )
 
 
@@ -2756,6 +2787,343 @@ def foodics_settings():
     if return_to == "hub":
         return redirect(url_for("foodics_hub"))
     return redirect(url_for("accountant_review"))
+
+
+# ---------------------------------------------------------------
+# استقبال Webhook من فوديكس وإدارة الإشعارات اللحظية لمواد المخزون
+# ---------------------------------------------------------------
+@app.route("/api/foodics/webhook", methods=["POST"])
+def foodics_webhook():
+    """
+    نقطة استقبال الويب هوك (Foodics Webhook Endpoint).
+    تستقبل إشعار إضافة أصناف ومواد المخزون الجديدة من خوادم فوديكس مباشرة وتحدث النظام.
+    """
+    try:
+        payload = request.get_json(silent=True)
+        if not payload:
+            raw_data = request.data.decode("utf-8", errors="ignore")
+            if raw_data:
+                try:
+                    payload = json.loads(raw_data)
+                except Exception:
+                    pass
+
+        if not payload:
+            return jsonify({"status": "error", "message": "No JSON payload provided"}), 400
+
+        # استخراج بيانات الصنف بحسب نوع بنية حدث فوديكس
+        item_data = None
+        if isinstance(payload, dict):
+            if "data" in payload and isinstance(payload["data"], dict):
+                item_data = payload["data"]
+            elif "item" in payload and isinstance(payload["item"], dict):
+                item_data = payload["item"]
+            elif "sku" in payload:
+                item_data = payload
+        elif isinstance(payload, list) and len(payload) > 0 and isinstance(payload[0], dict):
+            results = []
+            for itm in payload:
+                item_obj, is_new, _ = sq.process_foodics_item_payload(itm, trigger_notification=True)
+                if item_obj:
+                    results.append({"sku": item_obj.sku, "is_new": is_new, "id": item_obj.id})
+            db.session.commit()
+            return jsonify({
+                "status": "success",
+                "message": f"تمت معالجة {len(results)} صنف من فوديكس بنجاح",
+                "items": results
+            }), 200
+
+        if not item_data:
+            return jsonify({"status": "error", "message": "Could not identify item data in payload"}), 422
+
+        item_obj, is_new, msg = sq.process_foodics_item_payload(item_data, trigger_notification=True)
+        db.session.commit()
+
+        if item_obj:
+            return jsonify({
+                "status": "success",
+                "message": "تم استلام ومعالجة مادة المخزون من فوديكس وتوليد الإشعار بنجاح",
+                "is_new": is_new,
+                "item_id": item_obj.id,
+                "sku": item_obj.sku,
+                "name": item_obj.get_name()
+            }), 200
+        else:
+            return jsonify({"status": "error", "message": msg}), 422
+
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": f"Server error: {str(exc)}"}), 500
+
+
+@app.route("/api/foodics/sync_now", methods=["POST"])
+@login_required
+def api_foodics_sync_now():
+    """
+    استدعاء فوري ومباشر لـ Foodics API لجلب أي أصناف جديدة مضافة في فوديكس
+    وتحديث المخزون وتوليد الإشعارات فوراً.
+    """
+    token = SystemSetting.get_val("foodics_token")
+    base_url = SystemSetting.get_val("foodics_base_url")
+    if not token:
+        if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({"status": "error", "message": "لم يتم حفظ رمز التوكن (Token) الخاص بحساب فوديكس بعد"}), 400
+        flash("لم يتم حفظ رمز التوكن (Token) الخاص بحساب فوديكس بعد", "error")
+        return redirect(url_for("foodics_hub"))
+
+    ok, msg = sq.sync_inventory_items_from_foodics(token, base_url)
+    unread_count = Notification.query.filter_by(is_read=False).count()
+    if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({
+            "status": "success" if ok else "error",
+            "message": msg,
+            "unread_count": unread_count
+        })
+    flash(f"✅ {msg}" if ok else f"❌ {msg}", "success" if ok else "error")
+    return redirect(url_for("foodics_hub"))
+
+
+@app.route("/api/foodics/test_webhook", methods=["POST"])
+@login_required
+@role_required("admin", "accountant")
+def foodics_test_webhook():
+    """
+    محاكاة وصول صنف مخزون جديد من فوديكس عبر Webhook لتجربة الإشعارات وتأكيد الربط.
+    """
+    req_json = request.get_json(silent=True) or {}
+    name_ar = request.form.get("name_ar", "").strip() or req_json.get("name_ar", "").strip()
+    name_en = request.form.get("name_en", "").strip() or req_json.get("name_en", "").strip()
+    sku = request.form.get("sku", "").strip() or req_json.get("sku", "").strip()
+    storage_unit = request.form.get("storage_unit", "كجم") or req_json.get("storage_unit", "كجم")
+    
+    cost_val = request.form.get("cost") or req_json.get("cost") or 25.0
+    try:
+        cost = float(cost_val)
+    except Exception:
+        cost = 25.0
+
+    supplier_name = request.form.get("supplier_name", "").strip() or req_json.get("supplier_name", "").strip()
+
+    if not sku:
+        sku = f"FDX-TEST-{random.randint(100, 999)}"
+    if not name_ar:
+        name_ar = f"مادة تجريبية فوديكس ({sku})"
+    if not name_en:
+        name_en = f"Foodics Test Item ({sku})"
+
+    simulated_payload = {
+        "id": f"fdx_{uuid.uuid4().hex[:10]}",
+        "sku": sku,
+        "name": name_en,
+        "name_localized": name_ar,
+        "storage_unit": storage_unit,
+        "ingredient_unit": "جرام",
+        "storage_to_ingredient_factor": 1000.0,
+        "cost": cost,
+        "barcode": f"628{random.randint(10000000, 99999999)}",
+        "supplier_name": supplier_name or None
+    }
+
+    item_obj, is_new, msg = sq.process_foodics_item_payload(simulated_payload, trigger_notification=True)
+    db.session.commit()
+
+    sup_status = f"مربوط بالمورد '{item_obj.suppliers[0].name}'" if (item_obj and item_obj.suppliers) else "غير مربوط بمورد ⚠️"
+
+    if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({
+            "status": "success",
+            "message": f"تم استلام مادة مخزون جديدة من فوديكس بنجاح: {name_ar} (SKU: {sku}) - {sup_status}",
+            "item_id": item_obj.id if item_obj else None,
+            "sku": sku,
+            "name": name_ar,
+            "has_supplier": bool(item_obj and item_obj.suppliers),
+            "supplier_name": item_obj.suppliers[0].name if (item_obj and item_obj.suppliers) else None
+        })
+
+    flash(f"🔔 وصل إشعار جديد! تم استلام الصنف الجديد بنجاح من فوديكس: '{name_ar}' (SKU: {sku}) - حالة المورد: {sup_status}", "success")
+    return redirect(url_for("foodics_hub"))
+
+
+@app.route("/api/notifications/unread", methods=["GET"])
+@login_required
+def api_notifications_unread():
+    """إرجاع قائمة الإشعارات غير المقروءة للتحديث الحي اللحظي بالواجهة."""
+    notifs = Notification.query.filter_by(is_read=False).order_by(Notification.created_at.desc()).limit(15).all()
+    lang = session.get("lang", "ar")
+    data = []
+    for n in notifs:
+        data.append({
+            "id": n.id,
+            "title": n.title,
+            "message": n.message,
+            "type": n.type,
+            "sku": n.item_sku,
+            "has_supplier": n.has_supplier,
+            "supplier_name": n.supplier_name,
+            "time_ago": n.time_ago_ar if lang == "ar" else n.time_ago_en,
+            "created_at": n.created_at.strftime("%Y-%m-%d %H:%M")
+        })
+    return jsonify({
+        "status": "success",
+        "unread_count": Notification.query.filter_by(is_read=False).count(),
+        "notifications": data
+    })
+
+
+@app.route("/api/notifications/mark_read/<int:notif_id>", methods=["POST"])
+@login_required
+def api_notification_mark_read(notif_id):
+    notif = db.session.get(Notification, notif_id)
+    if notif:
+        notif.is_read = True
+        db.session.commit()
+    return jsonify({"status": "success"})
+
+
+@app.route("/api/notifications/mark_all_read", methods=["POST"])
+@login_required
+def api_notification_mark_all_read():
+    Notification.query.filter_by(is_read=False).update({"is_read": True})
+    db.session.commit()
+    if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({"status": "success"})
+    return redirect(request.referrer or url_for("dashboard"))
+
+
+@app.route("/api/items/<sku>/details", methods=["GET"])
+@login_required
+def api_item_details(sku):
+    """إرجاع تفاصيل الصنف وحالة ربطه بالمورد وقائمة الموردين المتاحة بالكامل."""
+    item = Item.query.filter((Item.sku == sku) | (Item.sku.ilike(sku))).first()
+    if not item and sku.isdigit():
+        item = db.session.get(Item, int(sku))
+
+    if not item:
+        return jsonify({"status": "error", "message": "الصنف غير موجود"}), 404
+
+    suppliers = Supplier.query.order_by(Supplier.name.asc()).all()
+    primary_sup = item.suppliers[0] if item.suppliers else None
+
+    return jsonify({
+        "status": "success",
+        "item": {
+            "id": item.id,
+            "sku": item.sku,
+            "name_ar": item.name_ar or "",
+            "name_en": item.name_en or "",
+            "storage_unit": item.storage_unit or "حبة",
+            "cost": float(item.cost or 0.0),
+            "barcode": item.barcode or "",
+            "has_supplier": bool(item.suppliers),
+            "supplier_id": primary_sup.id if primary_sup else None,
+            "supplier_name": primary_sup.name if primary_sup else None,
+        },
+        "suppliers": [{"id": s.id, "name": s.name, "code": s.code or ""} for s in suppliers]
+    })
+
+
+@app.route("/api/items/resolve-observation", methods=["POST"])
+@login_required
+def api_resolve_item_observation():
+    """معالجة ملاحظة الصنف وربطه بمورد وتعديل بيانات الصنف مباشرة."""
+    data = request.get_json(silent=True) or request.form.to_dict()
+
+    sku = (data.get("sku") or data.get("item_sku") or "").strip()
+    item_id = data.get("item_id")
+    notification_id = data.get("notification_id")
+
+    item = None
+    if sku:
+        item = Item.query.filter((Item.sku == sku) | (Item.sku.ilike(sku))).first()
+    if not item and item_id:
+        item = db.session.get(Item, int(item_id))
+
+    if not item:
+        if request.is_json:
+            return jsonify({"status": "error", "message": "لم يتم العثور على الصنف المحدد"}), 404
+        flash("لم يتم العثور على الصنف المحدد", "error")
+        return redirect(request.referrer or url_for("foodics_hub"))
+
+    # 1. تحديث بيانات الصنف إن أُرسلت
+    if data.get("name_ar"):
+        item.name_ar = data.get("name_ar").strip()
+    if data.get("name_en"):
+        item.name_en = data.get("name_en").strip()
+    if data.get("storage_unit"):
+        item.storage_unit = data.get("storage_unit").strip()
+    if data.get("cost") is not None and str(data.get("cost")).strip() != "":
+        try:
+            item.cost = float(data.get("cost"))
+        except (ValueError, TypeError):
+            pass
+
+    # 2. تحديد وربط المورد
+    supplier_id = data.get("supplier_id")
+    supplier_name = (data.get("supplier_name") or data.get("new_supplier_name") or "").strip()
+    supplier = None
+
+    if supplier_id and str(supplier_id).strip() and str(supplier_id) != "0" and str(supplier_id) != "None":
+        supplier = db.session.get(Supplier, int(supplier_id))
+    elif supplier_name:
+        supplier = add_or_get_supplier(supplier_name)
+
+    if supplier:
+        # إنشاء أو تحديث الرابط في ItemSupplier
+        link = ItemSupplier.query.filter_by(item_id=item.id, supplier_id=supplier.id).first()
+        if not link:
+            link = ItemSupplier(
+                item_id=item.id,
+                supplier_id=supplier.id,
+                order_unit=item.storage_unit or "حبة",
+                cost_per_order_unit=item.cost
+            )
+            db.session.add(link)
+        else:
+            link.order_unit = item.storage_unit or link.order_unit
+            link.cost_per_order_unit = item.cost or link.cost_per_order_unit
+
+    # 3. معالجة وتحديث الإشعارات المقترنة
+    notifs_to_update = []
+    if notification_id:
+        n = db.session.get(Notification, int(notification_id))
+        if n:
+            notifs_to_update.append(n)
+    if not notifs_to_update:
+        notifs_to_update = Notification.query.filter_by(item_sku=item.sku).all()
+
+    for notif in notifs_to_update:
+        if supplier:
+            notif.has_supplier = True
+            notif.supplier_name = supplier.name
+            notif.title = f"تم ربط الصنف بالمورد بنجاح ({supplier.name}) 🤝"
+            notif.message = (
+                f"تم استلام الصنف '{item.name_ar}' (كود SKU: {item.sku}) بوحدة '{item.storage_unit}' "
+                f"وتكلفة {item.cost:.2f} ر.س. وهو مربوط الآن بنجاح بالمورد '{supplier.name}'. تمت معالجة الملاحظة بنجاح ✅"
+            )
+        notif.is_read = True
+
+    db.session.commit()
+
+    msg = f"تم بنجاح تحديث بيانات الصنف '{item.name_ar}' (SKU: {item.sku})"
+    if supplier:
+        msg += f" وربطه بالمورد '{supplier.name}' بنجاح ومعالجة الملاحظة!"
+    else:
+        msg += " وحفظ التعديلات!"
+
+    if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({
+            "status": "success",
+            "message": msg,
+            "item_sku": item.sku,
+            "item_name": item.name_ar,
+            "has_supplier": bool(supplier or item.suppliers),
+            "supplier_name": supplier.name if supplier else (item.suppliers[0].name if item.suppliers else None),
+            "notification_id": notification_id
+        })
+
+    flash(msg, "success")
+    return redirect(request.referrer or url_for("foodics_hub"))
+
 
 
 # ---------------------------------------------------------------

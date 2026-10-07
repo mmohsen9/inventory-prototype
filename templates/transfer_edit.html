@@ -35,12 +35,16 @@
 </div>
 
 <!-- ملخص التحويل العلوي مع إمكانية تعديل فرع الوجهة -->
-<div class="kpi-grid" style="margin-bottom: 20px;">
+<!-- ملخص التحويل العلوي مع إمكانية تعديل فرع الوجهة -->
+<div class="kpi-grid" style="margin-bottom: 20px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));">
     <div class="kpi-card">
         <div class="kpi-content">
             <h4>{{ t('source_branch') }}</h4>
-            <div style="font-size: 18px; font-weight: 700; color: var(--gray-900);">{{ loc_name(transfer.from_location) }}</div>
-            <div class="kpi-desc">{{ t('details') }}: {{ transfer.creator.name if transfer.creator else '-' }}</div>
+            <div style="font-size: 17px; font-weight: 700; color: var(--gray-900);">{{ loc_name(transfer.from_location) }}</div>
+            <div class="kpi-desc" style="margin-top: 4px;">
+                <strong>{{ 'المُرسل:' if lang == 'ar' else 'Dispatched by:' }}</strong> {{ transfer.creator.name if transfer.creator else '-' }}
+                <div style="font-size: 11px; color: var(--gray-500);">🕒 {{ transfer.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+            </div>
         </div>
         <div class="kpi-icon icon-purple">🏭</div>
     </div>
@@ -57,7 +61,7 @@
                 {% endif %}
             </div>
 
-            <div id="dest-display" style="font-size: 18px; font-weight: 700; color: var(--gray-900);">
+            <div id="dest-display" style="font-size: 17px; font-weight: 700; color: var(--gray-900);">
                 {{ loc_name(transfer.to_location) }}
             </div>
 
@@ -84,18 +88,51 @@
             </form>
             {% endif %}
 
-            <div class="kpi-desc">{{ t('details') }}: {{ transfer.confirmer.name if transfer.confirmer else ('قيد الانتظار' if lang == 'ar' else 'Pending') }}</div>
+            <div class="kpi-desc" style="margin-top: 4px;">
+                {% if transfer.confirmer %}
+                <span style="color: #047857; font-weight: 700;">✅ {{ 'المُستلم:' if lang == 'ar' else 'Received by:' }}</span> {{ transfer.confirmer.name }}
+                {% else %}
+                <span style="color: #d97706;">⏳ {{ 'بانتظار تأكيد استلام الفرع' if lang == 'ar' else 'Pending Receipt' }}</span>
+                {% endif %}
+            </div>
         </div>
         <div class="kpi-icon icon-blue">🏪</div>
     </div>
 
+    <!-- بطاقة تأكيد الاستلام والوقت -->
+    <div class="kpi-card" style="border: 2px solid {% if transfer.confirmer %}#86efac{% else %}#fed7aa{% endif %}; background: {% if transfer.confirmer %}#f0fdf4{% else %}#fffbeb{% endif %};">
+        <div class="kpi-content">
+            <h4>{{ 'بيانات الاستلام والوقت' if lang == 'ar' else 'Receipt Verification' }}</h4>
+            {% if transfer.confirmer %}
+            <div style="font-size: 15px; font-weight: 800; color: #166534;">
+                👤 {{ transfer.confirmer.name }}
+            </div>
+            <div class="kpi-desc" style="color: #15803d; font-weight: 700; margin-top: 2px;">
+                🕒 {{ transfer.confirmed_at.strftime('%Y-%m-%d %H:%M') if transfer.confirmed_at else '-' }}
+            </div>
+            {% else %}
+            <div style="font-size: 14px; font-weight: 700; color: #b45309;">
+                ⏳ لم يتم الاستلام بعد
+            </div>
+            <div class="kpi-desc" style="color: #92400e; font-size: 12px; margin-top: 2px;">
+                بانتظار دخول موظف الفرع لتأكيد الكميات
+            </div>
+            {% endif %}
+        </div>
+        <div class="kpi-icon" style="background: {% if transfer.confirmer %}#dcfce7; color: #166534{% else %}#fef3c7; color: #b45309{% endif %};">
+            {% if transfer.confirmer %}✅{% else %}⏳{% endif %}
+        </div>
+    </div>
+
     <div class="kpi-card">
         <div class="kpi-content">
-            <h4>{{ t('date') }}</h4>
-            <div style="font-size: 18px; font-weight: 700; color: var(--gray-900);">{{ transfer.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
-            <div class="kpi-desc">{{ t('shipped_items') }}: {{ transfer.lines|length }}</div>
+            <h4>{{ t('shipped_items') }}</h4>
+            <div style="font-size: 18px; font-weight: 700; color: var(--gray-900);">{{ transfer.lines|length }} {{ 'أصناف' if lang == 'ar' else 'Items' }}</div>
+            <div class="kpi-desc">
+                الحالة: <span class="badge badge-{{ transfer.status }}">{{ status_name(transfer) }}</span>
+            </div>
         </div>
-        <div class="kpi-icon icon-green">📅</div>
+        <div class="kpi-icon icon-green">📦</div>
     </div>
 </div>
 
@@ -265,6 +302,56 @@
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+</div>
+
+<!-- بطاقة إثبات الصرف والاستلام والاعتماد (تظهر في العرض والطباعة) -->
+<div class="card" style="margin-bottom: 20px; background: #f8fafc; border: 1px solid var(--gray-200);">
+    <div class="card-header" style="background: white; border-bottom: 1px solid var(--gray-200);">
+        <div class="card-title">📝 {{ 'بيان تسليم واستلام سند التحويل والصرف' if lang == 'ar' else 'Dispatch & Receipt Verification' }}</div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; padding: 16px;">
+        <div style="background: white; padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--gray-200);">
+            <div style="font-weight: 700; color: #1e3a8a; margin-bottom: 8px; font-size: 14px;">
+                📤 {{ 'جهة الصرف والإرسال (المصدر):' if lang == 'ar' else 'Dispatching Authority (Source):' }}
+            </div>
+            <div style="font-size: 13px; color: var(--gray-700);"><strong>{{ t('from_location') }}:</strong> {{ loc_name(transfer.from_location) }}</div>
+            <div style="font-size: 13px; color: var(--gray-700); margin-top: 4px;">
+                <strong>{{ 'مسؤول الإرسال والصرف:' if lang == 'ar' else 'Dispatched by:' }}</strong> {{ transfer.creator.name if transfer.creator else '-' }}
+            </div>
+            <div style="font-size: 13px; color: var(--gray-700); margin-top: 4px;">
+                <strong>{{ 'تاريخ ووقت الإرسال:' if lang == 'ar' else 'Dispatch Time:' }}</strong> {{ transfer.created_at.strftime('%Y-%m-%d %H:%M') }}
+            </div>
+            <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--gray-200); font-size: 12px; color: var(--gray-500);">
+                التوقيع / الاعتماد: _______________________
+            </div>
+        </div>
+
+        <div style="background: white; padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--gray-200);">
+            <div style="font-weight: 700; color: #047857; margin-bottom: 8px; font-size: 14px;">
+                📥 {{ 'جهة الاستلام والمطابقة (الفرع):' if lang == 'ar' else 'Receiving Authority (Branch):' }}
+            </div>
+            <div style="font-size: 13px; color: var(--gray-700);"><strong>{{ t('to_location') }}:</strong> {{ loc_name(transfer.to_location) }}</div>
+            <div style="font-size: 13px; color: var(--gray-700); margin-top: 4px;">
+                <strong>{{ 'من قام بالاستلام:' if lang == 'ar' else 'Received by:' }}</strong>
+                {% if transfer.confirmer %}
+                <span style="color: #047857; font-weight: 700;">✅ {{ transfer.confirmer.name }}</span>
+                {% else %}
+                <span style="color: #d97706; font-weight: 600;">⏳ {{ 'بانتظار تأكيد الاستلام من موظف الفرع' if lang == 'ar' else 'Pending branch staff receipt' }}</span>
+                {% endif %}
+            </div>
+            <div style="font-size: 13px; color: var(--gray-700); margin-top: 4px;">
+                <strong>{{ 'تاريخ ووقت الاستلام:' if lang == 'ar' else 'Receipt Time:' }}</strong>
+                {% if transfer.confirmed_at %}
+                <span style="font-weight: 700; color: #047857;">🕒 {{ transfer.confirmed_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                {% else %}
+                <span style="color: var(--gray-400);">-</span>
+                {% endif %}
+            </div>
+            <div style="margin-top: 14px; padding-top: 10px; border-top: 1px dashed var(--gray-200); font-size: 12px; color: var(--gray-500);">
+                توقيع المستلم: _______________________
+            </div>
+        </div>
     </div>
 </div>
 

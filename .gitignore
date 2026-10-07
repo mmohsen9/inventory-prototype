@@ -3,3 +3,11 @@ __pycache__/
 instance/
 uploads/
 *.db
+.env
+.env.*
+.venv/
+venv/
+*.sqlite3
+backups/
+*token*.txt
+*.token
