@@ -823,8 +823,25 @@ class SystemSetting(db.Model):
 
     @staticmethod
     def get_val(key, default=None):
-        s = SystemSetting.query.filter_by(key=key).first()
-        return s.value if s and s.value is not None else default
+        try:
+            s = SystemSetting.query.filter_by(key=key).first()
+            if s and s.value:
+                return s.value
+        except Exception:
+            pass
+
+        import os
+        env_map = {
+            "foodics_token": "FOODICS_TOKEN",
+            "foodics_base_url": "FOODICS_BASE_URL",
+            "foodics_sync_enabled": "FOODICS_SYNC_ENABLED",
+            "xero_client_id": "XERO_CLIENT_ID",
+            "xero_client_secret": "XERO_CLIENT_SECRET",
+            "xero_redirect_uri": "XERO_REDIRECT_URI",
+        }
+        if key in env_map and os.environ.get(env_map[key]):
+            return os.environ.get(env_map[key])
+        return default
 
     @staticmethod
     def set_val(key, val):

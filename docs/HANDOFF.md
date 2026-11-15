@@ -3,6 +3,14 @@
 - **آخر تحديث:** 2026-11-15
 
 - **نقطة التوقف الحالية:**
+  0. تأمين استدامة إعدادات الربط وحمايتها من الانفصال بعد التحديثات (Permanent Integration Persistence):
+     - **الحماية المزدوجة (Dual-Layer Resilience):**
+       * تحديث `SystemSetting.get_val()` و `CoffeeSetting.get()` لدعم القراءة والرجوع التلقائي لمتغيرات البيئة السحابية (`FOODICS_TOKEN`, `FOODICS_BASE_URL`, `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, `XERO_REFRESH_TOKEN`, `XERO_TENANT_ID`) عند خلو قاعدة البيانات أو إعادة بنائها.
+       * حماية حقل توكن فوديكس في `foodics_hub.html` من الاستبدال الخاطئ بواسطة الملء التلقائي للمتصفحات (`autocomplete="off"` و `spellcheck="false"`).
+       * منع حفظ كلمات السر أو النقاط البديلة الخاطئة (`•●*`) في `foodics_settings()` بالخادم.
+     - **الفحوصات وضبط الجودة (done+tested):**
+       * اجتياز كامل اختبارات فوديكس وسلة `tests/test_coffee_salla.py` و `tests/test_foodics_notifications.py` بنجاح تام (20/20 passed بنسبة 100%).
+
   0. ضبط وعزل إشعارات الأصناف المربوطة بمورد وإلغاء النوافذ المنبثقة المتكررة (done+tested):
      - **استبعاد إشعارات الأصناف المربوطة بمورد نهائياً من شارة وجرس الإشعارات:**
        * تعديل `sync_queue.py`: عند وصول صنف مخزون جديد من فوديكس ولديه مورد بالفعل (`has_supplier=True`)، يتم حفظ الإشعار بحالة مقروءة فوراً (`is_read=True`) حتى لا يشغل شارة الجرس أو يظهر في القائمة كإشعار معلق.

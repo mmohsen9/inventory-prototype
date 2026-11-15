@@ -1112,6 +1112,7 @@ def inject_globals():
         "status_name": status_name,
         "currency": "SAR" if lang == "en" else "ر.س",
         "app_env": os.environ.get("FLASK_ENV") or os.environ.get("APP_ENV") or ("development" if app.debug else "production"),
+        "is_ephemeral_db": IS_PRODUCTION and ("sqlite" in str(db.engine.url)),
     }
 
 
@@ -4421,8 +4422,11 @@ def foodics_settings():
     action = request.form.get("action", "save")
     return_to = request.form.get("return_to", "accountant_review")
 
-    if token:
+    if token and len(token) > 5 and not all(c in "•●* " for c in token):
         SystemSetting.set_val("foodics_token", token)
+        SystemSetting.set_val("foodics_sync_enabled", "1")
+    elif not token and os.environ.get("FOODICS_TOKEN"):
+        SystemSetting.set_val("foodics_token", os.environ.get("FOODICS_TOKEN"))
         SystemSetting.set_val("foodics_sync_enabled", "1")
     SystemSetting.set_val("foodics_base_url", base_url)
 

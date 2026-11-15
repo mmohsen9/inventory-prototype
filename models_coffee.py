@@ -1029,8 +1029,19 @@ class CoffeeSetting(db.Model):
 
     @staticmethod
     def get(key, default=None):
-        s = CoffeeSetting.query.filter_by(key=key).first()
-        return s.value if s and s.value is not None else default
+        try:
+            s = CoffeeSetting.query.filter_by(key=key).first()
+            if s and s.value and str(s.value).strip():
+                return str(s.value).strip()
+        except Exception:
+            pass
+
+        import os
+        env_val = os.environ.get(key.upper()) or os.environ.get(key)
+        if env_val and str(env_val).strip():
+            return str(env_val).strip()
+
+        return default
 
     @staticmethod
     def set(key, val, description=None):

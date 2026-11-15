@@ -149,7 +149,8 @@
                     </label>
                     <div style="position: relative;">
                         <input type="password" name="foodics_token" id="token_input" class="form-control" 
-                               value="{{ token or '' }}" placeholder="رمز التوكن الأصلي لحساب الإنتاج الفعلي">
+                               value="{{ token or '' }}" placeholder="رمز التوكن الأصلي لحساب الإنتاج الفعلي"
+                               autocomplete="off" spellcheck="false">
                         <button type="button" onclick="toggleTokenVisibility()" 
                                 style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 14px; color: var(--gray-500);">
                             👁️

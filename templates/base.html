@@ -382,6 +382,14 @@
 
     <main class="main-wrapper">
         <div class="alerts-container">
+            {% if is_ephemeral_db and user and user.role == 'admin' %}
+            <div class="alert alert-warning" style="background: #fffbeb; border: 1.5px solid #f59e0b; color: #92400e; padding: 12px 18px; border-radius: 8px; margin-bottom: 16px; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    ⚠️ <strong>تنبيه هام لمدير النظام:</strong> يعمل الموقع حالياً على قاعدة بيانات مؤقتة داخلية (SQLite). للحفاظ الدائم على المستخدمين والبيانات والربط وعدم مسحها عند التحديثات، يرجى ربط قاعدة بيانات PostgreSQL دائمة في لوحة Cranl (عبر متغير <code>DATABASE_URL</code>).
+                </div>
+                <button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; cursor:pointer; font-size:16px; color:inherit;">×</button>
+            </div>
+            {% endif %}
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
