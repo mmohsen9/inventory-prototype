@@ -416,3 +416,28 @@ def test_salla_paste_markdown_and_raw_inner_data(admin_client, db_session):
     r2 = admin_client.post("/coffee/salla/orders/paste-payload", data={"payload_json": inner_payload}, follow_redirects=True)
     assert r2.status_code == 200
     assert "444333222" in r2.get_data(as_text=True)
+
+
+def test_salla_mappings_auto_seed_and_manual_seed(admin_client, db_session):
+    """التحقق من الزرع التلقائي للأصناف في صفحة المطابقة وزر الاستيراد اليدوي."""
+    from models_coffee import SallaItemMapping
+
+    # حذف كافة الأصناف لمحاكاة بيئة إنتاج جديدة تماماً
+    SallaItemMapping.query.delete()
+    db_session.commit()
+    assert SallaItemMapping.query.count() == 0
+
+    # زيارة صفحة المطابقة GET يجب أن تفعل الزرع التلقائي فوراً
+    res = admin_client.get("/coffee/salla/mappings")
+    assert res.status_code == 200
+    assert SallaItemMapping.query.count() >= 17
+    html = res.get_data(as_text=True)
+    assert "كولمبيا توليمــا" in html
+    assert "استيراد الأصناف الافتراضية" in html
+
+    # اختبار استدعاء زر استيراد الأصناف الافتراضية POST
+    res_seed = admin_client.post("/coffee/salla/mappings/seed-defaults", follow_redirects=True)
+    assert res_seed.status_code == 200
+    # يجب ألا تتكرر الأصناف بفضل الحماية من التكرار
+    assert SallaItemMapping.query.count() == 17
+

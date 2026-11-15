@@ -24,9 +24,13 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _get_setting(key: str, default: str = "") -> str:
-    """يجلب قيمة إعداد من جدول CoffeeSetting — يُستدعى متأخراً لتجنب circular import."""
+    """يجلب قيمة إعداد من جدول CoffeeSetting أو متغيرات البيئة — يُستدعى متأخراً لتجنب circular import."""
     from models_coffee import CoffeeSetting
-    return CoffeeSetting.get(key, default) or default
+    val = CoffeeSetting.get(key, None)
+    if val is not None and str(val).strip():
+        return str(val).strip()
+    env_val = os.environ.get(key.upper()) or os.environ.get(key)
+    return str(env_val).strip() if env_val else default
 
 
 def refresh_xero_token() -> Tuple[bool, Optional[str]]:

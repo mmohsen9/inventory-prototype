@@ -18,6 +18,12 @@
       <a href="{{ url_for('coffee.salla_orders_list') }}" class="btn btn-outline-secondary" style="font-size: 13px; font-weight: 700; border-radius: 8px;">
         ← العودة لطابور الطلبات
       </a>
+      <form action="{{ url_for('coffee.salla_mappings_seed_defaults') }}" method="POST" style="display: inline; margin: 0;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+        <button type="submit" class="btn btn-outline-warning" style="font-size: 13px; font-weight: 700; border-radius: 8px; color: #b45309; border-color: #d97706;">
+          ⚡ استيراد الأصناف الافتراضية
+        </button>
+      </form>
       <button type="button" class="btn" onclick="openNewMappingModal()" style="background: linear-gradient(135deg, #b45309, #d97706); color: #fff; font-weight: 800; font-size: 13px; padding: 8px 18px; border-radius: 8px; box-shadow: 0 4px 12px rgba(180, 83, 9, 0.25);">
         + ربط / إضافة صنف جديد
       </button>
@@ -169,6 +175,23 @@
           </td>
         </tr>
         {% endfor %}
+        {% if mappings|length == 0 %}
+        <tr>
+          <td colspan="9" style="text-align: center; padding: 45px 20px; color: #64748b;">
+            <div style="font-size: 38px; margin-bottom: 10px;">📦</div>
+            <div style="font-size: 16px; font-weight: 800; color: #1e293b; margin-bottom: 6px;">لا توجد أصناف مطابقة مسجلة حالياً</div>
+            <div style="font-size: 13px; color: #64748b; margin-bottom: 18px; max-width: 520px; margin-left: auto; margin-right: auto;">
+              يمكنك تحميل الأصناف الافتراضية الجاهزة فوراً (17 صنف للمحمصة والأدوات)، أو إضافة صنف جديد يدوياً، أو انتظار وصول منتجات جديدة من متجر سلة عبر الويب هوك.
+            </div>
+            <form action="{{ url_for('coffee.salla_mappings_seed_defaults') }}" method="POST" style="display: inline-block;">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+              <button type="submit" class="btn" style="background: linear-gradient(135deg, #059669, #047857); color: #fff; font-weight: 800; font-size: 13px; padding: 10px 22px; border-radius: 8px; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);">
+                ⚡ تحميل الأصناف الافتراضية الجاهزة (17 صنف)
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endif %}
       </tbody>
     </table>
   </div>

@@ -299,3 +299,48 @@ def test_api_item_details_and_resolve_observation(client):
         assert "تم ربط الصنف بالمورد بنجاح" in updated_notif.title
 
 
+def test_notifications_exclude_supplier_linked_items(client):
+    """التحقق من حجب واستبعاد الأصناف المربوطة بمورد من قائمة وشارة إشعارات الجرس."""
+    with client.session_transaction() as sess:
+        sess["user_id"] = 1
+
+    with app.app_context():
+        # إنشاء إشعار لصنف غير مربوط بمورد
+        n_unlinked = Notification(
+            title="تمت إضافة مادة غير مربوطة بمورد",
+            message="صنف يحتاج مورد",
+            type="new_inventory_item",
+            item_sku="TEST-UNLINKED-99",
+            has_supplier=False,
+            is_read=False
+        )
+        # إنشاء إشعار لصنف مربوط بمورد مسبقاً
+        n_linked = Notification(
+            title="تمت إضافة مادة مربوطة بمورد",
+            message="صنف مربوط بمورد",
+            type="new_inventory_item",
+            item_sku="TEST-LINKED-88",
+            has_supplier=True,
+            supplier_name="مورد معتمد",
+            is_read=False
+        )
+        db.session.add_all([n_unlinked, n_linked])
+        db.session.commit()
+
+    # طلب قائمة الإشعارات غير المقروءة عبر API الجرس
+    res = client.get("/api/notifications/unread")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["status"] == "success"
+
+    # يجب ألا يحتوي الرد على الصنف المربوط بمورد، وأن يظهر غير المربوط فقط
+    skus_in_response = [n["sku"] for n in data["notifications"]]
+    assert "TEST-UNLINKED-99" in skus_in_response
+    assert "TEST-LINKED-88" not in skus_in_response
+    # شارة الجرس يجب ألا تعد الأصناف المربوطة بمورد
+    for n in data["notifications"]:
+        if n["type"] == "new_inventory_item":
+            assert n["has_supplier"] is False
+
+
+

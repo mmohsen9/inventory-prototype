@@ -1440,6 +1440,26 @@ def _seed_default_salla_mappings():
             if it:
                 general_id = it.id
 
+        # التحقق من عدم التكرار
+        existing = None
+        if row.get("item_type") == "bundle":
+            existing = SallaItemMapping.query.filter_by(
+                salla_product_name=row["salla_product_name"],
+                package_details=row.get("package_details")
+            ).first()
+        else:
+            if row.get("salla_product_id"):
+                existing = SallaItemMapping.query.filter_by(salla_product_id=row["salla_product_id"]).first()
+            if not existing and row.get("salla_product_name"):
+                existing = SallaItemMapping.query.filter_by(salla_product_name=row["salla_product_name"]).first()
+
+        if existing:
+            if coffee_id and not existing.coffee_item_id:
+                existing.coffee_item_id = coffee_id
+            if general_id and not existing.general_item_id:
+                existing.general_item_id = general_id
+            continue
+
         mapping = SallaItemMapping(
             salla_product_id=row.get("salla_product_id"),
             salla_product_name=row["salla_product_name"],
@@ -1460,6 +1480,7 @@ def _seed_default_salla_mappings():
 
 def ensure_salla_schema():
     """التحقق من إنشاء جداول سلة وزرع جدول المطابقة والعميل الافتراضي."""
+    # 0. إنشاء الجداول إن لم تكن موجودة
     try:
         from sqlalchemy import inspect
         insp = inspect(db.engine)
@@ -1469,8 +1490,14 @@ def ensure_salla_schema():
             SallaItemMapping.__table__.create(db.engine, checkfirst=True)
         if "salla_orders_queue" not in tables:
             SallaOrderQueue.__table__.create(db.engine, checkfirst=True)
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
 
-        # 1. التأكد من وجود عميل "عملاء موقع سلة Salla website" في دليل العملاء
+    # 1. التأكد من وجود عميل "عملاء موقع سلة Salla website" في دليل العملاء
+    try:
         salla_cust_name = "عملاء موقع سلة Salla website"
         cust = CoffeeCustomer.query.filter(
             (CoffeeCustomer.name == salla_cust_name) |
@@ -1479,9 +1506,18 @@ def ensure_salla_schema():
         if not cust:
             db.session.add(CoffeeCustomer(name=salla_cust_name, notes="عميل مبيعات المتجر الإلكتروني موقع سلة"))
             db.session.commit()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
 
-        # 2. زرع الأصناف الافتراضية إذا كان الجدول فارغاً
+    # 2. زرع الأصناف الافتراضية إذا كان الجدول فارغاً
+    try:
         if SallaItemMapping.query.count() == 0:
             _seed_default_salla_mappings()
-    except Exception as e:
-        db.session.rollback()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass

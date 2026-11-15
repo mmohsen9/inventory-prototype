@@ -1,17 +1,17 @@
 # Graph Report - inventory-prototype  (2026-11-15)
 
 ## Corpus Check
-- 219 files · ~635,236 words
+- 219 files · ~626,947 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 23 file(s) not represented in the graph (top: (none) 7, .toml 4, .xls 4)
+- Unclassified: 24 file(s) not represented in the graph (top: (none) 8, .toml 4, .xls 4)
 
 ## Summary
-- 5191 nodes · 13003 edges · 223 communities (209 shown, 14 thin omitted)
+- 5191 nodes · 13004 edges · 223 communities (210 shown, 13 thin omitted)
 - Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 1450 edges (avg confidence: 0.93)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `01ae1df7`
+- Built from commit: `ea571772`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -87,7 +87,7 @@
 - bo
 - va
 - Filter Translation Pitfalls
-- Standard CLI Surface
+- auto-save-dry-run.md
 - year_options
 - no
 - Inventory Prototype Operational Runbook
@@ -126,7 +126,7 @@
 - 5. دورة حالات كل عملية (State Machine)
 - app.py
 - createLiveBrowserDomHelpers
-- .error
+- Three-layer model: bundle, session, trajectory
 - coffee_salla.py
 - 4. هيكل قاعدة البيانات (الجداول الرئيسية)
 - stress-tests.mjs
@@ -265,7 +265,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (223 total, 14 thin omitted)
+## Communities (223 total, 13 thin omitted)
 
 ### Community 0 - "gate-check.mjs"
 Cohesion: 0.05
@@ -340,8 +340,8 @@ Cohesion: 0.08
 Nodes (57): applyEditing(), beginNewLiveConfiguration(), buildLocatorForLeaf(), cancelEditing(), cancelEditingToPicking(), cancelInsertConfigure(), clearAnnotations(), clearInsertPicking() (+49 more)
 
 ### Community 18 - "4. مخطط نماذج وقواعد البيانات (Data Models & Schema)"
-Cohesion: 0.11
-Nodes (18): Live Session, `session.json` responsibilities, `trajectory.json` schema, Why `trajectory.json` exists, Baseline surface, Optional diff surface, Optional live surface, Optional poll-first refresh (+10 more)
+Cohesion: 0.09
+Nodes (22): Live Session, `preview capture`, `preview diff`, `preview latest`, `preview live push`, `preview live start`, `preview live status`, `preview live stop` (+14 more)
 
 ### Community 19 - "page_budget"
 Cohesion: 0.10
@@ -404,8 +404,8 @@ Cohesion: 0.15
 Nodes (5): _get_cached_foodics_recent(), _get_cached_notifications(), _get_cached_pending_count(), _get_cached_suppliers(), inject_globals()
 
 ### Community 35 - "Preview Methodology for Harnesses"
-Cohesion: 0.15
-Nodes (13): `bundle_dir`: immutable snapshot, Implementation checklist, Preview Methodology for Harnesses, Producer vs consumer, README and SKILL guidance, README.md should cover, Related references, `session.json`: mutable live head (+5 more)
+Cohesion: 0.14
+Nodes (14): Baseline surface, Implementation checklist, Optional diff surface, Optional live surface, Optional poll-first refresh, Preview Methodology for Harnesses, Producer vs consumer, README and SKILL guidance (+6 more)
 
 ### Community 36 - "preview_bundle.py"
 Cohesion: 0.09
@@ -432,7 +432,7 @@ Cohesion: 0.15
 Nodes (13): Agent Harness: GUI-to-CLI for Open Source Software, Applying This to Other Software, Architecture Patterns & Pitfalls, Directory Structure, Filter Translation Pitfalls, Guides Reference, MCP Backend Pattern, Output Verification Methodology (+5 more)
 
 ### Community 42 - "HARNESS.md"
-Cohesion: 0.29
+Cohesion: 0.25
 Nodes (7): Backend Wrapper (`utils/<service>_backend.py`), Daemon Mode (Optional), Dependencies, Example Implementations, MCP Backend Pattern, Session Management, When to Use
 
 ### Community 43 - "SKILL.md Generation (Phase 6.5)"
@@ -444,8 +444,8 @@ Cohesion: 0.08
 Nodes (12): report_item_movements(), run_migration(), RoastedCoffeeDispatch, test_bulk_delete_roasted_dispatches_unauthorized_forbidden(), _setup_test_branch_and_item(), test_api_next_doc_number_detects_branch_draft(), test_delete_draft_roasted_dispatch(), test_get_dispatch_new_redirects_to_open_draft() (+4 more)
 
 ### Community 45 - "Auto-Save + --dry-run for One-Shot Commands"
-Cohesion: 0.14
-Nodes (11): 1. Add `--dry-run` to the main CLI group, 2. Add `@cli.result_callback()` after the group, Alternative: `ctx.call_on_close` pattern, Auto-Save + --dry-run for One-Shot Commands, `--dry-run` semantics, Problem, Solution, When this applies (+3 more)
+Cohesion: 0.25
+Nodes (8): 1. Add `--dry-run` to the main CLI group, 2. Add `@cli.result_callback()` after the group, Alternative: `ctx.call_on_close` pattern, Auto-Save + --dry-run for One-Shot Commands, `--dry-run` semantics, Problem, Solution, When this applies
 
 ### Community 46 - "app.js"
 Cohesion: 0.20
@@ -547,9 +547,9 @@ Nodes (18): afterDraw(), afterEvent(), afterUpdate(), f(), gs(), ki(), la(), Oi(
 Cohesion: 0.33
 Nodes (5): Duplicate Filter Types, Filter Translation Pitfalls, Ordering Constraints, Parameter Space Differences, Unmappable Effects
 
-### Community 71 - "Standard CLI Surface"
-Cohesion: 0.22
-Nodes (9): `preview capture`, `preview diff`, `preview latest`, `preview live push`, `preview live start`, `preview live status`, `preview live stop`, `preview recipes` (+1 more)
+### Community 71 - "auto-save-dry-run.md"
+Cohesion: 0.33
+Nodes (3): Session File Locking, The Problem, The Solution: `_locked_save_json`
 
 ### Community 72 - "year_options"
 Cohesion: 0.17
@@ -660,7 +660,7 @@ Cohesion: 0.20
 Nodes (10): 4.10 جدول سجل الترحيل `foodics_sync_log`, 4.1 جدول المستخدمين `users`, 4.2 جدول المواقع `locations`, 4.4 جدول طلبات الأصناف الجديدة `new_item_requests`, 4.5 جدول عمليات الشراء `purchase_transactions`, 4.6 جدول بنود الشراء `purchase_lines`, 4.7 جدول التحويلات `transfer_orders`, 4.8 جدول بنود التحويل `transfer_lines` (+2 more)
 
 ### Community 103 - "PyPI Publishing and Installation (Phase 7)"
-Cohesion: 0.33
+Cohesion: 0.29
 Nodes (6): 1. Package Structure, 2. setup.py Template, 3. Import Convention, 4. Verification Steps, PyPI Publishing and Installation (Phase 7), Why Namespace Packages
 
 ### Community 104 - "app_findash.py"
@@ -690,6 +690,10 @@ Nodes (102): accountant_review(), add_or_get_supplier(), api_add_supplier(), api
 ### Community 110 - "createLiveBrowserDomHelpers"
 Cohesion: 0.16
 Nodes (15): createLiveBrowserDomHelpers(), activeElementDeep(), cloneWithoutChrome(), copyTextViaSelection(), cssId(), liveUiRoot(), makeFrozenAnchor(), raiseHitModal() (+7 more)
+
+### Community 111 - "Three-layer model: bundle, session, trajectory"
+Cohesion: 0.50
+Nodes (4): `bundle_dir`: immutable snapshot, `session.json`: mutable live head, Three-layer model: bundle, session, trajectory, `trajectory.json`: append-only permanent history
 
 ### Community 112 - "coffee_salla.py"
 Cohesion: 0.04
@@ -804,15 +808,15 @@ Cohesion: 0.17
 Nodes (11): Accessibility Resilience, Assess Hardening Needs, Edge Cases & Boundary Conditions, Error Handling, Hardening Dimensions, Input Validation & Sanitization, Internationalization (i18n), Performance Resilience (+3 more)
 
 ### Community 140 - "._c"
-Cohesion: 0.10
-Nodes (6): _display_home_path(), _box_line(), _meta_lines(), _strip_ansi(), _visible_len(), Narrative mapping
+Cohesion: 0.12
+Nodes (7): _display_home_path(), _box_line(), _meta_lines(), _strip_ansi(), _visible_len(), Handle `steer`, Poll loop
 
 ### Community 141 - "General SOP: Turning Any GUI App into an Agent-Usable CLI"
 Cohesion: 0.22
 Nodes (9): General SOP: Turning Any GUI App into an Agent-Usable CLI, Phase 1: Codebase Analysis, Phase 2: CLI Architecture Design, Phase 3: Implementation, Phase 4: Test Planning (TEST.md - Part 1), Phase 5: Test Implementation, Phase 6.5: SKILL.md Generation, Phase 6: Test Documentation (TEST.md - Part 2) (+1 more)
 
 ### Community 142 - "HARNESS.md"
-Cohesion: 0.22
+Cohesion: 0.29
 Nodes (4): Accept ±1 Frame Tolerance, Timecode Precision, Use Integer Arithmetic for Timecode Display, Use `round()`, Not `int()`
 
 ### Community 143 - "clarify.md"
@@ -828,8 +832,8 @@ Cohesion: 0.18
 Nodes (11): Design Health Score, Design Specificity Verdict, Generate Combined Critique Report, Minor Observations, Overall Impression, Persona Red Flags, Priority Issues, Questions to Consider (+3 more)
 
 ### Community 146 - "Scan mode (approach C: auto-extract, then confirm descriptive language)"
-Cohesion: 0.18
-Nodes (11): Component translation rules, Scan mode (approach C: auto-extract, then confirm descriptive language), Schema, Step 1: Find the design assets, Step 2: Auto-extract what can be auto-extracted, Step 3: Ask the user for qualitative language, Step 4: Write DESIGN.md, Step 4b: Write .impeccable/design.json sidecar (extensions only) (+3 more)
+Cohesion: 0.11
+Nodes (12): Component translation rules, Narrative mapping, Scan mode (approach C: auto-extract, then confirm descriptive language), Schema, Step 1: Find the design assets, Step 2: Auto-extract what can be auto-extracted, Step 3: Ask the user for qualitative language, Step 4: Write DESIGN.md (+4 more)
 
 ### Community 147 - "polish.md"
 Cohesion: 0.18
@@ -1106,7 +1110,7 @@ Nodes (3): 1. جوهر المنهجية (Core Principles), 2. بروتوكول �
 ## Knowledge Gaps
 - **1 isolated node(s):** `LINT`
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2046 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **14 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_

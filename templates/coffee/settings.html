@@ -271,9 +271,14 @@
                     </div>
                 </div>
                 <div class="form-group" style="margin-top: 10px;">
-                    <label>رابط إعادة التوجيه المعتمد (Redirect URI)</label>
-                    <input type="text" name="xero_redirect_uri" class="form-control" value="{{ all_settings.get('xero_redirect_uri', 'http://localhost:5000/coffee/xero/callback') }}" style="background: #fff; font-family: monospace;">
-                    <small style="color: var(--gray-500); font-size: 11px;">يجب أن يتطابق مع ما وضعته في Xero Developer App Configuration.</small>
+                    <label style="font-weight: 700;">رابط إعادة التوجيه المعتمد (Redirect URI)</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="xeroRedirectUriInput" name="xero_redirect_uri" class="form-control" value="{{ all_settings.get('xero_redirect_uri') or (request.url_root.rstrip('/') + '/coffee/xero/callback') }}" style="background: #fff; font-family: monospace; flex: 1;">
+                        <button type="button" class="btn-sm" style="background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; padding: 6px 12px; border-radius: 4px; font-weight: 700; cursor: pointer; white-space: nowrap;" onclick="navigator.clipboard.writeText(document.getElementById('xeroRedirectUriInput').value); alert('تم نسخ الرابط للحافظة!');">📋 نسخ الرابط</button>
+                    </div>
+                    <small style="color: var(--gray-600); font-size: 12px; display: block; margin-top: 5px;">
+                        ⚠️ <strong>هام للربط مع زيرو:</strong> يجب إضافة هذا الرابط نصياً في قائمة <code>Redirect URIs</code> داخل إعدادات تطبيقك في <a href="https://developer.xero.com/app/manage" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: 700;">Xero Developer Portal</a> ثم الضغط على Save في زيرو و💾 حفظ إعدادات Xero بالأسفل.
+                    </small>
                 </div>
             </div>
 

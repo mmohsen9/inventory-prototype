@@ -24,6 +24,7 @@ app_coffee.py — Blueprint Flask لقسم القهوة الخضراء والم�
   /coffee/audit-log              سجل التدقيق
   /coffee/api/*                  نقاط نهاية JSON مساعدة
 """
+import os
 import re
 import json
 import io
@@ -3849,9 +3850,10 @@ def xero_connect():
     denied = _require_perm("coffee.manage_settings")
     if denied: return denied
 
-    client_id = CoffeeSetting.get("xero_client_id", "").strip()
-    client_secret = CoffeeSetting.get("xero_client_secret", "").strip()
-    redirect_uri = CoffeeSetting.get("xero_redirect_uri", "http://localhost:5000/coffee/xero/callback").strip()
+    client_id = (CoffeeSetting.get("xero_client_id", "") or os.environ.get("XERO_CLIENT_ID", "")).strip()
+    client_secret = (CoffeeSetting.get("xero_client_secret", "") or os.environ.get("XERO_CLIENT_SECRET", "")).strip()
+    default_redirect = f"{request.url_root.rstrip('/')}/coffee/xero/callback"
+    redirect_uri = (CoffeeSetting.get("xero_redirect_uri", "") or os.environ.get("XERO_REDIRECT_URI", "") or default_redirect).strip()
 
     if not client_id or not client_secret:
         flash("⚠️ يرجى إدخال وحفظ Client ID و Client Secret أولاً في الإعدادات أدناه لبدء الربط.", "warning")
@@ -3899,9 +3901,10 @@ def xero_callback():
         flash("⚠️ فشل التحقق من رمز أمان الجلسة (Invalid State). يرجى إعادة المحاولة.", "error")
         return redirect(url_for("coffee.settings"))
 
-    client_id = CoffeeSetting.get("xero_client_id", "").strip()
-    client_secret = CoffeeSetting.get("xero_client_secret", "").strip()
-    redirect_uri = CoffeeSetting.get("xero_redirect_uri", "http://localhost:5000/coffee/xero/callback").strip()
+    client_id = (CoffeeSetting.get("xero_client_id", "") or os.environ.get("XERO_CLIENT_ID", "")).strip()
+    client_secret = (CoffeeSetting.get("xero_client_secret", "") or os.environ.get("XERO_CLIENT_SECRET", "")).strip()
+    default_redirect = f"{request.url_root.rstrip('/')}/coffee/xero/callback"
+    redirect_uri = (CoffeeSetting.get("xero_redirect_uri", "") or os.environ.get("XERO_REDIRECT_URI", "") or default_redirect).strip()
 
     import time
     from requests.auth import HTTPBasicAuth

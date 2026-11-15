@@ -268,6 +268,12 @@ def ensure_seed_data():
     except Exception as _coffee_err:
         print(f"تحذير: تعذّر تهيئة أصناف القهوة الافتراضية: {_coffee_err}")
 
+    try:
+        from models_coffee import ensure_salla_schema
+        ensure_salla_schema()
+    except Exception as _salla_err:
+        print(f"تحذير: تعذّر تهيئة بيانات سلة الافتراضية: {_salla_err}")
+
 
 def ensure_suppliers_seed():
     """تحميل الموردين وأصنافهم من ملفات الـ CSV إذا لم تكن موجودة."""
@@ -956,22 +962,57 @@ def _get_cached_suppliers():
     _globals_cache["suppliers_ts"] = now
     return suppliers
 
-def _get_cached_notifications(user=None):
+def cleanup_supplier_linked_notifications():
+    """تنظيف وإغلاق إشعارات أصناف المخزون المربوطة بمورد لعدم إشغال شارة وجرس الإشعارات."""
+    try:
+        from models import Notification, Item, ItemSupplier
+        # 1. أي إشعار مسجل به has_supplier=True وكان غير مقروء يتم تعليمه كمقروء
+        Notification.query.filter(
+            Notification.type == "new_inventory_item",
+            Notification.has_supplier == True,
+            Notification.is_read == False
+        ).update({"is_read": True}, synchronize_session=False)
+
+        # 2. أي إشعار لصنف أصبح لديه مورد الآن في ItemSupplier يتم تعليمه كمقروء وتحديث حالته
+        linked_skus = [r[0] for r in db.session.query(Item.sku).join(ItemSupplier, Item.id == ItemSupplier.item_id).filter(Item.sku.isnot(None)).distinct().all()]
+        if linked_skus:
+            Notification.query.filter(
+                Notification.type == "new_inventory_item",
+                Notification.item_sku.in_(linked_skus),
+                Notification.is_read == False
+            ).update({"is_read": True, "has_supplier": True}, synchronize_session=False)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
+def get_unread_notifications_query(user=None):
+    """استعلام موحد للإشعارات غير المقروءة مع استبعاد الأصناف المربوطة بمورد."""
+    q = Notification.query.filter_by(is_read=False).filter(
+        db.or_(
+            Notification.type != "new_inventory_item",
+            Notification.has_supplier == False
+        )
+    )
     if user and user.role == "branch_staff":
-        notifs = Notification.query.filter_by(is_read=False).filter(
-            Notification.type.notin_(["new_inventory_item", "foodics_sync", "salla_new_product"])
-        ).order_by(Notification.created_at.desc()).limit(10).all()
-        cnt = Notification.query.filter_by(is_read=False).filter(
-            Notification.type.notin_(["new_inventory_item", "foodics_sync", "salla_new_product"])
-        ).count()
+        q = q.filter(Notification.type.notin_(["new_inventory_item", "foodics_sync", "salla_new_product"]))
+    return q
+
+
+def _get_cached_notifications(user=None):
+    cleanup_supplier_linked_notifications()
+    q = get_unread_notifications_query(user)
+    if user and user.role == "branch_staff":
+        notifs = q.order_by(Notification.created_at.desc()).limit(10).all()
+        cnt = q.count()
         return notifs, cnt
 
     import time
     now = time.time()
     if now - _globals_cache["notifs_ts"] < 15.0:
         return _globals_cache["notifs"], _globals_cache["notifs_count"]
-    notifs = Notification.query.filter_by(is_read=False).order_by(Notification.created_at.desc()).limit(10).all()
-    cnt = Notification.query.filter_by(is_read=False).count()
+    notifs = q.order_by(Notification.created_at.desc()).limit(10).all()
+    cnt = q.count()
     _globals_cache["notifs"] = notifs
     _globals_cache["notifs_count"] = cnt
     _globals_cache["notifs_ts"] = now
@@ -4422,6 +4463,9 @@ def foodics_settings():
 # استقبال Webhook من متجر سلة (Salla Webhook Endpoint)
 # ---------------------------------------------------------------
 @app.route("/api/salla/webhook", methods=["GET", "POST"])
+@app.route("/api/salla/webhooks", methods=["GET", "POST"])
+@app.route("/api/salla", methods=["GET", "POST"])
+@app.route("/api/sa", methods=["GET", "POST"])
 @csrf.exempt
 def salla_webhook():
     if request.method == "GET":
@@ -4535,7 +4579,7 @@ def api_foodics_sync_now():
         return redirect(url_for("foodics_hub"))
 
     ok, msg = sq.sync_inventory_items_from_foodics(token, base_url)
-    unread_count = Notification.query.filter_by(is_read=False).count()
+    unread_count = get_unread_notifications_query().count()
     if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return jsonify({
             "status": "success" if ok else "error",
@@ -4613,10 +4657,8 @@ def foodics_test_webhook():
 def api_notifications_unread():
     """إرجاع قائمة الإشعارات غير المقروءة للتحديث الحي اللحظي بالواجهة."""
     u = current_user()
-    q = Notification.query.filter_by(is_read=False)
-    if u and u.role == "branch_staff":
-        # حجب إشعارات أصناف المخزون العامة عن موظف الفرع
-        q = q.filter(Notification.type.notin_(["new_inventory_item", "foodics_sync", "salla_new_product"]))
+    cleanup_supplier_linked_notifications()
+    q = get_unread_notifications_query(u)
     notifs = q.order_by(Notification.created_at.desc()).limit(15).all()
     lang = session.get("lang", "ar")
     data = []

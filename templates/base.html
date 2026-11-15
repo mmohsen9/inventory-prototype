@@ -544,14 +544,13 @@
                     if (markBtn) markBtn.style.display = "none";
                 }
 
-                // الكشف عن الإشعارات الجديدة لعرض Toast
+                // الكشف عن الإشعارات الجديدة وتحديث القائمة بالجرس بهدوء دون نوافذ منبثقة متكررة
                 if (data.notifications && data.notifications.length > 0) {
                     let hasNew = false;
                     data.notifications.forEach(n => {
                         if (!knownNotifIds.has(n.id)) {
                             knownNotifIds.add(n.id);
                             hasNew = true;
-                            showLiveToast(n.title, n.message);
                         }
                     });
 

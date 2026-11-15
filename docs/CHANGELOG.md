@@ -1,3 +1,40 @@
+## [2026-11-15] - ضبط وعزل إشعارات الأصناف المربوطة بمورد وإلغاء النوافذ المنبثقة المتكررة (Supplier-Linked Notification Suppression & Quiet Bell)
+### تحسينات الإشعارات وتجربة المستخدم (done+tested)
+- **استبعاد إشعارات الأصناف المربوطة بمورد من الجرس والعداد:**
+  * منع إضافة الأصناف المربوطة بمورد مسبقاً (`has_supplier=True`) إلى قائمة الإشعارات غير المقروءة، وحفظها تلقائياً كمقروءة في `sync_queue.py`.
+  * حجب إشعارات المواد المربوطة بمورد من استعلامات شارة الجرس وقائمة الإشعارات في `app.py` (`_get_cached_notifications` و `api_notifications_unread`).
+  * تفعيل دالة تنظيف تلقائية `cleanup_supplier_linked_notifications()` لتعليم إشعارات الأصناف التي أصبحت مرتبطة بمورد كمقروءة وتحديث حالتها فوراً لخفض عداد الشارة (من 25 إلى الأصناف غير المربوطة فقط).
+- **إلغاء النوافذ المنبثقة التلقائية المتكررة (Toasts):**
+  * إيقاف استدعاء `showLiveToast` في الفحص الدوري كل 20 ثانية بملف `templates/base.html`، والاكتفاء بتحديث رقم الجرس والقائمة المنسدلة فقط بهدوء.
+- **الفحوصات وضبط الجودة (done+tested):**
+  * اجتياز كامل اختبارات الإشعارات وسلة `tests/test_foodics_notifications.py` و `tests/test_coffee_salla.py` (20/20 passed بنسبة 100%).
+
+## [2026-11-15] - حل مشكلة فراغ جدول مطابقة أصناف سلة وضمان الزرع التلقائي واليدوي (Salla Mappings Auto-Seed & Self-Healing)
+### تحسينات ومعالجة بيانات سلة (done+tested)
+- **سبب المشكلة على بيئة الإنتاج السحابية:**
+  * كانت دالة `ensure_salla_schema()` تُستدعى مبكراً جداً أثناء استيراد البلوبرنت قبل تشغيل `db.create_all()`، مما أدى إلى فشل صامت في إنشاء الأصناف الافتراضية لقاعدة بيانات PostgreSQL النظيفة.
+- **التعديلات المنفذة:**
+  * تفعيل خاصية المعالجة الذاتية (Self-healing) في دالة `salla_mappings_list()` بـ `coffee_salla.py` لزرع الأصناف الـ 17 فوراً وتلقائياً إذا وُجد الجدول فارغاً.
+  * استدعاء `ensure_salla_schema()` داخل `ensure_seed_data()` في `app.py`.
+  * حماية دالة `_seed_default_salla_mappings()` من تكرار السجلات (Idempotent) وربط المعرفات تلقائياً.
+  * إضافة مسار `POST /coffee/salla/mappings/seed-defaults` وزر صريح `⚡ استيراد الأصناف الافتراضية` في الترويسة وبطاقة الحالة الفارغة.
+- **الفحوصات وضبط الجودة (done+tested):**
+  * اجتياز كامل اختبارات سلة `tests/test_coffee_salla.py` (12/12 passed بنسبة 100%).
+
+## [2026-11-15] - تهيئة وتجهيز ربط Xero OAuth 2.0 للموقع المنشور والبيئة الحية (Production Xero OAuth & Dynamic Redirect URI)
+### تحسينات وضبط بيئة النشر (done+tested)
+- **دعم استنتاج وتوليد رابط إعادة التوجيه (Redirect URI) تلقائياً للموقع المنشور:**
+  * تحديث `app_coffee.py` في مسارات التفويض والاستقبال (`/coffee/xero/connect` و `/coffee/xero/callback`) لدعم قراءة `xero_redirect_uri` من جدول الإعدادات أو متغيرات البيئة `XERO_REDIRECT_URI`، مع الرجوع التلقائي لرابط الخادم المباشر عبر `request.url_root` (`https://<DOMAIN>/coffee/xero/callback`).
+  * دعم قراءة `xero_client_id` و `xero_client_secret` من متغيرات البيئة `XERO_CLIENT_ID` و `XERO_CLIENT_SECRET` كبديل مرن لبيئات النشر السحابية.
+  * تحديث دالة `_get_setting` في `coffee_xero.py` لدعم الرجوع التلقائي لمتغيرات البيئة عند خلو جدول الإعدادات.
+- **تطوير واجهة إعدادات Xero (`templates/coffee/settings.html`):**
+  * إضافة زر نسخ سريع بنقرة واحدة (📋 نسخ الرابط) لرابط الـ Callback المكتشف تلقائياً لمطابقته مع إعدادات تطبيق زيرو.
+  * توضيح إرشادي مباشر للمستخدم بضرورة إضافة الرابط في قائمة `Redirect URIs` في بوابة مطوري زيرو وحفظ الإعدادات قبل بدء الربط.
+- **الفحوصات وضبط الجودة (done+tested):**
+  * اجتياز اختبارات تفويض Xero OAuth بنجاح 4/4 في `tests/test_coffee_features_v3.py`.
+  * اجتياز كامل اختبارات الداشبورد المالي `tests/test_findash.py` بنجاح 22/22 (100%).
+  * تحديث الرسم البياني المعرفي عبر `graphify update .`.
+
 ## [2026-11-12] - إصلاح أخطاء واجهات المستخدم وتحسين أداء المسارات وضبط بيئة Boosthis (Fix Frontend ReferenceErrors, Performance Optimization & Boosthis Telemetry)
 ### إصلاحات وتحسينات (done+tested)
 - **إصلاح أخطاء ReferenceError في واجهات المستخدم:**

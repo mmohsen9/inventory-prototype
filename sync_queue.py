@@ -888,26 +888,19 @@ def process_foodics_item_payload(item_data, trigger_notification=True):
 
 
 
+        # إذا كان الصنف مربوطاً بمورد بالفعل، يتم تعليمه كمقروء تلقائياً لعدم إزعاجه في الجرس
+        is_read_flag = True if has_supplier else False
+
         notif = Notification(
-
             title=f"تمت إضافة مادة مخزون جديدة من فوديكس ({title_tag}) 📦",
-
             message=f"تم استلام الصنف الجديد '{item_display_name}' (كود SKU: {sku}) من فوديكس بوحدة تخزين '{storage_unit or 'قطعة'}' وتكلفة {cost:.2f} ر.س. {sup_msg}",
-
             type="new_inventory_item",
-
             item_sku=sku,
-
             related_id=item.id,
-
             has_supplier=has_supplier,
-
             supplier_name=supplier_display,
-
-            is_read=False,
-
+            is_read=is_read_flag,
             created_at=datetime.utcnow()
-
         )
 
         db.session.add(notif)

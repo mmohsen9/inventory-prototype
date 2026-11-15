@@ -613,6 +613,14 @@ def init_salla_routes(bp):
         r = _require_salla_perm()
         if r: return r
 
+        # إذا كانت القائمة فارغة، يتم تفعيل الزرع التلقائي للأصناف الافتراضية
+        try:
+            if SallaItemMapping.query.count() == 0:
+                from models_coffee import ensure_salla_schema
+                ensure_salla_schema()
+        except Exception as _seed_err:
+            current_app.logger.warning(f"Error auto-seeding salla mappings: {_seed_err}")
+
         mappings = SallaItemMapping.query.order_by(SallaItemMapping.item_type, SallaItemMapping.salla_product_name).all()
         roasted_coffee_items = CoffeeItem.query.filter_by(coffee_type="roasted", active=True).order_by(CoffeeItem.base_code).all()
         general_items = Item.query.order_by(Item.sku).all()
@@ -764,6 +772,19 @@ def init_salla_routes(bp):
         db.session.delete(mapping)
         db.session.commit()
         flash(f"تم حذف ربط الصنف '{p_name}'.", "success")
+        return redirect(url_for("coffee.salla_mappings_list"))
+
+    @bp.route("/salla/mappings/seed-defaults", methods=["POST"])
+    def salla_mappings_seed_defaults():
+        r = _require_salla_perm()
+        if r: return r
+
+        try:
+            from models_coffee import _seed_default_salla_mappings
+            _seed_default_salla_mappings()
+            flash("تم استيراد وتحديث الأصناف الافتراضية الجاهزة بنجاح!", "success")
+        except Exception as e:
+            flash(f"حدث خطأ أثناء استيراد الأصناف: {e}", "danger")
         return redirect(url_for("coffee.salla_mappings_list"))
 
     @bp.route("/salla/close-daily", methods=["POST"])
@@ -931,6 +952,9 @@ def init_salla_routes(bp):
         return redirect(url_for("coffee.salla_orders_list"))
 
     @bp.route("/api/salla/webhook", methods=["GET", "POST"])
+    @bp.route("/api/salla/webhooks", methods=["GET", "POST"])
+    @bp.route("/api/salla", methods=["GET", "POST"])
+    @bp.route("/api/sa", methods=["GET", "POST"])
     def salla_webhook():
         if request.method == "GET":
             return jsonify({

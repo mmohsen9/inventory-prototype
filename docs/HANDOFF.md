@@ -1,8 +1,47 @@
 # تسليم الجلسة (HANDOFF)
 
-- **آخر تحديث:** 2026-11-12
+- **آخر تحديث:** 2026-11-15
 
 - **نقطة التوقف الحالية:**
+  0. ضبط وعزل إشعارات الأصناف المربوطة بمورد وإلغاء النوافذ المنبثقة المتكررة (done+tested):
+     - **استبعاد إشعارات الأصناف المربوطة بمورد نهائياً من شارة وجرس الإشعارات:**
+       * تعديل `sync_queue.py`: عند وصول صنف مخزون جديد من فوديكس ولديه مورد بالفعل (`has_supplier=True`)، يتم حفظ الإشعار بحالة مقروءة فوراً (`is_read=True`) حتى لا يشغل شارة الجرس أو يظهر في القائمة كإشعار معلق.
+       * تحديث استعلامات الإشعارات غير المقروءة في `app.py` (`_get_cached_notifications` و `api_notifications_unread`) عبر دالة موحدة `get_unread_notifications_query()` تستبعد نهائياً الأصناف المربوطة بمورد (`Notification.has_supplier == False`).
+       * إضافة دالة تنظيف تلقائية `cleanup_supplier_linked_notifications()` تقوم تلقائياً بتعليم أي إشعار لصنف أصبح لديه مورد في `ItemSupplier` كمقروء ومعالج (`is_read=True` و `has_supplier=True`) لخفض العداد الفوري من 25 إلى الأصناف غير المعالجة فقط.
+     - **إلغاء النوافذ المنبثقة التلقائية المتكررة (Toasts Suppression):**
+       * إيقاف استدعاء `showLiveToast` أثناء الفحص الدوري كل 20 ثانية في `templates/base.html`، والاكتفاء بتحديث شارة الجرس وقائمة الإشعارات المنسدلة بهدوء دون إزعاج الشاشة بنوافذ متكررة.
+     - **الفحوصات وضبط الجودة (done+tested):**
+       * اجتياز كامل اختبارات الإشعارات وسلة `tests/test_foodics_notifications.py` و `tests/test_coffee_salla.py` بنجاح تام (20/20 passed بنسبة 100%) بما فيها اختبار `test_notifications_exclude_supplier_linked_items`.
+
+  0. حل مشكلة فراغ جدول مطابقة أصناف سلة وضمان الزرع التلقائي واليدوي (done+tested):
+     - **سبب المشكلة على بيئة الإنتاج السحابية:**
+       * دالة `ensure_salla_schema()` كانت تُستدعى فقط عند استيراد `app_coffee.py` قبل تشغيل `db.create_all()` وقبل إنشاء الجداول في PostgreSQL، مما تسبب في فشل صامت لزرع الأصناف الـ 17 الافتراضية.
+       * لم يكن مسار `/coffee/salla/mappings` يتحقق من خلو الجدول لتعويضه ذاتياً.
+     - **التعديلات والحلول الجذرية المطبقة:**
+       * جعل `_seed_default_salla_mappings()` آمنة ومقاومة للتكرار (Idempotent) مع ربط الأصناف تلقائياً بأكواد البن والأدوات.
+       * استدعاء `ensure_salla_schema()` داخل `ensure_seed_data()` في `app.py`.
+       * تفعيل المعالجة الذاتية (Self-healing) في دالة `salla_mappings_list()` بـ `coffee_salla.py` عند فتح الصفحة إذا كان الجدول فارغاً.
+       * إضافة مسار `POST /coffee/salla/mappings/seed-defaults` وزر صريح بالواجهة (`salla_mappings_list.html`) لاستيراد أو تجديد الأصناف الافتراضية بنقرة واحدة، مع حالة فارغة توضيحية عند عدم وجود أصناف.
+     - **الفحوصات وضبط الجودة (done+tested):**
+       * اجتياز كامل اختبارات سلة `tests/test_coffee_salla.py` بنجاح (12/12 passed بنسبة 100%) بما فيها اختبار `test_salla_mappings_auto_seed_and_manual_seed`.
+
+  0. توثيق وتأجيل ميزة القراءة الذكية لفواتير المشتريات (Smart Invoice OCR) إلى خارطة الطريق (ROADMAP):
+     - بناء دراسة معمارية متكاملة وفق بروتوكول مهارة دورة الحياة `gemini-code-1793710428069` (استخراج بالرؤية البصرية عبر Gemini Vision، مطابقة هجينة للأصناف والموردين، وتطبيع تلقائي لوحدات القياس).
+     - بناءً على توجيه المستخدم، تم تأجيل التنفيذ البرمجي وإدراجه رسمياً في [docs/ROADMAP.md](file:///d:/مجلد%20جديد/OneDrive/scratch/inventory-prototype/docs/ROADMAP.md) تحت قسم `Later` ليتم تطويره بعد الاستخدامات التشغيلية الأولية للموقع المنشور.
+
+  0. تهيئة وتجهيز ربط Xero OAuth 2.0 للموقع المنشور والبيئة الحية (done+tested):
+     - **دعم استنتاج وتوليد رابط إعادة التوجيه (Redirect URI) تلقائياً للموقع المنشور:**
+       * تحديث `app_coffee.py` في مساري التوثيق (`/coffee/xero/connect` و `/coffee/xero/callback`) ليدعم قراءة `xero_redirect_uri` من إعدادات الموقع أو متغيرات البيئة `XERO_REDIRECT_URI`، مع الرجوع التلقائي لدومين الموقع الحقيقي من واقع `request.url_root` (`https://<DOMAIN>/coffee/xero/callback`).
+       * دعم قراءة `xero_client_id` و `xero_client_secret` من متغيرات البيئة `XERO_CLIENT_ID` و `XERO_CLIENT_SECRET`.
+       * تحديث دالة `_get_setting` في `coffee_xero.py` للرجوع التلقائي لمتغيرات البيئة عند خلو جدول الإعدادات.
+     - **تطوير واجهة إعدادات Xero (`templates/coffee/settings.html`):**
+       * إضافة زر نسخ سريع بنقرة واحدة (📋 نسخ الرابط) لرابط الـ Callback المكتشف تلقائياً لمطابقته مع إعدادات تطبيق زيرو.
+       * توضيح إرشادي مباشر للمستخدم بضرورة إضافة الرابط في قائمة `Redirect URIs` في بوابة مطوري زيرو وحفظ الإعدادات قبل بدء الربط.
+     - **الفحوصات وضبط الجودة (done+tested):**
+       * اجتياز اختبارات تفويض Xero OAuth بنجاح 4/4 في `tests/test_coffee_features_v3.py`.
+       * اجتياز كامل اختبارات الداشبورد المالي `tests/test_findash.py` بنجاح 22/22 (100%).
+       * تحديث الرسم البياني المعرفي عبر `graphify update .`.
+
   0. إصلاح أخطاء واجهات المستخدم وتحسين أداء المسارات وضبط بيئة Boosthis (done+tested):
      - **إصلاح أخطاء ReferenceError في واجهات المستخدم:**
        * معالجة كافة دوال وتفاعلات صفوف السندات وإدخال الكميات والباركود والبحث في شاشات الصرف والمشتريات (`templates/coffee/dispatch_new.html`, `templates/coffee/dispatch_edit.html`, `templates/coffee/green_issue_edit.html`).
