@@ -1,0 +1,182 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}لوحة تحكم القهوة الخضراء والمحمصة{% endblock %}
+
+{% block coffee_content %}
+  <!-- رأس الصفحة وإجراءات سريعة -->
+  <div class="kf-page-header">
+    <div>
+      <h1 class="kf-page-title">لوحة تحكم القهوة</h1>
+      <p style="margin: 4px 0 0; font-size: 13px; color: var(--kf-steel);">
+        متابعة المخزون، أوامر التحميص، نسب الفاقد، والترحيل المحاسبي لنظام Xero
+      </p>
+    </div>
+    <div class="kf-page-actions">
+      <a href="{{ url_for('coffee.roasting_new') }}" class="kf-btn kf-btn-primary">
+        {{ ui.icon_plus() }}
+        <span>أمر تحميص جديد</span>
+      </a>
+      <a href="{{ url_for('coffee.green_issue_new') }}" class="kf-btn kf-btn-secondary">
+        {{ ui.icon_send() }}
+        <span>سند صرف أخضر</span>
+      </a>
+      <a href="{{ url_for('coffee.dispatch_new') }}" class="kf-btn kf-btn-secondary">
+        {{ ui.icon_truck() }}
+        <span>صرف محمص للفرع</span>
+      </a>
+      <a href="{{ url_for('coffee.inventory_count_record') }}" class="kf-btn kf-btn-secondary">
+        {{ ui.icon_clipboard() }}
+        <span>تسجيل جرد</span>
+      </a>
+      <a href="{{ url_for('coffee.xero_items_sync') }}" class="kf-btn kf-btn-secondary">
+        {{ ui.icon_cloud() }}
+        <span>مزامنة Xero</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- تنبيه أصناف Xero إن وُجدت أو للتذكير بالفحص -->
+  <div class="kf-card" style="padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; border-right: 4px solid var(--kf-violet); background: var(--kf-lilac);">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="color: var(--kf-violet); flex-shrink: 0;">{{ ui.icon_zap() }}</div>
+      <div>
+        <strong style="color: var(--kf-iris); font-size: 13.5px;">تكامل أصناف Xero:</strong>
+        <span style="color: var(--kf-graphite); font-size: 13px;">عند إضافة أصناف بن خضراء (GB) أو محمصة (RB) جديدة في Xero، يمكنك اكتشافها واستيرادها بضغطة زر.</span>
+      </div>
+    </div>
+    <a href="{{ url_for('coffee.xero_items_sync') }}" class="kf-btn kf-btn-secondary kf-btn-sm" style="border-color: var(--kf-violet); color: var(--kf-violet); font-weight: 700;">
+      فحص واستيراد الأصناف &larr;
+    </a>
+  </div>
+
+  <!-- شبكة مؤشرات الأداء (KPIs) -->
+  <div class="kf-kpi-grid">
+    <!-- 1. البن الأخضر -->
+    <div class="kf-kpi">
+      <div class="kf-kpi-head">
+        <span class="kf-kpi-label">مخزون البن الأخضر (GB)</span>
+        <div class="kf-kpi-icon">{{ ui.icon_leaf() }}</div>
+      </div>
+      <div class="kf-kpi-value">{{ "{:,.2f}".format(total_green_kg) }} <small>كجم</small></div>
+      <div class="kf-kpi-sub">
+        القيمة: <strong>{{ "{:,.2f}".format(total_green_val) }} ريال</strong> ({{ green_items_count }} صنف)
+      </div>
+    </div>
+
+    <!-- 2. البن المحمص -->
+    <div class="kf-kpi">
+      <div class="kf-kpi-head">
+        <span class="kf-kpi-label">مخزون البن المحمص (RB)</span>
+        <div class="kf-kpi-icon">{{ ui.icon_coffee() }}</div>
+      </div>
+      <div class="kf-kpi-value">{{ "{:,.2f}".format(total_roasted_kg) }} <small>كجم</small></div>
+      <div class="kf-kpi-sub">
+        القيمة: <strong>{{ "{:,.2f}".format(total_roasted_val) }} ريال</strong> ({{ roasted_items_count }} صنف)
+      </div>
+    </div>
+
+    <!-- 3. أوامر التحميص -->
+    <div class="kf-kpi">
+      <div class="kf-kpi-head">
+        <span class="kf-kpi-label">أوامر تحميص قيد التنفيذ</span>
+        <div class="kf-kpi-icon">{{ ui.icon_flame() }}</div>
+      </div>
+      <div class="kf-kpi-value">{{ pending_orders }}</div>
+      <div class="kf-kpi-sub">
+        إجمالي المكتملة: <strong>{{ completed_orders }} أمر</strong>
+      </div>
+    </div>
+
+    <!-- 4. ترحيل Xero -->
+    <div class="kf-kpi {% if xero_pending > 0 %}kf-kpi--attention{% endif %}">
+      <div class="kf-kpi-head">
+        <span class="kf-kpi-label">معلق الترحيل لـ Xero</span>
+        <div class="kf-kpi-icon">{{ ui.icon_zap() }}</div>
+      </div>
+      <div class="kf-kpi-value" style="{% if xero_pending > 0 %}color: var(--kf-violet);{% endif %}">
+        {{ xero_pending }}
+      </div>
+      <div class="kf-kpi-sub">
+        {% if xero_pending > 0 %}
+        <a href="{{ url_for('coffee.xero_status') }}" style="color: var(--kf-violet); font-weight: 700; text-decoration: none;">
+          مراجعة وترحيل المعلق &larr;
+        </a>
+        {% else %}
+        <span>جميع الأوامر مرحلة بالكامل</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- بطاقة أحدث أوامر التحميص -->
+  <div class="kf-card">
+    <div class="kf-card-header">
+      <h3 class="kf-card-title">أحدث أوامر التحميص</h3>
+      <a href="{{ url_for('coffee.roasting_list') }}" class="kf-btn kf-btn-secondary kf-btn-sm">
+        عرض كافة الأوامر ({{ completed_orders + pending_orders }}) &larr;
+      </a>
+    </div>
+
+    {% if recent_orders %}
+    <div class="kf-table-wrap">
+      <table class="kf-table">
+        <thead>
+          <tr>
+            <th>رقم الأمر</th>
+            <th>التاريخ</th>
+            <th>مسؤول التحميص</th>
+            <th>عدد الأصناف</th>
+            <th>كمية الأخضر</th>
+            <th>كمية المحمص</th>
+            <th>الحالة</th>
+            <th>ترحيل Xero</th>
+            <th>الإجراء</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ord in recent_orders %}
+          <tr class="kf-clickable" onclick="window.location='{{ url_for('coffee.roasting_edit', order_id=ord.id) }}'">
+            <td>
+              <a href="{{ url_for('coffee.roasting_edit', order_id=ord.id) }}" class="kf-doc-link" onclick="event.stopPropagation()">
+                {{ ord.order_number }}
+              </a>
+            </td>
+            <td>{{ ord.order_date }}</td>
+            <td>{{ ord.roasting_supervisor or '—' }}</td>
+            <td class="kf-num">{{ ord.lines|length }}</td>
+            <td class="kf-num">{{ "{:,.2f}".format(ord.total_green_kg) }} كجم</td>
+            <td class="kf-num">
+              {% if ord.status == 'completed' %}
+              <strong>{{ "{:,.2f}".format(ord.total_roasted_kg) }} كجم</strong>
+              {% else %}
+              <span style="color: var(--kf-steel);">قيد التشغيل</span>
+              {% endif %}
+            </td>
+            <td>
+              {{ ui.order_status(ord.status) }}
+            </td>
+            <td>
+              {{ ui.xero_status(ord.xero_status) }}
+            </td>
+            <td onclick="event.stopPropagation()">
+              <a href="{{ url_for('coffee.roasting_edit', order_id=ord.id) }}" class="kf-btn kf-btn-secondary kf-btn-sm">
+                عرض / تفاصيل
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="kf-empty">
+      <div class="kf-empty-icon">{{ ui.icon_flame() }}</div>
+      <p>لم يتم إنشاء أي أوامر تحميص حتى الآن</p>
+      <a href="{{ url_for('coffee.roasting_new') }}" class="kf-btn kf-btn-primary">
+        {{ ui.icon_plus() }}
+        <span>إنشاء أول أمر تحميص</span>
+      </a>
+    </div>
+    {% endif %}
+  </div>
+{% endblock %}

@@ -1,0 +1,627 @@
+<!-- ======================================================== -->
+<!-- نافذة تفاعلية منبثقة: كارت حركات الصنف (Item Movements Modal) -->
+<!-- ======================================================== -->
+<div class="modal-backdrop" id="coffeeItemMovementsModal" style="display: none; z-index: 1050;" onclick="handleCoffeeItemModalBackdropClick(event)">
+  <div class="modal-box kf-movements-modal-box" onclick="event.stopPropagation()">
+    
+    <!-- Modal Header -->
+    <div class="modal-header kf-movements-modal-header">
+      <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;">
+        <div class="kf-modal-header-icon" id="cimHeaderIcon">☕</div>
+        <div style="min-width: 0; flex: 1;">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <h3 id="cimItemNameAr" style="margin: 0; font-size: 17px; font-weight: 800; color: var(--kf-ink, #0f172a);">
+              تحميل بيانات الصنف...
+            </h3>
+            <span class="kf-badge-xero" id="cimXeroCode" style="font-size: 11px; font-weight: 700; font-family: monospace;"></span>
+            <span class="kf-badge-type" id="cimTypeBadge"></span>
+          </div>
+          <div id="cimItemSub" style="font-size: 12px; color: var(--kf-steel, #64748b); margin-top: 2px;">
+            <span id="cimItemNameEn"></span>
+            <span id="cimWarehouseInfo" style="margin-right: 8px;"></span>
+            <span id="cimLinkedInfo" style="margin-right: 8px;"></span>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="modal-close" onclick="closeCoffeeItemMovements()" title="إغلاق">&times;</button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="modal-body kf-movements-modal-body" style="padding: 16px 20px; overflow-y: auto; max-height: calc(85vh - 130px);">
+      
+      <!-- Loading State -->
+      <div id="cimLoadingState" style="padding: 48px 16px; text-align: center;">
+        <div class="kf-spinner" style="margin: 0 auto 16px;"></div>
+        <div style="font-weight: 700; color: var(--kf-ink, #1e293b); font-size: 15px;">جاري تحميل سجل حركات الصنف...</div>
+        <div style="font-size: 12px; color: var(--kf-steel, #64748b); margin-top: 4px;">يتم استرجاع العمليات وسندات الصرف والتحميص والتوريد</div>
+      </div>
+
+      <!-- Error State -->
+      <div id="cimErrorState" style="display: none; padding: 32px 16px; text-align: center;">
+        <div style="font-size: 40px; margin-bottom: 8px;">⚠️</div>
+        <div id="cimErrorMessage" style="font-weight: 700; color: #dc2626; font-size: 15px;">تعذر تحميل البيانات</div>
+        <button type="button" class="kf-btn kf-btn-secondary" style="margin-top: 12px;" onclick="retryCoffeeItemMovements()">إعادة المحاولة</button>
+      </div>
+
+      <!-- Content State -->
+      <div id="cimContentState" style="display: none;">
+        
+        <!-- KPI Summary Cards Grid -->
+        <div class="kf-cim-kpi-grid">
+          <div class="kf-cim-kpi-card kpi-stock">
+            <span class="kf-cim-kpi-lbl">الرصيد الفعلي الحالي</span>
+            <strong class="kf-cim-kpi-val" id="cimKpiBalance">0.00 كجم</strong>
+            <span class="kf-cim-kpi-sub" id="cimKpiSacks">—</span>
+          </div>
+          <div class="kf-cim-kpi-card kpi-in">
+            <span class="kf-cim-kpi-lbl">إجمالي الوارد (+)</span>
+            <strong class="kf-cim-kpi-val text-success" id="cimKpiIn">0.00 كجم</strong>
+            <span class="kf-cim-kpi-sub">شحنات وتوريد وإنتاج</span>
+          </div>
+          <div class="kf-cim-kpi-card kpi-out">
+            <span class="kf-cim-kpi-lbl">إجمالي المنصرف (-)</span>
+            <strong class="kf-cim-kpi-val text-danger" id="cimKpiOut">0.00 كجم</strong>
+            <span class="kf-cim-kpi-sub">صرف تحميص وفروع</span>
+          </div>
+          <div class="kf-cim-kpi-card kpi-net">
+            <span class="kf-cim-kpi-lbl">صافي التغيير</span>
+            <strong class="kf-cim-kpi-val" id="cimKpiNet">0.00 كجم</strong>
+            <span class="kf-cim-kpi-sub" id="cimKpiCount">0 حركة مسجلة</span>
+          </div>
+        </div>
+
+        <!-- In-Modal Fast Filter / Search & Excel Export -->
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+          <div style="position: relative; flex: 1; min-width: 240px; max-width: 380px;">
+            <input type="text" id="cimSearchInput" class="kf-input" style="padding-right: 32px; font-size: 13px;" 
+                   placeholder="بحث برقم السند، نوع الحركة، المستخدم، الملاحظات..." onkeyup="filterCimMovementsTable()">
+            <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--kf-steel, #94a3b8); font-size: 14px;">🔍</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <a id="cimTopExcelBtn" href="#" class="kf-btn kf-btn-sm" style="background-color: #107c41; color: #ffffff; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 6px; text-decoration: none; box-shadow: 0 2px 5px rgba(16, 124, 65, 0.2);" title="تحميل كشف حركات هذا الصنف بصيغة ملف Excel">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+              <span>📥 تصدير إكسل (Excel)</span>
+            </a>
+            <div style="font-size: 12px; color: var(--kf-steel, #64748b);">
+              عرض <strong id="cimVisibleCount" style="color: var(--kf-ink, #0f172a);">0</strong> من أصل <span id="cimTotalCount">0</span> حركة
+            </div>
+          </div>
+        </div>
+
+        <!-- Table of Movements -->
+        <div class="kf-cim-table-container">
+          <table class="kf-table" id="cimMovementsTable">
+            <thead>
+              <tr>
+                <th style="width: 40px; text-align: center;">#</th>
+                <th>التاريخ والوقت</th>
+                <th>نوع الحركة</th>
+                <th>السند المرجعي</th>
+                <th>المستودع</th>
+                <th style="text-align: left;">وارد (+)</th>
+                <th style="text-align: left;">منصرف (-)</th>
+                <th style="text-align: left;">الرصيد بعد الحركة</th>
+                <th>المستخدم والملاحظات</th>
+              </tr>
+            </thead>
+            <tbody id="cimMovementsTbody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Empty Filter State -->
+        <div id="cimEmptyFilterNotice" style="display: none; padding: 28px 16px; text-align: center; color: var(--kf-steel, #64748b); font-size: 13px;">
+          لا توجد نتائج مطابقة لبحثك في حركات هذا الصنف.
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="modal-footer kf-movements-modal-footer">
+      <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <a id="cimFooterExcelBtn" href="#" class="kf-btn" style="background-color: #107c41; color: #ffffff; border: none; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(16, 124, 65, 0.25);" title="تحميل ملف Excel لكشف حركات هذا الصنف">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+            <span>📥 تصدير إكسل (Excel)</span>
+          </a>
+          <a id="cimFullReportBtn" href="#" target="_blank" class="kf-btn kf-btn-movements-report" style="display: inline-flex; align-items: center; gap: 8px; color: #000000 !important; font-weight: 800; text-decoration: none;">
+            <span style="color: #000000 !important; font-weight: 800;">📑 فتح تقرير كارت الصنف الشامل (عرض كامل / طباعة)</span>
+            <span style="font-size: 11px; color: #000000 !important; font-weight: 800;">↗</span>
+          </a>
+        </div>
+        <button type="button" class="kf-btn kf-btn-secondary" onclick="closeCoffeeItemMovements()">
+          إغلاق النافذة
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+/* ==========================================================================
+   تنسيقات نافذة كارت حركات الصنف التفاعلية (Coffee Item Movements Modal)
+   ========================================================================== */
+.kf-movements-modal-box {
+  max-width: 1050px !important;
+  width: 96% !important;
+  max-height: 90vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background: var(--kf-panel, #ffffff) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.08) !important;
+  overflow: hidden !important;
+  animation: cimZoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes cimZoomIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.kf-movements-modal-header {
+  background: var(--kf-fog, #f8fafc) !important;
+  border-bottom: 1px solid var(--kf-border, #e2e8f0) !important;
+  padding: 16px 20px !important;
+}
+
+.kf-modal-header-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: #fef3c7;
+  color: #b45309;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  border: 1px solid #fde68a;
+}
+
+.kf-badge-xero {
+  background: #eef2ff;
+  color: #4338ca;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #c7d2fe;
+}
+
+.kf-badge-type {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.kf-badge-type.green {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+.kf-badge-type.roasted {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.kf-cim-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.kf-cim-kpi-card {
+  background: var(--kf-fog, #f8fafc);
+  border: 1px solid var(--kf-border, #e2e8f0);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+}
+.kf-cim-kpi-card.kpi-stock { border-right: 4px solid #b45309; }
+.kf-cim-kpi-card.kpi-in { border-right: 4px solid #059669; }
+.kf-cim-kpi-card.kpi-out { border-right: 4px solid #dc2626; }
+.kf-cim-kpi-card.kpi-net { border-right: 4px solid #6366f1; }
+
+.kf-cim-kpi-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--kf-steel, #64748b);
+  margin-bottom: 4px;
+}
+.kf-cim-kpi-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--kf-ink, #0f172a);
+}
+.kf-cim-kpi-sub {
+  font-size: 11px;
+  color: var(--kf-steel, #64748b);
+  margin-top: 3px;
+}
+
+.kf-cim-table-container {
+  border: 1px solid var(--kf-border, #e2e8f0);
+  border-radius: 8px;
+  max-height: 440px;
+  overflow-y: auto;
+  overflow-x: auto;
+  background: var(--kf-panel, #ffffff);
+}
+
+.kf-cim-table-container thead th {
+  position: sticky;
+  top: 0;
+  background: var(--kf-fog, #f1f5f9);
+  z-index: 2;
+  box-shadow: 0 1px 0 var(--kf-border, #e2e8f0);
+}
+
+.kf-movements-modal-footer {
+  background: var(--kf-fog, #f8fafc) !important;
+  border-top: 1px solid var(--kf-border, #e2e8f0) !important;
+  padding: 14px 20px !important;
+}
+
+.kf-btn-movements-report {
+  background-color: #f1f5f9 !important;
+  color: #000000 !important;
+  border: 1.5px solid #cbd5e1 !important;
+  font-weight: 800 !important;
+  padding: 8px 16px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.15s ease !important;
+}
+.kf-btn-movements-report span {
+  color: #000000 !important;
+  font-weight: 800 !important;
+}
+.kf-btn-movements-report:hover {
+  background-color: #e2e8f0 !important;
+  color: #000000 !important;
+  border-color: #94a3b8 !important;
+}
+[data-theme="dark"] .kf-btn-movements-report {
+  background-color: #1e293b !important;
+  color: #ffffff !important;
+  border-color: #475569 !important;
+}
+[data-theme="dark"] .kf-btn-movements-report span {
+  color: #ffffff !important;
+}
+
+/* التنسيق التفاعلي للروابط في جداول المخزون */
+.kf-item-interactive-code {
+  display: inline-block;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+.kf-item-interactive-code:hover code {
+  color: #4338ca !important;
+  background: #e0e7ff !important;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+.kf-item-interactive-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--kf-ink, #0f172a);
+  transition: color 0.15s ease;
+}
+.kf-item-interactive-name:hover {
+  color: #b45309 !important;
+}
+.kf-movement-card-pill {
+  font-size: 13px;
+  opacity: 0.65;
+  transition: all 0.15s ease;
+  display: inline-block;
+}
+.kf-item-interactive-name:hover .kf-movement-card-pill {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+/* سبينر التحميل */
+.kf-spinner {
+  width: 38px;
+  height: 38px;
+  border: 3.5px solid rgba(180, 83, 9, 0.2);
+  border-top-color: #b45309;
+  border-radius: 50%;
+  animation: kfSpin 0.7s linear infinite;
+}
+@keyframes kfSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* شارات العمليات داخل الجدول */
+.cim-badge {
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.badge-roasting-out { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.badge-roasting-in { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+.badge-green-out { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.badge-dispatch-out { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
+.badge-purchase-in { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.badge-adjustment { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.badge-initial { background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; }
+.badge-default { background: #f1f5f9; color: #334155; }
+</style>
+
+<script>
+/* ==========================================================================
+   المحرك البرمجي لنافذة حركات الصنف التفاعلية (Coffee Item Movements Engine)
+   ========================================================================== */
+var currentCimItemId = null;
+var cimMovementsData = [];
+
+function openCoffeeItemMovements(coffeeItemId) {
+  if (!coffeeItemId) return;
+  currentCimItemId = coffeeItemId;
+  
+  var modal = document.getElementById("coffeeItemMovementsModal");
+  if (!modal) return;
+  
+  // إظهار النافذة وضبط حالة التحميل
+  modal.style.display = "flex";
+  modal.classList.add("show");
+  document.body.style.overflow = "hidden";
+  
+  document.getElementById("cimLoadingState").style.display = "block";
+  document.getElementById("cimErrorState").style.display = "none";
+  document.getElementById("cimContentState").style.display = "none";
+  document.getElementById("cimSearchInput").value = "";
+  
+  fetchCoffeeItemMovements(coffeeItemId);
+}
+
+function closeCoffeeItemMovements() {
+  var modal = document.getElementById("coffeeItemMovementsModal");
+  if (modal) {
+    modal.style.display = "none";
+    modal.classList.remove("show");
+    document.body.style.overflow = "";
+  }
+}
+
+function handleCoffeeItemModalBackdropClick(e) {
+  if (e.target && e.target.id === "coffeeItemMovementsModal") {
+    closeCoffeeItemMovements();
+  }
+}
+
+// إغلاق النافذة بزر Escape
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape" || e.keyCode === 27) {
+    var modal = document.getElementById("coffeeItemMovementsModal");
+    if (modal && (modal.style.display === "flex" || modal.classList.contains("show"))) {
+      closeCoffeeItemMovements();
+    }
+  }
+});
+
+function retryCoffeeItemMovements() {
+  if (currentCimItemId) {
+    openCoffeeItemMovements(currentCimItemId);
+  }
+}
+
+function fetchCoffeeItemMovements(itemId) {
+  fetch("/coffee/api/item-movements/" + itemId, {
+    headers: { "Accept": "application/json" }
+  })
+  .then(function(res) {
+    if (!res.ok) {
+      throw new Error("HTTP error " + res.status);
+    }
+    return res.json();
+  })
+  .then(function(data) {
+    if (!data.ok) {
+      throw new Error(data.error || "خطأ أثناء جلب البيانات");
+    }
+    renderCimData(data);
+  })
+  .catch(function(err) {
+    console.error("Failed fetching item movements:", err);
+    document.getElementById("cimLoadingState").style.display = "none";
+    document.getElementById("cimErrorState").style.display = "block";
+    document.getElementById("cimErrorMessage").textContent = err.message || "تعذر الاتصال بالخادم لجلب الحركات";
+  });
+}
+
+function renderCimData(data) {
+  var item = data.item || {};
+  var summary = data.summary || {};
+  cimMovementsData = data.movements || [];
+
+  // 1. تحديث الترويسة
+  var isGreen = item.coffee_type === "green";
+  var headerIcon = document.getElementById("cimHeaderIcon");
+  if (headerIcon) {
+    headerIcon.textContent = isGreen ? "🌱" : "☕";
+    headerIcon.style.background = isGreen ? "#ecfdf5" : "#fef3c7";
+    headerIcon.style.color = isGreen ? "#047857" : "#b45309";
+    headerIcon.style.borderColor = isGreen ? "#a7f3d0" : "#fde68a";
+  }
+
+  document.getElementById("cimItemNameAr").textContent = item.name_ar || item.xero_code || "—";
+  document.getElementById("cimItemNameEn").textContent = item.name_en ? item.name_en + " | " : "";
+  document.getElementById("cimXeroCode").textContent = item.xero_code || "";
+  
+  var typeBadge = document.getElementById("cimTypeBadge");
+  typeBadge.textContent = item.coffee_type_label || (isGreen ? "بن أخضر" : "بن محمص");
+  typeBadge.className = "kf-badge-type " + (isGreen ? "green" : "roasted");
+
+  var whSpan = document.getElementById("cimWarehouseInfo");
+  if (whSpan) {
+    whSpan.textContent = item.warehouse_name ? "المستودع: " + item.warehouse_name : "";
+  }
+
+  var linkedSpan = document.getElementById("cimLinkedInfo");
+  if (linkedSpan) {
+    if (item.linked_item_name) {
+      linkedSpan.textContent = "| المرتبط: " + item.linked_item_name;
+    } else {
+      linkedSpan.textContent = "";
+    }
+  }
+
+  // 2. تحديث كروت الـ KPI
+  document.getElementById("cimKpiBalance").textContent = Number(item.current_balance_kg || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " كجم";
+  document.getElementById("cimKpiSacks").textContent = item.current_balance_display || "—";
+  
+  document.getElementById("cimKpiIn").textContent = "+" + Number(summary.total_in_kg || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " كجم";
+  document.getElementById("cimKpiOut").textContent = "-" + Number(summary.total_out_kg || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " كجم";
+  
+  var netVal = Number(summary.net_change_kg || 0);
+  var netElem = document.getElementById("cimKpiNet");
+  netElem.textContent = (netVal >= 0 ? "+" : "") + netVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " كجم";
+  netElem.style.color = netVal >= 0 ? "#059669" : "#dc2626";
+
+  document.getElementById("cimKpiCount").textContent = (summary.count || 0) + " حركة مسجلة";
+  document.getElementById("cimTotalCount").textContent = summary.count || 0;
+
+  // 3. تحديث روابط التقرير الكامل وتصدير الإكسل
+  var excelUrl = data.excel_export_url || "#";
+  var topExcelBtn = document.getElementById("cimTopExcelBtn");
+  if (topExcelBtn) {
+    topExcelBtn.href = excelUrl;
+  }
+  var footerExcelBtn = document.getElementById("cimFooterExcelBtn");
+  if (footerExcelBtn) {
+    footerExcelBtn.href = excelUrl;
+  }
+
+  var fullReportBtn = document.getElementById("cimFullReportBtn");
+  if (fullReportBtn) {
+    fullReportBtn.href = data.full_report_url || "#";
+  }
+
+  // 4. بناء جدول الحركات
+  renderCimMovementsTable(cimMovementsData);
+
+  // إخفاء التحميل وإظهار المحتوى
+  document.getElementById("cimLoadingState").style.display = "none";
+  document.getElementById("cimContentState").style.display = "block";
+}
+
+function renderCimMovementsTable(list) {
+  var tbody = document.getElementById("cimMovementsTbody");
+  tbody.innerHTML = "";
+  
+  document.getElementById("cimVisibleCount").textContent = list.length;
+  
+  if (!list || list.length === 0) {
+    var tr = document.createElement("tr");
+    tr.innerHTML = '<td colspan="9" style="text-align: center; padding: 36px 16px; color: var(--kf-steel, #64748b);">' +
+                   'لا توجد حركات مخزنية مسجلة لهذا الصنف حتى الآن.' +
+                   '</td>';
+    tbody.appendChild(tr);
+    document.getElementById("cimEmptyFilterNotice").style.display = "none";
+    return;
+  }
+
+  list.forEach(function(m, idx) {
+    var tr = document.createElement("tr");
+    
+    // السند المرجعي مع الرابط
+    var docHtml = "—";
+    if (m.doc_url) {
+      docHtml = '<a href="' + m.doc_url + '" class="kf-doc-link" target="_blank" style="font-weight: 700; text-decoration: underline;" title="فتح السند">' +
+                m.doc_number +
+                '</a>';
+    } else if (m.doc_number && m.doc_number !== "—") {
+      docHtml = '<span style="font-weight: 600;">' + m.doc_number + '</span>';
+    }
+    if (m.extra_detail) {
+      docHtml += ' <div style="font-size: 11px; color: var(--kf-steel, #64748b);">' + m.extra_detail + '</div>';
+    }
+
+    // وارد / منصرف
+    var inHtml = m.qty_in > 0 ? '<strong style="color: #059669;">+' + Number(m.qty_in).toLocaleString('en-US', {minimumFractionDigits: 2}) + ' كجم</strong>' : '—';
+    var outHtml = m.qty_out > 0 ? '<strong style="color: #dc2626;">-' + Number(m.qty_out).toLocaleString('en-US', {minimumFractionDigits: 2}) + ' كجم</strong>' : '—';
+    if (m.loss_kg > 0) {
+      outHtml += ' <div style="font-size: 10px; color: #d97706;" title="فاقد التحميص">فاقد: ' + Number(m.loss_kg).toFixed(2) + ' كجم</div>';
+    }
+
+    tr.innerHTML = 
+      '<td style="text-align: center; color: var(--kf-steel, #94a3b8); font-size: 12px;">' + (idx + 1) + '</td>' +
+      '<td style="white-space: nowrap; font-size: 12px; font-weight: 600;">' + (m.created_at || '—') + '</td>' +
+      '<td>' +
+        '<span class="cim-badge ' + (m.op_badge || 'badge-default') + '">' +
+          '<span>' + (m.op_icon || '📦') + '</span> ' +
+          '<span>' + (m.op_label || m.movement_type) + '</span>' +
+        '</span>' +
+      '</td>' +
+      '<td>' + docHtml + '</td>' +
+      '<td style="font-size: 12px;">' + (m.loc_name || '—') + '</td>' +
+      '<td style="text-align: left; font-size: 13px;">' + inHtml + '</td>' +
+      '<td style="text-align: left; font-size: 13px;">' + outHtml + '</td>' +
+      '<td style="text-align: left;">' +
+        '<strong style="font-size: 13px; color: var(--kf-ink, #0f172a);">' + Number(m.balance_after || 0).toLocaleString('en-US', {minimumFractionDigits: 2}) + ' كجم</strong>' +
+        (m.sacks_display ? '<div style="font-size: 11px; color: var(--kf-steel, #64748b);">' + m.sacks_display + '</div>' : '') +
+      '</td>' +
+      '<td style="font-size: 12px;">' +
+        '<div style="font-weight: 600; color: var(--kf-ink, #1e293b);">' + (m.user_name || 'النظام') + '</div>' +
+        (m.notes ? '<div style="font-size: 11px; color: var(--kf-steel, #64748b); white-space: normal; max-width: 200px;">' + m.notes + '</div>' : '') +
+      '</td>';
+      
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("cimEmptyFilterNotice").style.display = "none";
+}
+
+function filterCimMovementsTable() {
+  var input = document.getElementById("cimSearchInput");
+  var query = (input.value || "").toLowerCase().trim();
+  
+  if (!query) {
+    renderCimMovementsTable(cimMovementsData);
+    return;
+  }
+  
+  var filtered = cimMovementsData.filter(function(m) {
+    var haystack = [
+      m.created_at || "",
+      m.op_label || "",
+      m.doc_number || "",
+      m.extra_detail || "",
+      m.loc_name || "",
+      m.user_name || "",
+      m.notes || "",
+      String(m.qty_in || ""),
+      String(m.qty_out || ""),
+      String(m.balance_after || "")
+    ].join(" ").toLowerCase();
+    
+    return haystack.indexOf(query) > -1;
+  });
+  
+  renderCimMovementsTable(filtered);
+  if (filtered.length === 0) {
+    document.getElementById("cimEmptyFilterNotice").style.display = "block";
+  }
+}
+</script>
+

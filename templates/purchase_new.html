@@ -78,8 +78,22 @@
             </div>
 
             <div class="form-group" style="grid-column: 1 / -1;">
+                {% if user.role == 'branch_staff' and user.is_multi_branch %}
+                <label for="location_id" style="font-weight: 800; color: #1e3a8a;">
+                    {{ t('receiving_location') }} * <span style="font-size: 12px; color: #2563eb; font-weight: normal;">(اختر الفرع المراد استلام البضاعة فيه من فروعك المصرحة)</span>
+                </label>
+                <select id="location_id" name="location_id" class="form-control" style="font-size: 14px; font-weight: 700; border: 2px solid #3b82f6; background: #eff6ff;" required>
+                    {% for b_loc in authorized_locations %}
+                    <option value="{{ b_loc.id }}" {% if (active_location and active_location.id == b_loc.id) or (user.location_id == b_loc.id and not active_location) %}selected{% endif %}>
+                        🏢 {{ loc_name(b_loc) }} ({{ loc_type(b_loc) }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <small style="color: #2563eb; font-size: 12px; margin-top: 4px; display: block;">
+                    💡 أنت مصرح لك بالعمل على عدة فروع؛ يمكنك تحديد فرع الاستلام مباشرة من القائمة أعلاه.
+                </small>
+                {% elif user.role == 'branch_staff' and user.location %}
                 <label for="location_id">{{ t('receiving_location') }} *</label>
-                {% if user.role == 'branch_staff' and user.location %}
                 <input type="hidden" name="location_id" value="{{ user.location_id }}">
                 <div style="padding: 12px 16px; background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
                     <div>
@@ -94,6 +108,7 @@
                     💡 سند الاستلام مقيد إجبارياً بالفرع المسند إليك نظامياً.
                 </small>
                 {% else %}
+                <label for="location_id">{{ t('receiving_location') }} *</label>
                 <select id="location_id" name="location_id" class="form-control" required>
                     {% for loc in locations %}
                     <option value="{{ loc.id }}" {% if user.location_id == loc.id %}selected{% endif %}>

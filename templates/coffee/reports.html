@@ -1,0 +1,243 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}تقارير القهوة الخضراء والمحمصة{% endblock %}
+
+{% block coffee_extra_css %}
+<style>
+    .coffee-page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 24px;
+        background: #fff;
+        padding: 20px 24px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+    }
+    .coffee-page-title h2 {
+        font-size: 20px;
+        font-weight: 800;
+        color: var(--gray-900);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .nav-subtabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        border-bottom: 2px solid var(--gray-200);
+    }
+    .subtab-item {
+        padding: 8px 16px;
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        color: var(--gray-600);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 13px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+    }
+    .subtab-item:hover { color: #78350f; }
+    .subtab-item.active {
+        color: #78350f;
+        border-bottom-color: #b45309;
+        font-weight: 800;
+        background: #fffbeb;
+    }
+    .reports-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+    }
+    .report-card {
+        background: #fff;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        transition: all 0.2s;
+    }
+    .report-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        border-color: #b45309;
+    }
+    .report-icon {
+        font-size: 32px;
+        margin-bottom: 12px;
+    }
+    .report-card h3 {
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--gray-900);
+        margin-bottom: 6px;
+    }
+    .report-card p {
+        font-size: 13px;
+        color: var(--gray-600);
+        margin-bottom: 16px;
+        flex-grow: 1;
+    }
+    .btn-report {
+        background: #fffbeb;
+        color: #78350f;
+        font-weight: 700;
+        font-size: 13px;
+        padding: 8px 16px;
+        border-radius: var(--radius-sm);
+        text-decoration: none;
+        border: 1px solid #fde68a;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: all 0.2s;
+    }
+    .btn-report:hover {
+        background: #78350f;
+        color: #fff;
+    }
+</style>
+{% endblock %}
+
+{% block coffee_content %}
+<div class="content-container">
+
+    <div class="nav-subtabs">
+        <a href="{{ url_for('coffee.dashboard') }}" class="subtab-item">📊 لوحة التحكم</a>
+        <a href="{{ url_for('coffee.green_stock') }}" class="subtab-item">🌱 مخزون الأخضر (GB)</a>
+        <a href="{{ url_for('coffee.roasting_list') }}" class="subtab-item">🔥 أوامر التحميص</a>
+        <a href="{{ url_for('coffee.green_issues_list') }}" class="subtab-item">📤 صرف البن الأخضر</a>
+        <a href="{{ url_for('coffee.roasted_stock') }}" class="subtab-item">☕ مخزون المحمص (RB)</a>
+        <a href="{{ url_for('coffee.dispatches_list') }}" class="subtab-item">🚚 صرف المحمص للفروع</a>
+        <a href="{{ url_for('coffee.xero_status') }}" class="subtab-item">📈 ترحيل زيرو (Xero)</a>
+        <a href="{{ url_for('coffee.reports') }}" class="subtab-item active">📑 التقارير</a>
+        <a href="{{ url_for('coffee.settings') }}" class="subtab-item">⚙️ الإعدادات والاستيراد</a>
+        <a href="{{ url_for('coffee.audit_log') }}" class="subtab-item">🛡️ سجل التدقيق</a>
+    </div>
+
+    <div class="coffee-page-header">
+        <div class="coffee-page-title">
+            <h2>📑 تقارير وتحليلات القهوة الخضراء والمحمصة</h2>
+            <p style="color: var(--gray-500); font-size: 13px; margin-top: 4px;">
+                مجموعة تقارير شاملة لأرصدة المخزون، أوامر التحميص، نسب الفاقد، والتكاليف المنقولة
+            </p>
+        </div>
+    </div>
+
+    <div class="reports-grid">
+        <div class="report-card" style="border: 2px solid #1e3a8a; background: #f8fafc;">
+            <div>
+                <div class="report-icon">👥</div>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <h3 style="margin: 0; color: #1e3a8a;">كشف حساب واستلامات عملاء البن</h3>
+                    <span style="background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 10px;">جديد 🌟</span>
+                </div>
+                <p>كشف حساب تحليلي تفصيلي لمبيعات واستلامات العملاء من البن المحمص والأخضر المباشر بنمط الأكورديون التفاعلي مع إحصاءات الإجماليات، فلاتر الفترة، وتصدير إكسل والطباعة.</p>
+            </div>
+            <a href="{{ url_for('coffee.report_customers_statement') }}" class="btn-report" style="background: #1e3a8a; color: #fff; border-color: #1e3a8a;">
+                عرض كشف حساب العملاء &larr;
+            </a>
+        </div>
+
+        <div class="report-card" style="border: 2px solid #b45309; background: #fffdfa;">
+            <div>
+                <div class="report-icon">📊</div>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <h3 style="margin: 0; color: #78350f;">تقرير حركة الأصناف التفصيلي (كارت الصنف)</h3>
+                    <span style="background: #fef3c7; color: #b45309; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 10px;">جديد 🌟</span>
+                </div>
+                <p>سجل تفصيلي شامل لكافة العمليات التي تمت على البن الأخضر والمحمص (تحميص، صرف للفروع، مبيعات، تسويات، وتوريدات) مع فلاتر متعددة، شريط تجميع أفقي، وتصدير إكسل ملون.</p>
+            </div>
+            <a href="{{ url_for('coffee.report_item_movements') }}" class="btn-report" style="background: #78350f; color: #fff; border-color: #78350f;">
+                عرض التقرير والتجميعات &larr;
+            </a>
+        </div>
+
+        <div class="report-card">
+            <div>
+                <div class="report-icon">🔥</div>
+                <h3>تقرير ملخص أوامر التحميص</h3>
+                <p>متابعة أوامر التحميص المكتملة وكميات الأخضر والمحمص ونسب الفاقد مع إمكانية التصدير إلى CSV.</p>
+            </div>
+            <a href="{{ url_for('coffee.report_roasting_summary') }}" class="btn-report">
+                عرض التقرير &larr;
+            </a>
+        </div>
+
+        <div class="report-card">
+            <div>
+                <div class="report-icon">📦</div>
+                <h3>تقرير أرصدة البن (الأخضر والمحمص)</h3>
+                <p>كشف تفصيلي لأرصدة البن الأخضر والمحمص مع فلاتر نوع البن، البحث بالاسم أو الكود، الفترة الزمنية، وتصدير إكسل.</p>
+            </div>
+            <a href="{{ url_for('coffee.report_coffee_stock') }}" class="btn-report">
+                عرض التقرير &larr;
+            </a>
+        </div>
+
+        <div class="report-card">
+            <div>
+                <div class="report-icon">📋</div>
+                <h3>تقرير جرد الأصناف والمطابقة</h3>
+                <p>كشف تحليلي لنتائج الجرد الدوري: الرصيد الدفتري، الفعلي المجرود، احتساب الفروقات والعجز والزيادة وقيمة الفارق وتصدير إكسل.</p>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <a href="{{ url_for('coffee.report_inventory_count') }}" class="btn-report">
+                    عرض التقرير &larr;
+                </a>
+                <a href="{{ url_for('coffee.inventory_count_record') }}" class="btn-report" style="background: #047857; color: #fff;">
+                    ➕ تسجيل جرد جديد
+                </a>
+            </div>
+        </div>
+
+        <div class="report-card">
+            <div>
+                <div class="report-icon">🚚</div>
+                <h3>تقرير صرف المحمص للفروع</h3>
+                <p>متابعة كميات البن المحمص المصروفة لكل فرع وتاريخ وتكلفة كل عملية صرف.</p>
+            </div>
+            <a href="{{ url_for('coffee.dispatches_list') }}" class="btn-report">
+                عرض التقرير &larr;
+            </a>
+        </div>
+
+        <div class="report-card">
+            <div>
+                <div class="report-icon">⚡</div>
+                <h3>تقرير حالة الترحيل لـ Xero</h3>
+                <p>مراجعة قيود ومستندات Xero المنشأة، المعلقة، والناجحة لضمان تطابق القيود المحاسبية.</p>
+            </div>
+            <a href="{{ url_for('coffee.xero_status') }}" class="btn-report">
+                عرض التقرير &larr;
+            </a>
+        </div>
+
+        <div class="report-card">
+            <div>
+                <div class="report-icon">🛡️</div>
+                <h3>سجل التدقيق والعمليات (Audit Log)</h3>
+                <p>سجل تفصيلي يوثق كل عملية اعتماد، تعديل، صرف، أو ترحيل محاسبي مع المستخدم والوقت.</p>
+            </div>
+            <a href="{{ url_for('coffee.audit_log') }}" class="btn-report">
+                عرض التقرير &larr;
+            </a>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

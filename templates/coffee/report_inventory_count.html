@@ -1,0 +1,573 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}تقرير جرد الأصناف (المطابقة والفروقات) — القهوة الخضراء والمحمصة{% endblock %}
+
+{% block coffee_extra_css %}
+<style>
+    .coffee-page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 20px;
+        background: #fff;
+        padding: 20px 24px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+    }
+    .filter-card {
+        background: #fff;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        padding: 18px 20px;
+        margin-bottom: 20px;
+        box-shadow: var(--shadow-sm);
+    }
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 14px;
+        align-items: flex-end;
+    }
+    .filter-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--gray-700);
+        margin-bottom: 6px;
+    }
+    .session-banner {
+        background: #eff6ff;
+        border: 1.5px solid #bfdbfe;
+        border-radius: var(--radius-md);
+        padding: 14px 20px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    body.dark-mode .session-banner {
+        background: rgba(30, 58, 138, 0.25) !important;
+        border-color: rgba(59, 130, 246, 0.35) !important;
+    }
+    body.dark-mode .session-title {
+        color: #93c5fd !important;
+    }
+    body.dark-mode .session-info {
+        color: #94a3b8 !important;
+    }
+    body.dark-mode .session-info strong {
+        color: #e2e8f0 !important;
+    }
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .kpi-card {
+        background: #fff;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        padding: 16px 20px;
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+    }
+    .kpi-card.book { border-right: 4px solid #0284c7; }
+    .kpi-card.actual { border-right: 4px solid #059669; }
+    .kpi-card.diff { border-right: 4px solid #b45309; }
+    .kpi-card.diffval { border-right: 4px solid #dc2626; }
+    .kpi-title { font-size: 12px; font-weight: 700; color: var(--gray-500); margin-bottom: 6px; }
+    .kpi-val { font-size: 20px; font-weight: 800; color: var(--gray-900); }
+    
+    .badge-match { background: #ecfdf5; color: #047857; font-weight: 700; padding: 3px 8px; border-radius: 10px; font-size: 11px; }
+    .badge-shortage { background: #fef2f2; color: #dc2626; font-weight: 700; padding: 3px 8px; border-radius: 10px; font-size: 11px; }
+    .badge-surplus { background: #eff6ff; color: #2563eb; font-weight: 700; padding: 3px 8px; border-radius: 10px; font-size: 11px; }
+
+    @media print {
+        @page { size: landscape; margin: 8mm 6mm; }
+        .coffee-page-header, .filter-card, .btn-count-filter, .action-tools, .nav-subtabs, header, nav, .navbar, .btn, .btn-sm {
+            display: none !important;
+        }
+        .print-header {
+            display: block !important;
+            margin-bottom: 16px;
+        }
+        .print-footer {
+            display: block !important;
+            margin-top: 24px;
+            page-break-inside: avoid;
+        }
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+        table {
+            width: 100% !important;
+            font-size: 10px !important;
+            border-collapse: collapse !important;
+        }
+        th, td {
+            padding: 5px 6px !important;
+            border: 1px solid #cbd5e1 !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block coffee_content %}
+<div class="content-container">
+
+    <!-- ترويسة التقرير الرئيسية وأزرار الإجراءات -->
+    <div class="coffee-page-header">
+        <div>
+            <div style="font-size: 13px; color: var(--gray-500); margin-bottom: 4px;">
+                <a href="{{ url_for('coffee.reports') }}" style="color: var(--gray-600); text-decoration: none;">📑 التقارير</a> &larr; تقرير جرد الأصناف
+            </div>
+            <h2 style="margin: 0; font-size: 21px; font-weight: 800; color: var(--gray-900);">
+                📊 تقرير جرد الأصناف (نتائج الجرد والمطابقة والفروقات)
+            </h2>
+            <div style="font-size: 13px; color: #475569; margin-top: 4px;">
+                تقرير تحليلي رقابي يعرض نتائج الجرد الفعلي، الأرصدة الدفترية، والفروقات المخزنية دون تعديل
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <a href="{{ url_for('coffee.reports') }}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-weight: 700; border-radius: var(--radius-sm); text-decoration: none; border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700); box-shadow: var(--shadow-sm);">
+                ⬅️ رجوع للخلف
+            </a>
+            <!-- زر الانتقال إلى شاشة تسجيل الجرد المستقلة -->
+            <a href="{{ url_for('coffee.inventory_count_record') }}" class="btn-primary" style="background: #b45309; border: none; padding: 9px 18px; font-weight: 700; border-radius: var(--radius-sm); color: #fff; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(180, 83, 9, 0.25);">
+                ➕ تسجيل عملية جرد جديدة
+            </a>
+            <a href="{{ request.full_path }}{% if '?' in request.full_path %}&{% else %}?{% endif %}export=csv" class="btn-sm" style="background: #047857; color: #fff; font-weight: 700; text-decoration: none; padding: 8px 16px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px;">
+                📥 تصدير التقرير Excel
+            </a>
+            <button onclick="window.print()" class="btn-sm" style="background: var(--gray-100); color: var(--gray-700); font-weight: 700; border: 1px solid var(--gray-300); padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer;">
+                🖨️ طباعة
+            </button>
+        </div>
+    </div>
+
+    <!-- شريط معلومات محضر الجرد المعروض -->
+    {% if current_session %}
+    <div class="session-banner" style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 14px 20px; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="font-size: 24px;">📋</div>
+            <div>
+                <div class="session-title" style="font-weight: 800; font-size: 15px; color: #1e3a8a; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <span>محضر الجرد رقم:</span>
+                    <span style="font-family: monospace; letter-spacing: 1px; color: #1e40af; font-size: 16px;">{{ current_session.count_number }}</span>
+                    {% if current_session.status == 'approved' %}
+                    <span style="display: inline-block; background: #dcfce7; color: #15803d; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 12px; border: 1px solid #bbf7d0;">{{ current_session.status_label_ar }}</span>
+                    {% else %}
+                    <span style="display: inline-block; background: #fef3c7; color: #b45309; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 12px; border: 1px solid #fde68a;">{{ current_session.status_label_ar }}</span>
+                    {% endif %}
+                </div>
+                <div class="session-info" style="font-size: 12px; color: #3b82f6; margin-top: 4px;">
+                    <strong>تاريخ الجرد:</strong> {{ current_session.count_date }} |
+                    <strong>النطاق:</strong> {{ current_session.coffee_type_label_ar }} |
+                    <strong>مسجل الجرد:</strong> {{ current_session.creator.name if current_session.creator else 'مدير النظام' }}
+                    {% if current_session.notes %} | <strong>البيان:</strong> {{ current_session.notes }}{% endif %}
+                </div>
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <!-- زر تعديل محضر الجرد -->
+            <a href="{{ url_for('coffee.inventory_count_edit', session_id=current_session.id) }}" class="btn-sm" style="background: #2563eb; color: #fff; text-decoration: none; font-weight: 700; padding: 7px 14px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(37,99,235,0.25);">
+                ✏️ تعديل
+            </a>
+
+            <!-- زر التحويل إلى مسودة أو الاعتماد والتسوية -->
+            {% if current_session.status == 'approved' %}
+            <form method="POST" action="{{ url_for('coffee.inventory_count_to_draft', session_id=current_session.id) }}" style="display: inline; margin: 0;" onsubmit="return confirm('هل أنت متأكد من تحويل محضر الجرد ({{ current_session.count_number }}) إلى مسودة؟\nسيتم التراجع فوراً عن حركات التسوية المخزنية وإرجاع الأرصدة إلى ما كانت عليه قبل الجرد.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-sm" style="background: #d97706; color: #fff; border: none; font-weight: 700; padding: 7px 14px; border-radius: var(--radius-sm); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(217,119,6,0.25);">
+                    📝 حفظ كمسودة
+                </button>
+            </form>
+            {% else %}
+            <form method="POST" action="{{ url_for('coffee.inventory_count_to_approve', session_id=current_session.id) }}" style="display: inline; margin: 0;" onsubmit="return confirm('هل أنت متأكد من اعتماد وتسوية محضر الجرد ({{ current_session.count_number }}) وتطبيق الفروقات على أرصدة المستودعات الآن؟');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-sm" style="background: #059669; color: #fff; border: none; font-weight: 700; padding: 7px 14px; border-radius: var(--radius-sm); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(5,150,105,0.25);">
+                    ✅ اعتماد وتسوية
+                </button>
+            </form>
+            {% endif %}
+
+            <!-- زر حذف محضر الجرد -->
+            <form method="POST" action="{{ url_for('coffee.inventory_count_delete', session_id=current_session.id) }}" style="display: inline; margin: 0;" onsubmit="return confirm('⚠️ تحذير: هل أنت متأكد من حذف محضر الجرد ({{ current_session.count_number }}) نهائياً؟\nسيتم إلغاء كافة التسويات المخزنية المرتبطة به إن وُجدت.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-sm" style="background: #dc2626; color: #fff; border: none; font-weight: 700; padding: 7px 14px; border-radius: var(--radius-sm); cursor: pointer; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(220,38,38,0.25);">
+                    🗑️ حذف
+                </button>
+            </form>
+
+            <!-- زر تسجيل جرد جديد -->
+            <a href="{{ url_for('coffee.inventory_count_record') }}" class="btn-sm" style="background: #1e40af; color: #fff; text-decoration: none; font-weight: 700; padding: 7px 14px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 2px 5px rgba(30,64,175,0.25);">
+                ✍️ تسجيل جرد جديد
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: var(--radius-md); padding: 12px 18px; margin-bottom: 20px; font-size: 13px; color: #475569; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+        <div>
+            🟢 <strong>عرض الأرصدة الحالية الحية للمستودعات</strong> (لم يتم تحديد محضر جرد سابق).
+        </div>
+        <a href="{{ url_for('coffee.inventory_count_record') }}" style="color: #b45309; font-weight: 700; text-decoration: underline;">
+            تسجيل أول عملية جرد الآن &larr;
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- فلاتر التقرير من السيرفر واختيار محضر الجرد -->
+    <div class="filter-card">
+        <form method="GET" class="filter-grid" id="countFilterForm">
+            
+            {% if all_sessions %}
+            <div class="filter-group">
+                <label>محضر الجرد المعروض</label>
+                <select name="session_id" class="form-control" onchange="document.getElementById('countFilterForm').submit()" style="font-weight: 700;">
+                    {% for s in all_sessions %}
+                    <option value="{{ s.id }}" {% if selected_session_id == s.id|string %}selected{% endif %}>
+                        {{ s.count_number }} — {{ s.count_date }} ({{ s.total_items }} صنف) [{{ s.status_label_ar }}]
+                    </option>
+                    {% endfor %}
+                    <option value="live" {% if selected_session_id == 'live' %}selected{% endif %}>🟢 الرصيد الحي الحالي للمستودعات</option>
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="filter-group">
+                <label>نوع البن</label>
+                <select name="coffee_type" class="form-control" onchange="document.getElementById('countFilterForm').submit()">
+                    <option value="all" {% if selected_type == 'all' %}selected{% endif %}>جميع الأصناف (أخضر ومحمص)</option>
+                    <option value="green" {% if selected_type == 'green' %}selected{% endif %}>🌱 بن أخضر فقط (GB)</option>
+                    <option value="roasted" {% if selected_type == 'roasted' %}selected{% endif %}>☕ بن محمص فقط (RB)</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>بحث بالاسم أو الكود</label>
+                <input type="text" name="q" class="form-control" placeholder="بحث بكود Xero أو الاسم..." value="{{ q_str or '' }}">
+            </div>
+
+            <div class="filter-group" style="padding-bottom: 8px;">
+                <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" name="variance_only" value="1" {% if variance_only %}checked{% endif %} onchange="document.getElementById('countFilterForm').submit()">
+                    <span style="font-weight: 700; color: #b45309;">إظهار الأصناف ذات الفروقات فقط ⚠️</span>
+                </label>
+            </div>
+
+            <div class="filter-group" style="display: flex; gap: 8px;">
+                <button type="submit" class="btn-primary" style="background: #b45309; border: none; padding: 9px 18px; font-weight: 700; border-radius: var(--radius-sm); color: #fff; cursor: pointer; flex: 1;">
+                    🔍 تصفية
+                </button>
+                <a href="{{ url_for('coffee.report_inventory_count') }}" class="btn-secondary" style="padding: 9px 12px; font-weight: 600; text-decoration: none; border-radius: var(--radius-sm); text-align: center;">
+                    إعادة ضبط
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- بطاقات المؤشرات الإحصائية للجرد -->
+    <div class="kpi-grid">
+        <div class="kpi-card book">
+            <span class="kpi-title">إجمالي الرصيد الدفتري</span>
+            <span class="kpi-val" style="color: #0284c7;"><span id="kpiBookKg">{{ "{:,.2f}".format(tot_book_kg) }}</span> <small style="font-size: 13px;">كجم</small></span>
+            <span style="font-size: 11px; color: #64748b; margin-top: 4px;">القيمة: {{ "{:,.2f}".format(tot_book_val) }} ريال</span>
+        </div>
+
+        <div class="kpi-card actual">
+            <span class="kpi-title">إجمالي الرصيد الفعلي (المجرود)</span>
+            <span class="kpi-val" style="color: #059669;"><span id="kpiActualKg">{{ "{:,.2f}".format(tot_actual_kg) }}</span> <small style="font-size: 13px;">كجم</small></span>
+            <span style="font-size: 12px; font-weight: 700; color: #047857; margin-top: 4px;">
+                إجمالي قيمة الفعلي: <span id="kpiActualVal">{{ "{:,.2f}".format(tot_actual_val) }}</span> ريال
+            </span>
+            <span style="font-size: 11px; color: #64748b; margin-top: 2px;">{{ items_data|length }} صنف مجرود</span>
+        </div>
+
+        <div class="kpi-card diff">
+            <span class="kpi-title">صافي فارق الكمية</span>
+            <span class="kpi-val" style="color: {% if tot_diff_kg < 0 %}#dc2626{% elif tot_diff_kg > 0 %}#2563eb{% else %}#16a34a{% endif %};">
+                <span id="kpiDiffKg">{{ "{:+,.2f}".format(tot_diff_kg) }}</span> <small style="font-size: 13px;">كجم</small>
+            </span>
+            <span style="font-size: 11px; color: #64748b; margin-top: 4px;">
+                {% if count_shortage %} عجز: {{ count_shortage }} صنف |{% endif %}
+                {% if count_surplus %} زيادة: {{ count_surplus }} صنف |{% endif %}
+                مطابق: {{ count_matched }} صنف
+            </span>
+        </div>
+
+        <div class="kpi-card diffval">
+            <span class="kpi-title">إجمالي قيمة الفارق (ريال)</span>
+            <span class="kpi-val" style="color: {% if tot_diff_val < 0 %}#dc2626{% elif tot_diff_val > 0 %}#2563eb{% else %}#16a34a{% endif %};">
+                <span id="kpiDiffVal">{{ "{:+,.2f}".format(tot_diff_val) }}</span> <small style="font-size: 13px;">ريال</small>
+            </span>
+            <span style="font-size: 11px; color: #64748b; margin-top: 4px;">التكلفة التقديرية للفروقات</span>
+        </div>
+    </div>
+
+    <!-- شريط أدوات البحث الفوري والفلاتر السريعة -->
+    <div class="action-tools" style="background: #fff; border-radius: var(--radius-md); border: 1px solid var(--gray-200); padding: 12px 18px; margin-bottom: 16px; box-shadow: var(--shadow-sm); display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between;">
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex: 1; min-width: 320px;">
+            <div style="position: relative; flex: 1; min-width: 240px;">
+                <input type="text" id="liveCountSearch" class="form-control" placeholder="⚡ بحث سريع في التقرير (كود، اسم، نوع)..." oninput="applyCountFilters()" style="padding-right: 32px; border-radius: var(--radius-sm); border: 1px solid #cbd5e1;">
+                <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px;">🔍</span>
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button type="button" class="btn-count-filter active" onclick="setCountFilter('all', this)" style="padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; border: 1px solid #0f172a; background: #0f172a; color: #fff; cursor: pointer;">
+                    عرض الكل
+                </button>
+                <button type="button" class="btn-count-filter" onclick="setCountFilter('variance', this)" style="padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; border: 1px solid #fde68a; background: #fffbeb; color: #b45309; cursor: pointer;">
+                    ⚠️ الفروقات فقط
+                </button>
+                <button type="button" class="btn-count-filter" onclick="setCountFilter('green', this)" style="padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; border: 1px solid #a7f3d0; background: #ecfdf5; color: #047857; cursor: pointer;">
+                    🌱 بن أخضر
+                </button>
+                <button type="button" class="btn-count-filter" onclick="setCountFilter('roasted', this)" style="padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; border: 1px solid #fed7aa; background: #fff7ed; color: #c2410c; cursor: pointer;">
+                    ☕ بن محمص
+                </button>
+                <button type="button" class="btn-count-filter" onclick="setCountFilter('matched', this)" style="padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; border: 1px solid #bbf7d0; background: #f0fdf4; color: #15803d; cursor: pointer;">
+                    ✅ المطابق
+                </button>
+            </div>
+        </div>
+        <div style="font-size: 13px; font-weight: 700; color: #475569;">
+            يتم عرض: <span id="visibleCountRows" style="color: #b45309;">{{ items_data|length }}</span> من أصل {{ items_data|length }} صنف
+        </div>
+    </div>
+
+    <!-- ترويسة تقرير الجرد الرسمية عند الطباعة المتوازنة والشعار في المنتصف -->
+    <div class="print-header" style="display: none;">
+        <div style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; gap: 16px;">
+            <!-- اليمين: بيانات المنشأة وعنوان المحضر -->
+            <div style="text-align: right;">
+                <div style="font-size: 15px; font-weight: 900; color: #0f172a;">شركة ومحمصة نوفمبر للقهوة المختصة</div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 2px;">س.ت: 1010642921 | الرقم الضريبي: 310452367800003</div>
+                <div style="font-size: 13px; font-weight: 800; color: #b45309; margin-top: 5px;">
+                    📋 محضر جرد الأصناف المخزنية والمطابقة الفعليّة
+                    {% if current_session %} (محضر: {{ current_session.count_number }}){% endif %}
+                </div>
+            </div>
+            <!-- الوسط: الشعار الرسمي متناسق في المنتصف -->
+            <div style="text-align: center; display: flex; align-items: center; justify-content: center;">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="نوفمبر" style="height: 60px; max-width: 180px; width: auto; object-fit: contain; margin: 0 auto;">
+            </div>
+            <!-- اليسار: بيانات التوثيق -->
+            <div style="text-align: left; font-size: 11px; color: #334155; line-height: 1.6;">
+                <div><strong>تاريخ التقرير:</strong> {{ today }}</div>
+                <div><strong>النطاق:</strong> {{ 'جميع الأصناف' if selected_type == 'all' else ('أخضر (GB)' if selected_type == 'green' else 'محمص (RB)') }}</div>
+                <div><strong>عدد الأصناف المجرودة:</strong> {{ items_data|length }} صنف</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- جدول تقرير جرد الأصناف (للعرض والتحليل فقط) -->
+    <div class="card" style="background: #fff; border-radius: var(--radius-md); border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm); overflow: hidden; margin-bottom: 24px;">
+        <div class="table-responsive">
+            <table class="data-table" id="countTable">
+                <thead>
+                    <tr style="background: #f8fafc;">
+                        <th style="width: 40px;">#</th>
+                        <th>كود الصنف</th>
+                        <th>اسم الصنف</th>
+                        <th>النوع</th>
+                        <th>المستودع</th>
+                        <th>تكلفة الكيلو</th>
+                        <th>الرصيد الدفتري (كجم)</th>
+                        <th style="background: #f0fdf4; color: #166534;">الرصيد الفعلي المجرود (كجم)</th>
+                        <th style="background: #ecfdf5; color: #047857; text-align: center;" title="حاصل ضرب تكلفة الكيلو في الرصيد الفعلي">قيمة الصنف (ريال)</th>
+                        <th>الفارق (كجم)</th>
+                        <th>نسبة الفارق %</th>
+                        <th>قيمة الفارق (ريال)</th>
+                        <th>الحالة</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in items_data %}
+                    <tr id="countRow_{{ loop.index }}"
+                        class="count-item-row"
+                        data-index="{{ loop.index }}"
+                        data-cost="{{ row.cost }}"
+                        data-book="{{ row.book_qty }}"
+                        data-actual-qty="{{ row.actual_qty }}"
+                        data-actual-val="{{ row.actual_val }}"
+                        data-diff="{{ row.diff_kg }}"
+                        data-code="{{ row.ci.xero_item_code|lower }}"
+                        data-name-ar="{{ (row.ci.name_ar or '')|lower }}"
+                        data-name-en="{{ (row.ci.name_en or '')|lower }}"
+                        data-type="{{ row.ci.coffee_type }}">
+                        <td>{{ loop.index }}</td>
+                        <td>
+                            <strong>{{ row.ci.xero_item_code }}</strong>
+                        </td>
+                        <td>
+                            <div style="font-weight: 700;">{{ row.ci.name_ar or '—' }}</div>
+                            <div style="font-size: 11px; color: var(--gray-500);">{{ row.ci.name_en or '' }}</div>
+                        </td>
+                        <td>
+                            {% if row.ci.coffee_type == 'green' %}
+                            <span style="color: #047857; font-weight: 700;">🌱 أخضر</span>
+                            {% else %}
+                            <span style="color: #b45309; font-weight: 700;">☕ محمص</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ row.warehouse.name_ar if row.warehouse else '—' }}</td>
+                        <td>{{ "{:,.2f}".format(row.cost) }} ريال</td>
+                        <td>
+                            <strong style="color: #0284c7;">{{ "{:,.2f}".format(row.book_qty) }} كجم</strong>
+                        </td>
+                        <td style="background: #f0fdf4; text-align: center;">
+                            <strong style="color: #047857; font-size: 13px;">{{ "{:,.2f}".format(row.actual_qty) }} كجم</strong>
+                        </td>
+                        <td style="background: #ecfdf5; text-align: center;">
+                            <strong style="color: #047857; font-size: 13px;">{{ "{:,.2f}".format(row.actual_val) }} ريال</strong>
+                        </td>
+                        <td>
+                            <strong style="color: {% if row.diff_kg < 0 %}#dc2626{% elif row.diff_kg > 0 %}#2563eb{% else %}#16a34a{% endif %};">
+                                {{ "{:+,.2f}".format(row.diff_kg) }}
+                            </strong>
+                        </td>
+                        <td>
+                            <span style="color: {% if row.diff_kg < 0 %}#dc2626{% elif row.diff_kg > 0 %}#2563eb{% else %}#64748b{% endif %};">
+                                {{ "{:+,.1f}".format(row.diff_pct) }}%
+                            </span>
+                        </td>
+                        <td>
+                            <strong style="color: {% if row.diff_val < 0 %}#dc2626{% elif row.diff_val > 0 %}#2563eb{% else %}#16a34a{% endif %};">
+                                {{ "{:+,.2f}".format(row.diff_val) }} ريال
+                            </strong>
+                        </td>
+                        <td>
+                            {% if row.status == 'matched' %}
+                            <span class="badge-match">مطابق ✅</span>
+                            {% elif row.status == 'shortage' %}
+                            <span class="badge-shortage">عجز ⚠️</span>
+                            {% else %}
+                            <span class="badge-surplus">زيادة ➕</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="13" style="text-align: center; padding: 32px; color: var(--gray-500);">
+                            لا توجد أصناف مطابقة لمعايير البحث الحالية
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr style="background: #f8fafc; font-weight: 800; border-top: 2px solid #cbd5e1;">
+                        <td colspan="6" style="text-align: left; padding: 12px 16px;">الإجماليات الكلية:</td>
+                        <td style="color: #0284c7;">{{ "{:,.2f}".format(tot_book_kg) }} كجم</td>
+                        <td style="background: #f0fdf4; color: #047857; text-align: center;">{{ "{:,.2f}".format(tot_actual_kg) }} كجم</td>
+                        <td style="background: #ecfdf5; color: #047857; text-align: center;">{{ "{:,.2f}".format(tot_actual_val) }} ريال</td>
+                        <td style="color: {% if tot_diff_kg < 0 %}#dc2626{% elif tot_diff_kg > 0 %}#2563eb{% else %}#16a34a{% endif %};">
+                            {{ "{:+,.2f}".format(tot_diff_kg) }} كجم
+                        </td>
+                        <td></td>
+                        <td style="color: {% if tot_diff_val < 0 %}#dc2626{% elif tot_diff_val > 0 %}#2563eb{% else %}#16a34a{% endif %};">
+                            {{ "{:+,.2f}".format(tot_diff_val) }} ريال
+                        </td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- تذييل التقرير والتوقيعات الرسمية عند الطباعة -->
+    <div class="print-footer" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding-top: 12px; border-top: 1.5px solid #64748b; font-size: 11px;">
+            <div><strong>عضو لجنة الجرد (1):</strong> _______________________</div>
+            <div><strong>عضو لجنة الجرد (2):</strong> _______________________</div>
+            <div><strong>أمين العهدة والمستودع:</strong> _______________________</div>
+            <div><strong>المدير المالي والاعتماد:</strong> _______________________</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+let currentCountFilter = 'all';
+
+function setCountFilter(filterType, btn) {
+    currentCountFilter = filterType;
+    document.querySelectorAll(".btn-count-filter").forEach(b => {
+        b.style.background = "#f1f5f9";
+        b.style.color = "#475569";
+        b.style.borderColor = "#cbd5e1";
+    });
+
+    if (btn) {
+        if (filterType === 'variance') {
+            btn.style.background = "#fffbeb";
+            btn.style.color = "#b45309";
+            btn.style.borderColor = "#fde68a";
+        } else if (filterType === 'green') {
+            btn.style.background = "#ecfdf5";
+            btn.style.color = "#047857";
+            btn.style.borderColor = "#a7f3d0";
+        } else if (filterType === 'roasted') {
+            btn.style.background = "#fff7ed";
+            btn.style.color = "#c2410c";
+            btn.style.borderColor = "#fed7aa";
+        } else if (filterType === 'matched') {
+            btn.style.background = "#f0fdf4";
+            btn.style.color = "#15803d";
+            btn.style.borderColor = "#bbf7d0";
+        } else {
+            btn.style.background = "#0f172a";
+            btn.style.color = "#fff";
+            btn.style.borderColor = "#0f172a";
+        }
+    }
+
+    applyCountFilters();
+}
+
+function applyCountFilters() {
+    const query = (document.getElementById("liveCountSearch").value || "").trim().toLowerCase();
+    const rows = document.querySelectorAll(".count-item-row");
+    let visibleCount = 0;
+
+    rows.forEach(r => {
+        const code = r.getAttribute("data-code") || "";
+        const nameAr = r.getAttribute("data-name-ar") || "";
+        const nameEn = r.getAttribute("data-name-en") || "";
+        const type = r.getAttribute("data-type") || "";
+        const diff = parseFloat(r.getAttribute("data-diff")) || 0;
+
+        const matchesQuery = !query || code.includes(query) || nameAr.includes(query) || nameEn.includes(query);
+
+        let matchesFilter = true;
+        if (currentCountFilter === 'variance') {
+            matchesFilter = (Math.abs(diff) >= 0.001);
+        } else if (currentCountFilter === 'green') {
+            matchesFilter = (type === 'green');
+        } else if (currentCountFilter === 'roasted') {
+            matchesFilter = (type === 'roasted');
+        } else if (currentCountFilter === 'matched') {
+            matchesFilter = (Math.abs(diff) < 0.001);
+        }
+
+        if (matchesQuery && matchesFilter) {
+            r.style.display = "";
+            visibleCount++;
+        } else {
+            r.style.display = "none";
+        }
+    });
+
+    const countElem = document.getElementById("visibleCountRows");
+    if (countElem) {
+        countElem.innerText = visibleCount;
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,401 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}مزامنة واكتشاف أصناف القهوة من Xero{% endblock %}
+
+{% block coffee_extra_css %}
+<style>
+    .sync-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    .sync-card {
+        background: #fff;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+    .sync-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        border-bottom: 1px solid var(--gray-200);
+        padding-bottom: 16px;
+        margin-bottom: 20px;
+    }
+    .badge-green {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #86efac;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 12px;
+    }
+    .badge-roasted {
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fde68a;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 12px;
+    }
+    .sync-stat-card {
+        flex: 1;
+        min-width: 200px;
+        background: var(--gray-50);
+        border: 1px solid var(--gray-200);
+        border-radius: 8px;
+        padding: 16px;
+        text-align: center;
+    }
+    .sync-stat-num {
+        font-size: 26px;
+        font-weight: 800;
+        margin-top: 4px;
+    }
+    .filter-btn {
+        padding: 6px 14px;
+        border: 1px solid var(--gray-300);
+        background: #fff;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+    }
+    .filter-btn.active {
+        background: #2563eb;
+        color: #fff;
+        border-color: #2563eb;
+    }
+    .items-table th {
+        background: #f8fafc;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--gray-700);
+    }
+    .items-table td {
+        vertical-align: middle;
+        font-size: 13px;
+    }
+</style>
+{% endblock %}
+
+{% block coffee_content %}
+<div class="content-container sync-container">
+
+    <div class="nav-subtabs">
+        <a href="{{ url_for('coffee.dashboard') }}" class="subtab-item">📊 لوحة التحكم</a>
+        <a href="{{ url_for('coffee.green_stock') }}" class="subtab-item">🌱 مخزون الأخضر (GB)</a>
+        <a href="{{ url_for('coffee.roasting_list') }}" class="subtab-item">🔥 أوامر التحميص</a>
+        <a href="{{ url_for('coffee.green_issues_list') }}" class="subtab-item">📤 صرف البن الأخضر</a>
+        <a href="{{ url_for('coffee.roasted_stock') }}" class="subtab-item">☕ مخزون المحمص (RB)</a>
+        <a href="{{ url_for('coffee.dispatches_list') }}" class="subtab-item">🚚 صرف المحمص للفروع</a>
+        <a href="{{ url_for('coffee.xero_status') }}" class="subtab-item">📈 ترحيل زيرو (Xero)</a>
+        <a href="{{ url_for('coffee.reports') }}" class="subtab-item">📑 التقارير</a>
+        <a href="{{ url_for('coffee.settings') }}" class="subtab-item">⚙️ الإعدادات والاستيراد</a>
+    </div>
+
+    <!-- بطاقة الملخص والإحصائيات -->
+    <div class="sync-card">
+        <div class="sync-header">
+            <div>
+                <h2 style="margin: 0; font-size: 20px; display: flex; align-items: center; gap: 10px;">
+                    <span>📦</span>
+                    <span>مزامنة واكتشاف أصناف القهوة من Xero</span>
+                </h2>
+                <p style="margin: 6px 0 0; color: var(--gray-600); font-size: 13px;">
+                    يقوم هذا المحرك بمقارنة أصناف زيرو مع قاعدة البيانات المحلية تلقائياً لاكتشاف الأصناف المضافة حديثاً.
+                </p>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <a href="{{ url_for('coffee.settings') }}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-weight: 700; border-radius: 6px; text-decoration: none; border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700);">
+                    ⬅️ رجوع للخلف
+                </a>
+                <a href="{{ url_for('coffee.xero_items_sync', stock_only=1 if stock_only else 0) }}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-weight: 700; border-radius: 6px; text-decoration: none; border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700);">
+                    🔄 إعادة فحص Xero الآن
+                </a>
+            </div>
+        </div>
+
+        {% if not diff.get('success') %}
+        <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 16px; border-radius: 8px; color: #991b1b; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 24px;">❌</span>
+            <div>
+                <strong>تعذر الاتصال بـ Xero أو جلب الأصناف:</strong>
+                <p style="margin: 4px 0 0; font-size: 13px;">{{ diff.get('error', 'خطأ غير معروف') }}</p>
+            </div>
+        </div>
+        {% else %}
+        <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 20px;">
+            <div class="sync-stat-card">
+                <div style="color: var(--gray-500); font-size: 12px; font-weight: 700;">إجمالي أصناف القهوة بـ Xero</div>
+                <div class="sync-stat-num" style="color: var(--gray-800);">{{ diff.get('total_xero_coffee_items', 0) }}</div>
+            </div>
+            <div class="sync-stat-card" style="background: #f0fdf4; border-color: #bbf7d0;">
+                <div style="color: #166534; font-size: 12px; font-weight: 700;">الأصناف المسجلة محلياً بالنظام</div>
+                <div class="sync-stat-num" style="color: #15803d;">{{ diff.get('existing_count', 0) }}</div>
+            </div>
+            <div class="sync-stat-card" style="background: #ecfdf5; border-color: #a7f3d0;">
+                <div style="color: #065f46; font-size: 12px; font-weight: 700;">أصناف جديدة ذات رصيد (> 0)</div>
+                <div class="sync-stat-num" style="color: #047857;">{{ diff.get('new_with_stock_count', 0) }}</div>
+            </div>
+            <div class="sync-stat-card" style="background: #f8fafc; border-color: #e2e8f0;">
+                <div style="color: #475569; font-size: 12px; font-weight: 700;">أصناف جديدة بدون رصيد (0)</div>
+                <div class="sync-stat-num" style="color: #64748b;">{{ diff.get('new_zero_stock_count', 0) }}</div>
+            </div>
+        </div>
+
+        <!-- شريط التبديل بين الأصناف ذات الرصيد وكافة الأصناف -->
+        <div style="margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: {% if stock_only %}#ecfdf5{% else %}#fffbeb{% endif %}; border: 1px solid {% if stock_only %}#a7f3d0{% else %}#fde68a{% endif %}; padding: 12px 18px; border-radius: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 20px;">{% if stock_only %}📦{% else %}📄{% endif %}</span>
+                <div>
+                    <strong style="color: {% if stock_only %}#065f46{% else %}#92400e{% endif %}; font-size: 13.5px;">تصفية شرط رصيد المخزون:</strong>
+                    <span style="color: {% if stock_only %}#047857{% else %}#b45309{% endif %}; font-size: 13px;">
+                        {% if stock_only %}
+                        يتم الآن حصر الفحص على <strong>الأصناف التي يتوفر لها رصيد فعلي فقط في Xero (رصيد > 0)</strong> استجابة لطلبكم.
+                        {% else %}
+                        يتم الآن عرض <strong>كافة الأصناف المكتشفة</strong> (بما فيها الأصناف ذات الرصيد الصفري).
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+            <div>
+                {% if stock_only %}
+                <a href="{{ url_for('coffee.xero_items_sync', stock_only=0) }}" style="background: #fff; border: 1px solid #d97706; color: #b45309; font-weight: 700; padding: 7px 16px; border-radius: 6px; text-decoration: none; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    📄 استعراض الأصناف بدون رصيد ({{ diff.get('new_zero_stock_count', 0) }}) &larr;
+                </a>
+                {% else %}
+                <a href="{{ url_for('coffee.xero_items_sync', stock_only=1) }}" style="background: #047857; color: #fff; font-weight: 700; padding: 7px 16px; border-radius: 6px; text-decoration: none; font-size: 12.5px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                    ⭐ حصر العرض على الأصناف ذات الرصيد فقط (> 0) &larr;
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if diff.get('new_count', 0) == 0 %}
+        <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 32px 20px; border-radius: 8px; text-align: center;">
+            <span style="font-size: 42px;">✅</span>
+            <h3 style="color: #166534; margin: 12px 0 6px; font-size: 18px;">
+                {% if stock_only %}
+                جميع أصناف القهوة التي لها رصيد في Xero مسجلة ومثبتة بالنظام بالفعل!
+                {% else %}
+                جميع أصناف القهوة في Xero متطابقة ومسجلة بالنظام!
+                {% endif %}
+            </h3>
+            <p style="color: #15803d; font-size: 13.5px; max-width: 620px; margin: 0 auto 20px; line-height: 1.6;">
+                {% if stock_only %}
+                تم فحص زيرو بنجاح: جميع الأصناف الـ {{ diff.get('existing_count', 0) }} التي تملك رصيداً فعلياً في مستودعات Xero مثبتة في قاعدة البيانات المحلية، ولا توجد أي أصناف جديدة ذات رصيد بحاجة للإضافة.
+                {% else %}
+                لا توجد حالياً أي أصناف بن جديدة في Xero بحاجة للإضافة.
+                {% endif %}
+            </p>
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                <a href="{{ url_for('coffee.settings') }}" class="btn-primary" style="padding: 9px 22px; font-weight: 700; text-decoration: none; border-radius: 6px;">
+                    ⬅️ العودة لصفحة الإعدادات
+                </a>
+                {% if stock_only and diff.get('new_zero_stock_count', 0) > 0 %}
+                <a href="{{ url_for('coffee.xero_items_sync', stock_only=0) }}" class="btn-secondary" style="padding: 9px 20px; font-weight: 700; text-decoration: none; border-radius: 6px; border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700);">
+                    استعراض الأصناف التي ليس لها رصيد ({{ diff.get('new_zero_stock_count', 0) }} صنف)
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+
+        <!-- نموذج استيراد الأصناف المحددة أو الكل -->
+        <form method="POST" id="importForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" id="formAction" value="import_selected">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px 18px; border-radius: 8px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span style="font-weight: 700; font-size: 13px; color: var(--gray-700);">تصفية العرض:</span>
+                    <button type="button" class="filter-btn active" onclick="filterType('all', this)">الكل ({{ diff.get('new_count') }})</button>
+                    <button type="button" class="filter-btn" onclick="filterType('green', this)">بن أخضر 🌱</button>
+                    <button type="button" class="filter-btn" onclick="filterType('roasted', this)">بن محمص ☕</button>
+                    {% if not stock_only %}
+                    <button type="button" class="filter-btn" onclick="filterStockOnly(this)" id="btnFilterStockOnly">ذات رصيد فقط ⭐</button>
+                    {% endif %}
+                    
+                    <input type="text" id="searchInput" placeholder="🔍 بحث بالاسم أو الكود..." style="padding: 6px 12px; border: 1px solid var(--gray-300); border-radius: 6px; font-size: 13px; min-width: 220px;" oninput="applySearch()">
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <button type="submit" onclick="document.getElementById('formAction').value='import_selected'" class="btn-primary" style="background: #15803d; border: none; padding: 9px 20px; font-weight: 700; border-radius: 6px; color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(21,128,61,0.2);">
+                        ➕ إضافة وتثبيت الأصناف المحددة (<span id="selectedCount">0</span>)
+                    </button>
+                    <button type="submit" onclick="document.getElementById('formAction').value='import_all'; return confirm('هل أنت متأكد من رغبتك في إضافة وتثبيت كافة الـ {{ diff.get('new_count') }} صنف في قاعدة البيانات دفعة واحدة؟');" class="btn-secondary" style="border: 1px solid #15803d; color: #15803d; padding: 9px 18px; font-weight: 700; border-radius: 6px; background: #f0fdf4; cursor: pointer;">
+                        ⚡ إضافة وتثبيت الكل ({{ diff.get('new_count') }})
+                    </button>
+                </div>
+            </div>
+
+            <!-- جدول الأصناف المكتشفة -->
+            <div style="max-height: 600px; overflow-y: auto; border: 1px solid var(--gray-200); border-radius: 8px;">
+                <table class="table items-table" style="margin: 0; width: 100%; text-align: right;">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px; text-align: center;">
+                                <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" style="cursor: pointer; transform: scale(1.2);">
+                            </th>
+                            <th style="width: 120px;">كود Xero</th>
+                            <th>الاسم العربي / التفاصيل</th>
+                            <th>الاسم الإنجليزي في Xero</th>
+                            <th style="width: 110px;">نوع البن</th>
+                            <th style="width: 120px;">الرصيد في Xero</th>
+                            <th style="width: 100px;">التكلفة (ريال)</th>
+                            <th style="width: 100px;">سعر البيع</th>
+                            <th style="width: 100px;">وزن الخيشة</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsTableBody">
+                        {% for it in diff.get('new_items', []) %}
+                        <tr class="item-row" data-type="{{ it.coffee_type }}" data-qoh="{{ it.quantity_on_hand }}" data-code="{{ it.code | lower }}" data-name="{{ (it.name_ar ~ ' ' ~ it.name_en) | lower }}">
+                            <td style="text-align: center;">
+                                <input type="checkbox" name="selected_codes" value="{{ it.code }}" class="item-checkbox" onchange="updateSelectedCount()" style="cursor: pointer; transform: scale(1.15);">
+                            </td>
+                            <td>
+                                <strong style="font-family: monospace; color: #1e3a8a; font-size: 13px;">{{ it.code }}</strong>
+                            </td>
+                            <td>
+                                <strong>{{ it.name_ar }}</strong>
+                            </td>
+                            <td style="color: var(--gray-600); font-size: 12px;">
+                                {{ it.name_en }}
+                            </td>
+                            <td>
+                                {% if it.coffee_type == 'green' %}
+                                <span class="badge-green">🌱 بن أخضر</span>
+                                {% else %}
+                                <span class="badge-roasted">☕ بن محمص</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if it.quantity_on_hand > 0 %}
+                                <span style="background: #ecfdf5; color: #047857; font-weight: 800; padding: 4px 10px; border-radius: 8px; border: 1px solid #a7f3d0; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+                                    <span>🟢</span> {{ "{:,.2f}".format(it.quantity_on_hand) }} كجم
+                                </span>
+                                {% else %}
+                                <span style="background: #f1f5f9; color: #64748b; font-weight: 600; padding: 4px 10px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 12px;">
+                                    0.00 كجم
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ "%.2f"|format(it.unit_cost) }}
+                            </td>
+                            <td>
+                                {{ "%.2f"|format(it.sale_price) }}
+                            </td>
+                            <td>
+                                {% if it.coffee_type == 'green' %}
+                                {{ it.default_sack_weight }} كجم
+                                {% else %}
+                                —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top: 14px; display: flex; justify-content: space-between; align-items: center; color: var(--gray-500); font-size: 12px; flex-wrap: wrap; gap: 10px;">
+                <span>* سيقوم النظام تلقائياً بإنشاء روابط التحميص بين الأخضر والمحمص المقابل إن وُجد نفس الرقم الأساسي.</span>
+                <span>المعروض حالياً: <strong id="visibleCount">{{ diff.get('new_count') }}</strong> صنف</span>
+            </div>
+        </form>
+        {% endif %}
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+    function updateSelectedCount() {
+        const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+        document.getElementById('selectedCount').textContent = checkboxes.length;
+    }
+
+    function toggleSelectAll(master) {
+        const visibleRows = Array.from(document.querySelectorAll('.item-row')).filter(r => r.style.display !== 'none');
+        visibleRows.forEach(row => {
+            const cb = row.querySelector('.item-checkbox');
+            if (cb) cb.checked = master.checked;
+        });
+        updateSelectedCount();
+    }
+
+    let currentTypeFilter = 'all';
+    let onlyStockFilter = false;
+
+    function filterType(type, btn) {
+        currentTypeFilter = type;
+        document.querySelectorAll('.filter-btn:not(#btnFilterStockOnly)').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applySearch();
+    }
+
+    function filterStockOnly(btn) {
+        onlyStockFilter = !onlyStockFilter;
+        if (onlyStockFilter) {
+            btn.classList.add('active');
+            btn.style.background = '#047857';
+            btn.style.color = '#fff';
+            btn.style.borderColor = '#047857';
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = '#fff';
+            btn.style.color = '';
+            btn.style.borderColor = '';
+        }
+        applySearch();
+    }
+
+    function applySearch() {
+        const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+        const rows = document.querySelectorAll('.item-row');
+        let visible = 0;
+
+        rows.forEach(row => {
+            const rowType = row.getAttribute('data-type');
+            const rowCode = row.getAttribute('data-code');
+            const rowName = row.getAttribute('data-name');
+            const rowQoh = parseFloat(row.getAttribute('data-qoh') || 0);
+
+            const matchesType = (currentTypeFilter === 'all') || (rowType === currentTypeFilter);
+            const matchesStock = !onlyStockFilter || (rowQoh > 0);
+            const matchesQuery = !query || rowCode.includes(query) || rowName.includes(query);
+
+            if (matchesType && matchesStock && matchesQuery) {
+                row.style.display = '';
+                visible++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        document.getElementById('visibleCount').textContent = visible;
+        // Uncheck master checkbox if search filtered rows
+        document.getElementById('selectAllCheckbox').checked = false;
+        updateSelectedCount();
+    }
+
+    // Auto-select all by default to make it super fast for the user!
+    window.addEventListener('DOMContentLoaded', () => {
+        const master = document.getElementById('selectAllCheckbox');
+        if (master) {
+            master.checked = true;
+            toggleSelectAll(master);
+        }
+    });
+</script>
+{% endblock %}

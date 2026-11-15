@@ -1,8 +1,8 @@
-{% extends "base.html" %}
+{% extends "cafe_base.html" %}
 
 {% block title %}{{ t('transfer_voucher') }} #{{ transfer.id }}{% endblock %}
 
-{% block content %}
+{% block cafe_content %}
 <div class="page-header">
     <div class="page-title">
         <h2>🚚 {{ t('transfer_voucher') }} #{{ transfer.id }}</h2>
@@ -20,7 +20,7 @@
         <span class="badge badge-{{ transfer.status }}" style="font-size: 14px; padding: 6px 14px;">
             {{ status_name(transfer) }}
         </span>
-        {% if user.role in ['admin', 'accountant'] %}
+        {% if user.role in ['admin', 'accountant'] or (transfer.status == 'draft' and (transfer.created_by == user.id or user.role == 'warehouse')) %}
         <button type="button" class="btn btn-danger" onclick="openDeleteTransferModal()" style="padding: 6px 14px; font-weight: 700;">
             🗑️ حذف السند
         </button>
@@ -154,7 +154,10 @@
         <input type="text" id="barcode-scanner-input" class="form-control" placeholder="{{ t('barcode_scanner_placeholder') }}" autocomplete="off">
     </div>
 
-    <form method="POST">
+    <!-- وسيط تخزين أكواد الأصناف المضافة مسبقاً لمنع تكرارها وإخفائها من البحث -->
+    <div id="existing-voucher-skus" style="display:none;" data-skus='[{% for line in transfer.lines %}{% if line.item and line.item.sku %}"{{ line.item.sku|lower }}"{% if not loop.last %},{% endif %}{% endif %}{% endfor %}]'></div>
+
+    <form method="POST" id="addTransferLineForm">
         <input type="hidden" name="action" value="add_line">
         <div class="form-grid">
             <div class="form-group" style="position: relative;">
@@ -166,8 +169,43 @@
             </div>
 
             <div class="form-group">
-                <label for="transfer_code">{{ t('sku_code') }} *</label>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <label for="transfer_code">{{ t('sku_code') }} *</label>
+                    <button type="button" onclick="openItemUnitsModalFromActiveItem()" style="background: none; border: none; color: #4f46e5; font-size: 11px; font-weight: 700; cursor: pointer; padding: 0;" title="ضبط وتعديل وحدات الصنف ومعامل التحويل">⚙️ ضبط الوحدات</button>
+                </div>
                 <input type="text" id="transfer_code" name="code" class="form-control" placeholder="sk-0102" required>
+            </div>
+
+            <!-- إدخال مركب بالوحدتين (فوديكس: كرتون + كوب) -->
+            <div id="compoundQtyBox" style="display: none; background: #eef2ff; border: 1.5px dashed #6366f1; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; grid-column: 1 / -1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                    <span style="font-size: 13px; font-weight: 800; color: #3730a3; display: flex; align-items: center; gap: 6px;">
+                        📦 إدخال الكمية بالوحدتين (فوديكس):
+                        <span class="compound-factor-badge" style="background: #e0e7ff; color: #312e81; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 700;">
+                            1 <span class="storage-unit-label">كرتون</span> = <span class="factor-val">500</span> <span class="ingredient-unit-label">كوب</span>
+                        </span>
+                    </span>
+                    <button type="button" class="btn btn-sm" onclick="openItemUnitsModalFromActiveItem()" style="font-size: 11px; padding: 3px 10px; color: #4338ca; border: 1px solid #c7d2fe; background: white; border-radius: 6px; cursor: pointer; font-weight: 700;">
+                        ⚙️ تعديل معامل التحويل والوحدات
+                    </button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: flex-end;">
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">
+                            عدد الوحدات الكبرى (<span class="storage-unit-label">كرتون</span>)
+                        </label>
+                        <input type="number" step="any" min="0" id="compound_qty_storage" class="form-control" placeholder="0" style="font-weight: 700; height: 38px; font-size: 14px; background: white;">
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">
+                            عدد الوحدات الصغرى / المكون (<span class="ingredient-unit-label">كوب</span>)
+                        </label>
+                        <input type="number" step="any" min="0" id="compound_qty_ingredient" class="form-control" placeholder="0" style="font-weight: 700; height: 38px; font-size: 14px; background: white;">
+                    </div>
+                    <div style="padding-bottom: 8px; font-size: 13px; font-weight: 800; color: #1e293b; white-space: nowrap;">
+                        = إجمالي <span id="compound_calc_result" style="color: #4f46e5; font-size: 16px; font-weight: 900;">0</span> <span class="storage-unit-label">كرتون</span>
+                    </div>
+                </div>
             </div>
 
             <div class="form-group">
@@ -217,7 +255,7 @@
             </thead>
             <tbody>
                 {% for line in transfer.lines %}
-                <tr>
+                <tr class="voucher-line-row" data-item-sku="{{ line.item.sku|lower if line.item else '' }}">
                     <td>{{ loop.index }}</td>
                     <td><code>{{ line.item.sku if line.item else '-' }}</code></td>
                     <td>
@@ -358,14 +396,23 @@
 <!-- إجراءات الشحنة -->
 <div class="card no-print">
     {% if transfer.status == 'draft' %}
-    <form method="POST">
-        <input type="hidden" name="action" value="send">
-        <input type="hidden" name="to_location_id" id="send_destination_id" value="{{ transfer.to_location_id }}">
-        <button type="submit" class="btn btn-primary btn-block" style="padding: 14px; font-size: 16px;"
-                onclick="return confirm('{{ 'هل أنت متأكد من صرف الشحنة وإرسالها؟ سيتم خصم الكميات من مستودع المصدر وتغيير الحالة إلى قيد النقل.' if lang == 'ar' else 'Are you sure you want to dispatch this shipment? Quantities will be deducted from source warehouse.' }}')">
-            🚚 {{ t('confirm_send_transfer') }} &larr;
-        </button>
-    </form>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <form method="POST" style="flex: 1;">
+            <input type="hidden" name="action" value="save_draft">
+            <input type="hidden" name="to_location_id" id="save_draft_destination_id" value="{{ transfer.to_location_id }}">
+            <button type="submit" class="btn btn-secondary btn-block" style="padding: 12px; font-weight: 700;">
+                📝 {{ 'حفظ كمسودة والرجوع' if lang == 'ar' else 'Save as Draft & Exit' }}
+            </button>
+        </form>
+        <form method="POST" style="flex: 1.5;">
+            <input type="hidden" name="action" value="send">
+            <input type="hidden" name="to_location_id" id="send_destination_id" value="{{ transfer.to_location_id }}">
+            <button type="submit" class="btn btn-primary btn-block" style="padding: 12px; font-weight: 700;"
+                    onclick="return confirm('{{ 'هل أنت متأكد من صرف الشحنة وإرسالها؟ سيتم خصم الكميات من مستودع المصدر وتغيير الحالة إلى قيد النقل.' if lang == 'ar' else 'Are you sure you want to dispatch this shipment? Quantities will be deducted from source warehouse.' }}')">
+                🚚 {{ t('confirm_send_transfer') }} &larr;
+            </button>
+        </form>
+    </div>
     {% elif transfer.status == 'in_transit' and (user.role in ['admin', 'branch_staff', 'accountant']) %}
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <p style="color: var(--gray-700); font-size: 14px;">
@@ -385,21 +432,38 @@
         </button>
     </form>
     {% else %}
-    <div style="color: var(--gray-600); font-size: 14px;">
-        {{ t('status') }}: <span class="badge badge-{{ transfer.status }}">{{ status_name(transfer) }}</span>
+    <div style="font-size: 14px; color: var(--gray-700);">
+        <p>{{ t('status') }}: <span class="badge badge-{{ transfer.status }}">{{ status_name(transfer) }}</span></p>
         {% if transfer.foodics_reference %}
-        | Foodics: <code>{{ transfer.foodics_reference }}</code>
+        <p style="margin-top: 8px;">Foodics API: <code>{{ transfer.foodics_reference }}</code></p>
         {% endif %}
     </div>
     {% endif %}
 
-    {% if user.role in ['admin', 'accountant'] %}
-    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--gray-200);">
-        <div style="font-size: 12px; font-weight: 700; color: var(--gray-500); margin-bottom: 8px;">صلاحيات الإدارة والمالية:</div>
+    {% if user.role in ['admin', 'accountant'] or (transfer.status in ['in_transit', 'needs_review'] and transfer.created_by == user.id) %}
+    <div style="margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--gray-200);">
+        <!-- وسيط تخزين أكواد الأصناف المضافة مسبقاً لمنع تكرارها وإخفائها من البحث -->
+    <div id="existing-voucher-skus" style="display:none;" data-skus='[{% for line in transfer.lines %}{% if line.item and line.item.sku %}"{{ line.item.sku|lower }}"{% if not loop.last %},{% endif %}{% endif %}{% endfor %}]'></div>
+
+    <form method="POST" id="addTransferLineForm">
+            <input type="hidden" name="action" value="to_draft">
+            <button type="submit" class="btn btn-outline-secondary btn-sm" style="font-weight: 700;"
+                    onclick="return confirm('{{ 'هل تريد إلغاء الصرف وإعادة السند إلى مسودة؟ سيتم إرجاع كافة الكميات المصروفة إلى رصيد المستودع فوراً.' if lang == 'ar' else 'Revert dispatch and return voucher to draft? Dispatched quantities will be restored to warehouse.' }}')">
+                📝 {{ 'إلغاء الصرف وإعادة السند كمسودة للتعديل' if lang == 'ar' else 'Cancel Dispatch & Revert to Draft' }}
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if user.role in ['admin', 'accountant'] or (transfer.status == 'draft' and (transfer.created_by == user.id or user.role == 'warehouse')) %}
+    <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--gray-200);">
+        <div style="font-size: 12px; font-weight: 700; color: var(--gray-500); margin-bottom: 8px;">صلاحيات وإدارة السند:</div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            {% if user.role in ['admin', 'accountant'] %}
             <button type="button" class="btn btn-secondary btn-sm" onclick="openEditTransferHeaderModal()" style="flex: 1; font-weight: 700;">
                 ✏️ تعديل بيانات السند والمواقع
             </button>
+            {% endif %}
             <button type="button" class="btn btn-danger btn-sm" onclick="openDeleteTransferModal()" style="flex: 1; font-weight: 700;">
                 🗑️ حذف سند الصرف بالكامل
             </button>

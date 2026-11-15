@@ -1,0 +1,15 @@
+# Folders to ignore in graphify
+graphify-8/
+CLI-Anything-main/
+.venv/
+venv/
+instance/
+uploads/
+backups/
+.kilo/
+__pycache__/
+*.pyc
+*.db
+*.sqlite3
+*.xlsx
+*.csv

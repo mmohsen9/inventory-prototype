@@ -1,8 +1,8 @@
-{% extends "base.html" %}
+{% extends "cafe_base.html" %}
 
 {% block title %}تقرير أرصدة المخزون الحالية{% endblock %}
 
-{% block content %}
+{% block cafe_content %}
 <div class="page-header">
     <div class="page-title">
         <h2>📈 تقرير أرصدة المخزون الحالية</h2>
@@ -10,6 +10,12 @@
     </div>
     <div class="page-actions">
         {% if user.role in ['admin', 'accountant'] %}
+        <form method="POST" action="{{ url_for('foodics_sync_entity', entity='consumption') }}" style="display:inline;">
+            <input type="hidden" name="return_to" value="reports_stock">
+            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border-color: #d97706;" title="جلب وخصم كميات استهلاك المبيعات المسجلة في فوديكس حتى اللحظة وتحديث الرصيد الفعلي">
+                ⚡ مزامنة استهلاك المبيعات (فوديكس)
+            </button>
+        </form>
         <button type="button" class="btn btn-secondary" onclick="document.getElementById('importModal').style.display='flex'">
             📥 استيراد أرصدة (CSV)
         </button>
@@ -70,11 +76,22 @@
 
     <div class="kpi-card">
         <div class="kpi-content">
-            <h4>إجمالي عدد الوحدات</h4>
+            <h4>إجمالي الرصيد الفعلي الحالي</h4>
             <div class="kpi-value">{{ "{:,.1f}".format(total_qty) }}</div>
-            <div class="kpi-desc">مجموع الكميات الفعلية</div>
+            <div class="kpi-desc">مجموع الكميات الفعلية الحالية على الرف</div>
         </div>
         <div class="kpi-icon icon-purple">📦</div>
+    </div>
+
+    <div class="kpi-card" style="border-right: 4px solid #f59e0b;">
+        <div class="kpi-content">
+            <h4>استهلاك مبيعات فوديكس</h4>
+            <div class="kpi-value" style="color: #d97706;">{{ "{:,.1f}".format(total_consumed_qty or 0.0) }}</div>
+            <div class="kpi-desc">
+                {{ 'آخر مزامنة: ' + last_consumption_sync if last_consumption_sync else 'كميات استهلاك المبيعات المخصومة' }}
+            </div>
+        </div>
+        <div class="kpi-icon icon-amber">🛒</div>
     </div>
 
     {% if user.role != 'branch_staff' %}
@@ -97,9 +114,10 @@
                     <th>الموقع / الفرع</th>
                     <th>كود الصنف SKU</th>
                     <th>اسم الصنف</th>
-                    <th>الباركود</th>
                     <th>وحدة التخزين</th>
-                    <th>الرصيد الحالي</th>
+                    <th style="color: #047857;">الوارد والتحويل (+)</th>
+                    <th style="color: #b91c1c;">استهلاك فوديكس (-)</th>
+                    <th style="color: #1e1b4b; background: #f1f5f9;">الرصيد الفعلي الحالي (=)</th>
                     {% if user.role != 'branch_staff' %}
                     <th>تكلفة الوحدة</th>
                     <th>إجمالي القيمة</th>
@@ -112,16 +130,34 @@
             </thead>
             <tbody>
                 {% for bal, it, loc in rows %}
+                {% set consumed = consumption_map.get((it.id, loc.id), 0.0) %}
+                {% set inflow = inflow_map.get((it.id, loc.id), (bal.quantity + consumed)|round(3)) %}
                 <tr>
                     <td><strong>{{ loc_name(loc) }}</strong></td>
                     <td><code>{{ it.sku }}</code></td>
                     <td>
                         <strong>{{ item_name(it) }}</strong>
                     </td>
-                    <td style="font-size: 12px; color: var(--gray-500);">{{ it.barcode or '-' }}</td>
-                    <td><span class="badge badge-draft">{{ it.storage_unit }}</span></td>
-                    <td style="font-weight: 700; font-size: 15px;">
-                        {{ bal.quantity }}
+                    <td>
+                        <span class="badge badge-draft">{{ it.storage_unit }}</span>
+                        {% if it.storage_to_ingredient_factor and it.storage_to_ingredient_factor > 1 and it.ingredient_unit %}
+                        <div style="font-size: 11px; color: #4338ca; margin-top: 3px; font-weight: 700;">
+                            (1 = {{ it.storage_to_ingredient_factor|int if it.storage_to_ingredient_factor == it.storage_to_ingredient_factor|int else it.storage_to_ingredient_factor }} {{ it.ingredient_unit }})
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td style="color: #047857; font-weight: 700;">
+                        {{ "{:,.2f}".format(inflow) }}
+                    </td>
+                    <td style="color: #b91c1c; font-weight: 700;">
+                        {% if consumed > 0 %}
+                            -{{ "{:,.2f}".format(consumed) }}
+                        {% else %}
+                            <span style="color: var(--gray-400); font-weight: normal;">0.00</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 800; font-size: 15px; color: #1e1b4b; background: #f8fafc;">
+                        {{ "{:,.2f}".format(bal.quantity) }}
                     </td>
                     {% if user.role != 'branch_staff' %}
                     <td>{{ "{:,.2f}".format(it.cost or 0) }} {{ currency }}</td>
@@ -139,9 +175,12 @@
                         {% endif %}
                     </td>
                     {% if user.role in ['admin', 'accountant'] %}
-                    <td>
+                    <td style="white-space: nowrap; display: flex; gap: 4px;">
                         <button type="button" class="btn btn-secondary btn-sm" onclick="openAdjustModal({{ it.id }}, '{{ it.name_ar|replace("'", "\\'") }}', {{ loc.id }}, '{{ loc.name_ar|replace("'", "\\'") }}', {{ bal.quantity }})" title="تعديل الرصيد يدوياً">
                             ✏️ تعديل
+                        </button>
+                        <button type="button" class="btn btn-sm" style="background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; padding: 4px 8px; font-size: 12px; font-weight: 700;" onclick="openItemUnitsModal({ id: {{ it.id }}, sku: '{{ it.sku }}', name_ar: '{{ it.name_ar|replace("'", "\\'") }}', storage_unit: '{{ it.storage_unit or 'حبة' }}', ingredient_unit: '{{ it.ingredient_unit or '' }}', conversion_factor: {{ it.storage_to_ingredient_factor or 1 }} }, () => location.reload())" title="تعديل وحدات فوديكس ومعامل التحويل">
+                            ⚙️ الوحدات
                         </button>
                     </td>
                     {% endif %}

@@ -1,0 +1,610 @@
+{% extends "findash/base.html" %}
+
+{% block findash_content %}
+<!-- ========================================================================= -->
+<!-- شريط الفلاتر والتحكم بالسنة واستيراد الملفات -->
+<!-- ========================================================================= -->
+<form method="GET" action="{{ url_for('findash.sync_hub') }}" class="fin-filter-bar">
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="font-size: 13px; font-weight: 700; color: #475569;">📅 سنة المزامنة والتسويات:</label>
+        <select name="year" onchange="this.form.submit()" class="form-control form-control-sm" style="font-weight: 700; border-radius: 8px; width: 220px;">
+            {% for y in available_years %}
+            <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>
+                {{ y }} {% if y < 2026 %}(أرشيف تاريخي مقفل){% else %}(سنة تشغيلية نشطة){% endif %}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div style="margin-right: auto; display: flex; gap: 10px;">
+        {% if selected_year == 2026 %}
+        <button type="button" onclick="triggerLiveSync2026()" class="btn btn-success btn-sm" id="btn-sync-live-hub" style="font-weight: 700; background: #059669; border: none; color: #ffffff; display: flex; align-items: center; gap: 6px;">
+            ⚡ تحديث حي من زيرو (المخزون والمالية)
+        </button>
+        {% endif %}
+        <button type="button" onclick="triggerHistoricalImport()" class="btn btn-secondary btn-sm" id="btn-import-hist" style="font-weight: 700;">
+            📁 استيراد الملفات المحفوظة
+        </button>
+    </div>
+</form>
+
+{% if selected_year < 2026 %}
+<!-- تنبيه إيضاحي للأعوام السابقة المقفلة -->
+<div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px;">
+    <span style="font-size: 26px;">🔒</span>
+    <div>
+        <div style="font-weight: 800; font-size: 14px; color: #1e40af;">بيانات عام {{ selected_year }} مؤرشفة ومقفلة تاريخياً</div>
+        <div style="font-size: 12px; color: #3b82f6; margin-top: 2px;">
+            هذا العام منتهي ومحفوظ كمرجع أساسي (Baseline) للقراءة والتحليل المالي والمقارنات السنوية (YoY)، ولا يتطلب سحباً سحابياً شهرياً. المزامنة الشهرية المباشرة مخصصة للعام التشغيلي الحالي (2026).
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ========================================================================= -->
+<!-- بطاقات المؤشرات الرئيسية للمطابقة الرقابية بين الإكسيل وزيـرو -->
+<!-- ========================================================================= -->
+{% if kpis %}
+<div class="fin-kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom: 20px;">
+    <!-- إجمالي مبيعات ملفات الإكسيل المرفوعة -->
+    <div class="fin-kpi-card" style="--card-accent: #3b82f6;">
+        <div class="kpi-label"><span>📄 مبيعات الإكسيل المرفوع (Xero Export)</span><span style="font-size: 11px;">SAR</span></div>
+        <div class="kpi-val" style="color: #2563eb;">{{ "{:,.2f}".format(kpis.total_excel) }}</div>
+        <div class="kpi-sub">إجمالي إيرادات الأشهر المسجلة من ملفات الإكسيل المرفوعة</div>
+    </div>
+
+    <!-- إجمالي مبيعات زيرو الحالية -->
+    <div class="fin-kpi-card" style="--card-accent: #0284c7;">
+        <div class="kpi-label"><span>☁️ إجمالي مبيعات زيرو الحالية (Xero Current)</span><span style="font-size: 11px;">SAR</span></div>
+        <div class="kpi-val" style="color: #0284c7;">{{ "{:,.2f}".format(kpis.total_xero) }}</div>
+        <div class="kpi-sub">إجمالي الإيرادات الحالية في زيرو بعد الفحص والمزامنة</div>
+    </div>
+
+    <!-- صافي الفروقات والتعديلات اللاحقة -->
+    <div class="fin-kpi-card" style="--card-accent: {% if kpis.total_delta != 0 %}#f59e0b{% else %}#10b981{% endif %};">
+        <div class="kpi-label"><span>⚖️ صافي فارق التعديلات اللاحقة</span><span style="font-size: 11px;">SAR</span></div>
+        <div class="kpi-val" style="color: {% if kpis.total_delta != 0 %}#d97706{% else %}#059669{% endif %};">
+            {{ "{:+,.2f}".format(kpis.total_delta) }}
+        </div>
+        <div class="kpi-sub">
+            {% if kpis.total_delta == 0 %}
+                ✓ لا توجد فروقات (مطابقة تامة 100%)
+            {% else %}
+                فارق صافي بين زيرو والإكسيل (للمراجعة اليدوية)
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- حالة المطابقة الرقابية -->
+    <div class="fin-kpi-card" style="--card-accent: #10b981;">
+        <div class="kpi-label"><span>🎯 حالة المطابقة الرقابية</span><span style="font-size: 11px;">شهور</span></div>
+        <div class="kpi-val" style="color: #059669;">{{ kpis.matched_months }} <span style="font-size: 14px; color: #64748b; font-weight: 600;">/ {{ kpis.total_active_months }}</span></div>
+        <div class="kpi-sub">شهور مطابقة 100% بدون أي تعديلات لاحقة في زيرو</div>
+    </div>
+
+    <!-- الحسابات المتأثرة بالتعديل -->
+    <div class="fin-kpi-card" style="--card-accent: #8b5cf6;">
+        <div class="kpi-label"><span>🔍 الحسابات المعدلة في زيرو</span><span style="font-size: 11px;">حسابات</span></div>
+        <div class="kpi-val" style="color: #7c3aed;">{{ kpis.tot_diff_accounts }}</div>
+        <div class="kpi-sub">إجمالي الحسابات التي طرأ عليها تعديل بعد التصدير</div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ========================================================================= -->
+<!-- دليل الرقابة المحاسبية وفلسفة كشف الفروقات بدون معالجة تلقائية -->
+<!-- ========================================================================= -->
+<div style="background: #f8fafc; border: 1px solid #e2e8f0; border-right: 4px solid #3b82f6; border-radius: 10px; padding: 14px 18px; margin-bottom: 24px;">
+    <div style="display: flex; align-items: flex-start; gap: 12px;">
+        <span style="font-size: 24px; line-height: 1;">💡</span>
+        <div style="font-size: 12px; color: #334155; line-height: 1.6;">
+            <strong style="color: #1e1b4b; font-size: 13px;">الهدف من شاشة المزامنة والتسويات الرقابية (Excel Export vs Live Xero):</strong>
+            <br>
+            <strong>1. التحقق من مطابقة ملف الإكسيل مع زيرو:</strong> ملفات الإكسيل المرفوعة تم تصديرها أصلاً من تقارير زيرو في تاريخ معين، وقد يقوم المحاسب بإجراء تعديل أو قيد تسوية لاحق في زيرو بعد تصدير الملف.
+            <br>
+            <strong>2. كشف الفروقات بحيادية تامة دون معالجة تلقائية:</strong> النظام لا يقوم باختلاق معالجات أو تسويات تلقائية، بل يعرض الفروقات بدقة متناهية (الحسابات، المبالغ في الإكسيل، المبالغ الحالية في زيرو، والفارق الصافي) لتتمكن من مراجعتها وتصحيحها يدوياً بنفسك.
+            <br>
+            <strong>3. زر "🔍 كشف الفروقات":</strong> انقر عليه أمام أي شهر لعرض جدول تفصيلي بجميع الحسابات التي طرأ عليها تعديل لاحق في زيرو.
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- جدول مصفوفة المزامنة والتدقيق الرقابي بالأرقام (12 شهراً) -->
+<!-- ========================================================================= -->
+<div class="fin-chart-card" style="padding: 0; overflow: hidden; margin-bottom: 24px;">
+    <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div>
+            <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #0f172a;">
+                🔄 مصفوفة المزامنة ورصد الفروقات والتسويات الشهرية ({{ selected_year }})
+            </h3>
+            <span style="font-size: 12px; color: #64748b;">
+                مقارنة مبالغ الإكسيل المرفوع (المصدر من زيرو) مع أرقام زيرو الحالية لرصد أي تعديلات لاحقة
+            </span>
+        </div>
+        <div>
+            {% if selected_year >= 2026 %}
+            <span style="font-size: 11px; background: #ecfdf5; color: #065f46; padding: 4px 12px; border-radius: 6px; font-weight: 700;">
+                🟢 Xero API Live Connected
+            </span>
+            {% else %}
+            <span style="font-size: 11px; background: #f1f5f9; color: #475569; padding: 4px 12px; border-radius: 6px; font-weight: 700;">
+                🔒 أرشيف تاريخي مقفل
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <table class="fin-table">
+            <thead>
+                <tr>
+                    <th style="width: 14%;">الشهر</th>
+                    <th style="text-align: left; width: 17%;">المبلغ في الإكسيل المرفوع (SAR)</th>
+                    <th style="text-align: left; width: 17%;">المبلغ الحالي في زيرو (SAR)</th>
+                    <th style="text-align: left; width: 16%;">فارق التعديل في زيرو (SAR)</th>
+                    <th style="text-align: center; width: 12%;">الحسابات المعدلة</th>
+                    <th style="text-align: center; width: 14%;">حالة المطابقة الرقابية</th>
+                    <th style="text-align: center; width: 10%;">الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in matrix %}
+                <tr>
+                    <!-- الشهر -->
+                    <td style="font-weight: 700; color: #1e293b;">
+                        🗓️ {{ row.month }} - {{ row.month_name }}
+                    </td>
+
+                    <!-- المبلغ في الإكسيل المرفوع -->
+                    <td style="text-align: left;">
+                        {% if row.excel_amount > 0 %}
+                            <span class="fin-num" style="color: #1e293b;">{{ "{:,.2f}".format(row.excel_amount) }}</span>
+                        {% else %}
+                            <span style="color: #94a3b8;">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- المبلغ الحالي في زيرو -->
+                    <td style="text-align: left;">
+                        {% if row.xero_amount > 0 %}
+                            <span class="fin-num" style="color: #2563eb;">{{ "{:,.2f}".format(row.xero_amount) }}</span>
+                        {% else %}
+                            <span style="color: #94a3b8;">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- فارق التعديل في زيرو -->
+                    <td style="text-align: left;">
+                        {% if row.has_data %}
+                            {% if row.delta == 0 %}
+                                <span class="fin-num" style="color: #059669;">0.00</span>
+                            {% else %}
+                                <span class="fin-num" style="color: {% if row.delta > 0.01 or row.delta < -0.01 %}#d97706{% else %}#059669{% endif %};">{{ "{:+,.2f}".format(row.delta) }}</span>
+                            {% endif %}
+                        {% else %}
+                            <span style="color: #94a3b8;">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- عدد الحسابات المعدلة -->
+                    <td style="text-align: center;">
+                        {% if row.diff_count > 0 %}
+                            <span style="background: #fffbeb; color: #b45309; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 6px; border: 1px solid #fde68a;">
+                                ⚠️ {{ row.diff_count }} حسابات
+                            </span>
+                        {% elif row.has_data %}
+                            <span style="color: #059669; font-size: 12px; font-weight: 700;">لا يوجد (0)</span>
+                        {% else %}
+                            <span style="color: #94a3b8;">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- حالة المطابقة الرقابية -->
+                    <td style="text-align: center;">
+                        {% if row.reconcile_status == 'matched' %}
+                            <span style="background: #ecfdf5; color: #065f46; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; display: inline-block;">
+                                {{ row.status_badge }}
+                            </span>
+                        {% elif row.reconcile_status == 'variance_detected' %}
+                            <span style="background: #fffbeb; color: #b45309; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; display: inline-block;" title="{{ row.status_desc }}">
+                                {{ row.status_badge }}
+                            </span>
+                        {% else %}
+                            <span style="font-size: 11px; color: #94a3b8; font-weight: 600;">{{ row.status_badge }}</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- الإجراءات -->
+                    <td style="text-align: center;">
+                        <div style="display: flex; gap: 6px; justify-content: center; align-items: center;">
+                            {% if row.has_data %}
+                            <button type="button" onclick="openReconciliationModal({{ selected_year }}, {{ row.month }}, '{{ row.month_name }}')" class="btn btn-sm btn-info" style="font-size: 11px; font-weight: 700; background: #0284c7; border: none; color: #fff; padding: 4px 10px; border-radius: 6px;" title="كشف تفاصيل الحسابات والفروقات">
+                                🔍 كشف الفروقات
+                            </button>
+                            {% endif %}
+                            {% if selected_year >= 2026 %}
+                            <button type="button" onclick="syncSingleMonth({{ selected_year }}, {{ row.month }})" class="btn btn-sm btn-primary" id="btn-sync-{{ row.month }}" style="font-size: 11px; font-weight: 700; background: #4f46e5; border: none; padding: 4px 8px; border-radius: 6px;" title="إعادة فحص زيرو وتحديث المطابقة الآن">
+                                ⚡
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if kpis %}
+            <tfoot class="tfoot-totals">
+                <tr>
+                    <td style="font-weight: 800; color: #0f172a;">الإجمالي السنوي</td>
+                    <td style="text-align: left; font-family: monospace; font-weight: 800; color: #1e293b;">
+                        {{ "{:,.2f}".format(kpis.total_excel) }}
+                    </td>
+                    <td style="text-align: left; font-family: monospace; font-weight: 800; color: #2563eb;">
+                        {{ "{:,.2f}".format(kpis.total_xero) }}
+                    </td>
+                    <td style="text-align: left; font-family: monospace; font-weight: 800; {% if kpis.total_delta != 0 %}color: #d97706;{% else %}color: #059669;{% endif %}">
+                        {{ "{:+,.2f}".format(kpis.total_delta) }}
+                    </td>
+                    <td style="text-align: center; font-weight: 800; color: #7c3aed;">
+                        {{ kpis.tot_diff_accounts }} حسابات
+                    </td>
+                    <td colspan="2" style="text-align: center; font-size: 12px; font-weight: 800; color: #059669;">
+                        {% if kpis.total_delta == 0 and kpis.tot_diff_accounts == 0 %}
+                            ✓ مطابقة تامة 100% بين ملفات الإكسيل المرفوعة ونظام زيرو
+                        {% else %}
+                            ⚠️ يوجد تعديلات لاحقة في زيرو معروضة للمراجعة اليدوية
+                        {% endif %}
+                    </td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- نافذة تفاعلية منبثقة لكشف الفروقات والتعديلات اللاحقة (Reconciliation Modal) -->
+<!-- ========================================================================= -->
+<div id="reconciliation-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 920px; max-height: 90vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); border: 1px solid #cbd5e1; display: flex; flex-direction: column;">
+        
+        <!-- الترويسة -->
+        <div style="padding: 18px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; border-top-left-radius: 16px; border-top-right-radius: 16px;">
+            <div>
+                <h3 id="modal-title" style="margin: 0; font-size: 16px; font-weight: 800; color: #0f172a;">
+                    🔍 كشف مطابقة وفروقات الإكسيل المرفوع مع زيـرو
+                </h3>
+                <span id="modal-subtitle" style="font-size: 12px; color: #64748b;">
+                    مقارنة الحسابات لكشف أي تعديل لاحق طرأ على زيرو بعد تصدير ملف الإكسيل للمراجعة اليدوية
+                </span>
+            </div>
+            <button type="button" onclick="closeReconciliationModal()" style="background: none; border: none; font-size: 24px; color: #64748b; cursor: pointer; padding: 4px 8px; line-height: 1;">
+                &times;
+            </button>
+        </div>
+
+        <!-- محتوى النافذة -->
+        <div style="padding: 24px;">
+            <!-- بطاقات الأرقام الثلاثية -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 20px;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px;">
+                    <div style="font-size: 11px; font-weight: 700; color: #475569;">📄 المبلغ في ملف الإكسيل المرفوع</div>
+                    <div id="modal-excel-amt" style="font-size: 18px; font-weight: 800; color: #1e293b; font-family: monospace; margin-top: 4px;">0.00 SAR</div>
+                    <div style="font-size: 10px; color: #64748b;">الرقم المسجل عند تصدير الملف من زيرو</div>
+                </div>
+
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px;">
+                    <div style="font-size: 11px; font-weight: 700; color: #1e40af;">☁️ المبلغ الحالي في زيرو (Xero Live)</div>
+                    <div id="modal-xero-amt" style="font-size: 18px; font-weight: 800; color: #1d4ed8; font-family: monospace; margin-top: 4px;">0.00 SAR</div>
+                    <div style="font-size: 10px; color: #1e40af;">الرقم الحالي المسجل في نظام زيرو</div>
+                </div>
+
+                <div id="modal-delta-box" style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 14px;">
+                    <div style="font-size: 11px; font-weight: 700; color: #065f46;">⚖️ صافي الفارق / التعديل اللاحق</div>
+                    <div id="modal-delta-amt" style="font-size: 18px; font-weight: 800; color: #047857; font-family: monospace; margin-top: 4px;">0.00 SAR</div>
+                    <div id="modal-delta-desc" style="font-size: 10px; color: #065f46;">مطابق تماماً لـ Xero</div>
+                </div>
+            </div>
+
+            <!-- أزرار التصفية السريعة والتحكم -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" id="btn-filter-diffs" onclick="filterModalAccounts('diffs')" class="btn btn-sm" style="font-size: 12px; font-weight: 800; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 6px; padding: 4px 12px;">
+                        ⚠️ الحسابات المختلفة فقط (<span id="modal-diff-badge">0</span>)
+                    </button>
+                    <button type="button" id="btn-filter-all" onclick="filterModalAccounts('all')" class="btn btn-sm" style="font-size: 12px; font-weight: 700; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 12px;">
+                        📋 عرض كافة حسابات الشهر (<span id="modal-all-badge">0</span>)
+                    </button>
+                </div>
+                <div style="font-size: 11px; color: #64748b;">
+                    آخر فحص مع زيرو: <strong id="modal-sync-time" style="color: #1e293b;">—</strong>
+                </div>
+            </div>
+
+            <!-- جدول الحسابات والفروقات -->
+            <div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <table class="fin-table" style="margin: 0; font-size: 12px;">
+                    <thead>
+                        <tr style="background: #f1f5f9;">
+                            <th style="width: 14%;">كود الحساب</th>
+                            <th style="width: 26%;">اسم الحساب</th>
+                            <th style="width: 16%;">التصنيف</th>
+                            <th style="width: 15%; text-align: left;">المبلغ بالإكسيل (SAR)</th>
+                            <th style="width: 15%; text-align: left;">المبلغ في زيرو (SAR)</th>
+                            <th style="width: 14%; text-align: left;">الفارق الصافي</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-accounts-body">
+                        <!-- يتم حقن الحسابات عبر JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="modal-empty-notice" style="display: none; padding: 24px; text-align: center; color: #059669; font-weight: 700; background: #f0fdf4; border-radius: 8px; margin-top: 10px; border: 1px solid #bbf7d0;">
+                🎉 ممتاز! كافة حسابات هذا الشهر مطابقة تماماً 100% بين ملف الإكسيل المرفوع ونظام زيرو ولا توجد أي تعديلات لاحقة.
+            </div>
+        </div>
+
+        <!-- أزرار الإغلاق والإجراءات -->
+        <div style="padding: 14px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+            <button type="button" onclick="printReconciliation()" class="btn btn-secondary btn-sm" style="font-weight: 700;">
+                🖨️ طباعة كشف الفروقات
+            </button>
+            <button type="button" onclick="closeReconciliationModal()" class="btn btn-primary btn-sm" style="background: #4f46e5; border: none; font-weight: 700; padding: 6px 18px;">
+                إغلاق
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// صندوق الإشعارات العلوي
+function showToast(msg, isSuccess) {
+    let box = document.getElementById('findash-toast');
+    if (!box) {
+        box = document.createElement('div');
+        box.id = 'findash-toast';
+        document.body.appendChild(box);
+    }
+    box.style = "position: fixed; top: 25px; left: 50%; transform: translateX(-50%); padding: 14px 26px; border-radius: 10px; font-weight: 800; font-size: 14px; z-index: 999999; box-shadow: 0 10px 25px rgba(0,0,0,0.25); text-align: center; max-width: 600px; line-height: 1.5; " +
+        (isSuccess ? "background: #065f46; color: #ffffff;" : "background: #991b1b; color: #ffffff;");
+    box.innerHTML = msg;
+    if (isSuccess) {
+        setTimeout(() => { if (box) box.remove(); }, 3500);
+    } else {
+        setTimeout(() => { if (box) box.remove(); }, 6000);
+    }
+}
+
+// بيانات المودال المخزنة في الذاكرة للتبديل بين التصفية
+let modalCache = {
+    allAccounts: [],
+    diffAccounts: [],
+    currentFilter: 'diffs'
+};
+
+// فتح نافذة كشف الفروقات والتسويات
+function openReconciliationModal(year, month, monthName) {
+    const modal = document.getElementById('reconciliation-modal');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    document.getElementById('modal-title').innerText = `🔍 كشف مطابقة وفروقات الإكسيل المرفوع مع زيرو — شهر ${monthName} (${month}) لعام ${year}`;
+    document.getElementById('modal-subtitle').innerText = `مقارنة الحسابات لكشف أي تعديل لاحق طرأ على زيرو بعد تصدير ملف الإكسيل للمراجعة اليدوية`;
+
+    const tbody = document.getElementById('modal-accounts-body');
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 24px; color: #64748b;">⏳ جاري تحميل وفحص حسابات الشهر مع زيرو...</td></tr>';
+    document.getElementById('modal-empty-notice').style.display = 'none';
+
+    // جلب التفاصيل عبر AJAX
+    fetch(`{{ url_for('findash.api_sync_reconciliation_detail') }}?year=${year}&month=${month}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) return;
+
+            document.getElementById('modal-excel-amt').innerText = Number(data.excel_total).toLocaleString('en-US', {minimumFractionDigits: 2}) + ' SAR';
+            document.getElementById('modal-xero-amt').innerText = Number(data.xero_total).toLocaleString('en-US', {minimumFractionDigits: 2}) + ' SAR';
+            
+            const delta = Number(data.delta);
+            const deltaBox = document.getElementById('modal-delta-box');
+            const deltaAmt = document.getElementById('modal-delta-amt');
+            const deltaDesc = document.getElementById('modal-delta-desc');
+
+            if (Math.abs(delta) < 0.01 && data.diff_count === 0) {
+                deltaBox.style.background = '#ecfdf5';
+                deltaBox.style.borderColor = '#a7f3d0';
+                deltaAmt.style.color = '#047857';
+                deltaAmt.innerText = '0.00 SAR';
+                deltaDesc.innerText = '✓ مطابق تماماً لـ Xero بدون أي تعديلات';
+                deltaDesc.style.color = '#065f46';
+            } else {
+                deltaBox.style.background = '#fffbeb';
+                deltaBox.style.borderColor = '#fde68a';
+                deltaAmt.style.color = '#b45309';
+                deltaAmt.innerText = (delta > 0 ? '+' : '') + delta.toLocaleString('en-US', {minimumFractionDigits: 2}) + ' SAR';
+                deltaDesc.innerText = delta > 0 ? '⚠️ زيادة في زيرو بعد تصدير الملف' : '⚠️ انخفاض في زيرو بعد تصدير الملف';
+                deltaDesc.style.color = '#b45309';
+            }
+
+            document.getElementById('modal-sync-time').innerText = data.last_sync || 'مطابقة محلية';
+            document.getElementById('modal-diff-badge').innerText = data.diff_count;
+            document.getElementById('modal-all-badge').innerText = (data.all_accounts || []).length;
+
+            modalCache.allAccounts = data.all_accounts || [];
+            modalCache.diffAccounts = data.diff_accounts || [];
+
+            // إذا وجدت فروقات نفتح تبويب الفروقات تلقائياً، وإذا كان مطابقاً نفتح كافة الحسابات
+            if (data.diff_count > 0) {
+                filterModalAccounts('diffs');
+            } else {
+                filterModalAccounts('all');
+            }
+        })
+        .catch(err => {
+            showToast("❌ تعذر تحميل تفاصيل المطابقة: " + err, false);
+        });
+}
+
+function filterModalAccounts(mode) {
+    modalCache.currentFilter = mode;
+    const btnDiffs = document.getElementById('btn-filter-diffs');
+    const btnAll = document.getElementById('btn-filter-all');
+    const tbody = document.getElementById('modal-accounts-body');
+    const emptyNotice = document.getElementById('modal-empty-notice');
+
+    if (mode === 'diffs') {
+        btnDiffs.style.background = '#fef3c7';
+        btnDiffs.style.color = '#92400e';
+        btnDiffs.style.borderColor = '#fde68a';
+        btnAll.style.background = '#f8fafc';
+        btnAll.style.color = '#64748b';
+        btnAll.style.borderColor = '#cbd5e1';
+
+        const list = modalCache.diffAccounts;
+        if (list.length === 0) {
+            tbody.innerHTML = '';
+            emptyNotice.style.display = 'block';
+            return;
+        } else {
+            emptyNotice.style.display = 'none';
+        }
+        renderAccountsTable(list);
+    } else {
+        btnAll.style.background = '#eff6ff';
+        btnAll.style.color = '#1e40af';
+        btnAll.style.borderColor = '#bfdbfe';
+        btnDiffs.style.background = '#f8fafc';
+        btnDiffs.style.color = '#64748b';
+        btnDiffs.style.borderColor = '#cbd5e1';
+        emptyNotice.style.display = 'none';
+
+        renderAccountsTable(modalCache.allAccounts);
+    }
+}
+
+function renderAccountsTable(accounts) {
+    const tbody = document.getElementById('modal-accounts-body');
+    tbody.innerHTML = '';
+
+    accounts.forEach(acc => {
+        const tr = document.createElement('tr');
+        const isMod = acc.is_modified;
+        const delta = Number(acc.delta || 0);
+
+        if (isMod) {
+            tr.style.background = '#fffdf7';
+        }
+
+        tr.innerHTML = `
+            <td style="font-family: monospace; font-weight: 700; color: ${isMod ? '#b45309' : '#334155'};">
+                ${acc.account_code || '—'}
+            </td>
+            <td style="font-weight: 700; color: #0f172a;">
+                ${acc.account_name}
+                ${isMod ? `<div style="font-size: 11px; font-weight: 600; color: #b45309; margin-top: 2px;">⚠️ ${acc.status_label || 'تعديل لاحق في زيرو'}</div>` : ''}
+            </td>
+            <td style="font-size: 11px; color: #64748b;">
+                ${acc.category || 'Trading Income'}
+            </td>
+            <td style="text-align: left; font-family: monospace; font-weight: 700; color: #334155;">
+                ${Number(acc.excel_amount).toLocaleString('en-US', {minimumFractionDigits: 2})}
+            </td>
+            <td style="text-align: left; font-family: monospace; font-weight: 700; color: #2563eb;">
+                ${Number(acc.xero_amount).toLocaleString('en-US', {minimumFractionDigits: 2})}
+            </td>
+            <td style="text-align: left; font-family: monospace; font-weight: 800; color: ${isMod ? '#d97706' : '#059669'};">
+                ${delta === 0 ? '<span style="color: #059669;">0.00</span>' : (delta > 0 ? '+' : '') + delta.toLocaleString('en-US', {minimumFractionDigits: 2})}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function closeReconciliationModal() {
+    const modal = document.getElementById('reconciliation-modal');
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function printReconciliation() {
+    window.print();
+}
+
+// إغلاق النافذة عند النقر خارجها أو ضغط Escape
+window.addEventListener('click', function(e) {
+    const modal = document.getElementById('reconciliation-modal');
+    if (e.target === modal) closeReconciliationModal();
+});
+window.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeReconciliationModal();
+});
+
+// استيراد كافة الملفات المحفوظة
+function triggerHistoricalImport() {
+    const btn = document.getElementById('btn-import-hist');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = "⏳ جاري الاستيراد...";
+    }
+    showToast("⏳ جاري استيراد وتحليل كافة ملفات الأعوام السابقة (2024 و 2025 و 2026)...", true);
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+    fetch("{{ url_for('findash.api_import_historical') }}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken || ""
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        showToast("✅ " + (data.message || "اكتمل الاستيراد بنجاح!"), true);
+        setTimeout(() => location.reload(), 1500);
+    })
+    .catch(err => {
+        showToast("❌ حدث خطأ أثناء الاستيراد: " + err, false);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = "📁 استيراد الملفات المحفوظة";
+        }
+    });
+}
+
+// فحص شهر محدد ومزامنته مباشرة مع زيرو
+function syncSingleMonth(year, month) {
+    const btn = document.getElementById('btn-sync-' + month);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = "⏳...";
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+    fetch("{{ url_for('findash.api_sync_month') }}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken || ""
+        },
+        body: JSON.stringify({ year: year, month: month, source: "xero" })
+    })
+    .then(r => r.json())
+    .then(data => {
+        const isSuccess = data.xero_result?.success;
+        showToast((isSuccess ? "✅ " : "⚠️ ") + (data.message || "اكتمل فحص ومطابقة زيرو بنجاح!"), isSuccess);
+        setTimeout(() => location.reload(), 1500);
+    })
+    .catch(err => {
+        showToast("❌ حدث خطأ في الاتصال: " + err, false);
+    })
+    .finally(() => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = "⚡";
+        }
+    });
+}
+</script>
+{% endblock %}

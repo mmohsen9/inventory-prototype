@@ -19,6 +19,10 @@ This skill provides verified operational procedures for running, testing, backin
 
 ## 2. Test & Verification Procedures
 Run the automated test suites to verify integrity:
+- Full Automated Test Suite (Pytest - 42 tests covering Auth, Security, RBAC, Lifecycles, Foodics Mocks):
+  ```bash
+  pytest tests/
+  ```
 - Security & Vulnerability Suite:
   ```bash
   python test_phase2_security.py

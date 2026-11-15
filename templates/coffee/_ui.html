@@ -1,0 +1,179 @@
+{# ════════════════════════════════════════════════════════════════════
+   _ui.html — ماكروهات Jinja القابلة لإعادة الاستخدام في وحدة القهوة
+   ════════════════════════════════════════════════════════════════════ #}
+
+{# ────────────────────────────────────────────────────────────────────
+   1. STATUS BADGE — قرص حالة أمر التحميص
+   استخدام: {{ ui.order_status(order.status) }}
+   ──────────────────────────────────────────────────────────────────── #}
+{% macro order_status(status) %}
+  {%- set map = {
+    'draft':          {'text': 'مسودة',        'cls': 'kf-status--muted'},
+    'approved_green': {'text': 'جارٍ التحميص', 'cls': 'kf-status--wip'},
+    'roasting':       {'text': 'تحت التحميص',  'cls': 'kf-status--wip'},
+    'completed':      {'text': 'مكتمل',        'cls': 'kf-status--ok'},
+    'cancelled':      {'text': 'ملغى',         'cls': 'kf-status--muted'},
+  } -%}
+  {%- set s = map.get(status, {'text': status, 'cls': 'kf-status--muted'}) -%}
+  <span class="kf-status {{ s.cls }}">{{ s.text }}</span>
+{%- endmacro %}
+
+{# ────────────────────────────────────────────────────────────────────
+   2. XERO STATUS BADGE — قرص حالة ترحيل Xero
+   استخدام: {{ ui.xero_status(order.xero_status) }}
+   ──────────────────────────────────────────────────────────────────── #}
+{% macro xero_status(status) %}
+  {%- set map = {
+    'pending':  {'text': 'لم يُرحَّل',     'cls': 'kf-status--muted'},
+    'posted':   {'text': 'مرحَّل',          'cls': 'kf-status--ok'},
+    'partial':  {'text': 'ترحيل جزئي',     'cls': 'kf-status--wip'},
+    'failed':   {'text': 'فشل الترحيل',    'cls': 'kf-status--err'},
+  } -%}
+  {%- set s = map.get(status, {'text': status, 'cls': 'kf-status--muted'}) -%}
+  <span class="kf-status {{ s.cls }}">{{ s.text }}</span>
+{%- endmacro %}
+
+{# ────────────────────────────────────────────────────────────────────
+   3. PAGE HEADER — رأس الصفحة مع عنوان وأزرار
+   استخدام: {{ ui.page_header('لوحة التحكم', actions) }}
+   actions = [{'href': url, 'label': 'نص', 'primary': True, 'icon': '<svg>'}]
+   ──────────────────────────────────────────────────────────────────── #}
+{% macro page_header(title, actions=[]) %}
+<div class="kf-page-header">
+  <h1 class="kf-page-title">{{ title }}</h1>
+  {% if actions %}
+  <div class="kf-page-actions">
+    {% for a in actions %}
+    <a href="{{ a.href }}"
+       class="kf-btn {{ 'kf-btn-primary' if a.get('primary') else 'kf-btn-secondary' }}">
+      {% if a.get('icon') %}{{ a.icon|safe }}{% endif %}
+      {{ a.label }}
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{# ────────────────────────────────────────────────────────────────────
+   4. KPI CARD — بطاقة مؤشر
+   استخدام: {{ ui.kpi('البن الأخضر', value, sub_text, icon_svg, extra_cls) }}
+   ──────────────────────────────────────────────────────────────────── #}
+{% macro kpi(label, value, sub='', icon='', extra_cls='') %}
+<div class="kf-kpi {{ extra_cls }}">
+  <div class="kf-kpi-head">
+    <span class="kf-kpi-label">{{ label }}</span>
+    {% if icon %}
+    <div class="kf-kpi-icon">{{ icon|safe }}</div>
+    {% endif %}
+  </div>
+  <div class="kf-kpi-value">{{ value }}</div>
+  {% if sub %}
+  <div class="kf-kpi-sub">{{ sub|safe }}</div>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{# ────────────────────────────────────────────────────────────────────
+   5. DATA TABLE — جدول بيانات
+   استخدام:
+   {% call ui.table(['رقم الأمر','التاريخ','الحالة']) %}
+     <tr>...</tr>
+   {% endcall %}
+   ──────────────────────────────────────────────────────────────────── #}
+{% macro table(headers) %}
+<div class="kf-table-wrap">
+  <table class="kf-table">
+    <thead>
+      <tr>
+        {% for h in headers %}
+        <th>{{ h }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {{ caller() }}
+    </tbody>
+  </table>
+</div>
+{%- endmacro %}
+
+{# ────────────────────────────────────────────────────────────────────
+   6. CARD WRAPPER — حاوية بطاقة مع عنوان
+   استخدام:
+   {% call ui.card('آخر أوامر التحميص', action_href, action_label) %}
+     <p>محتوى</p>
+   {% endcall %}
+   ──────────────────────────────────────────────────────────────────── #}
+{% macro card(title='', action_href='', action_label='') %}
+<div class="kf-card">
+  {% if title %}
+  <div class="kf-card-header">
+    <h3 class="kf-card-title">{{ title }}</h3>
+    {% if action_href %}
+    <a href="{{ action_href }}" class="kf-btn kf-btn-secondary kf-btn-sm">
+      {{ action_label }}
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+  {{ caller() }}
+</div>
+{%- endmacro %}
+
+{# ────────────────────────────────────────────────────────────────────
+   7. EMPTY STATE — حالة فارغة
+   استخدام: {{ ui.empty('لا توجد أوامر', 'أنشئ أول أمر', href) }}
+   ──────────────────────────────────────────────────────────────────── #}
+{% macro empty(message, action_label='', action_href='', icon='') %}
+<div class="kf-empty">
+  {% if icon %}
+  <div class="kf-empty-icon">{{ icon|safe }}</div>
+  {% endif %}
+  <p>{{ message }}</p>
+  {% if action_href %}
+  <a href="{{ action_href }}" class="kf-btn kf-btn-primary">
+    {{ action_label }}
+  </a>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{# ────────────────────────────────────────────────────────────────────
+   8. Tabler Icons SVG helpers — أيقونات مستخدمة
+   ──────────────────────────────────────────────────────────────────── #}
+{% macro icon_coffee() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>{% endmacro %}
+
+{% macro icon_leaf() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.9C15.5 4.9 17 3.5 19 2c1 2 2 4.5 1 8-1 3.5-3.5 6-6 7.5"/><path d="M11.7 13.2c-1-2.5-2-4.5-4.5-6"/></svg>{% endmacro %}
+
+{% macro icon_flame() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>{% endmacro %}
+
+{% macro icon_truck() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>{% endmacro %}
+
+{% macro icon_send() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>{% endmacro %}
+
+{% macro icon_chart() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>{% endmacro %}
+
+{% macro icon_settings() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>{% endmacro %}
+
+{% macro icon_clipboard() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>{% endmacro %}
+
+{% macro icon_shield() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>{% endmacro %}
+
+{% macro icon_cloud() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>{% endmacro %}
+
+{% macro icon_home() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>{% endmacro %}
+
+{% macro icon_package() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>{% endmacro %}
+
+{% macro icon_sun() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>{% endmacro %}
+
+{% macro icon_moon() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>{% endmacro %}
+
+{% macro icon_plus() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>{% endmacro %}
+
+{% macro icon_menu() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>{% endmacro %}
+
+{% macro icon_file_text() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>{% endmacro %}
+
+{% macro icon_zap() %}<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>{% endmacro %}

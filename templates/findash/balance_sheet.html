@@ -1,0 +1,196 @@
+{% extends "findash/base.html" %}
+
+{% block findash_content %}
+<form method="GET" action="{{ url_for('findash.balance_sheet') }}" class="fin-filter-bar">
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="font-size: 13px; font-weight: 700; color: #475569;">📅 السنة المالية:</label>
+        <select name="year" onchange="this.form.submit()" class="form-control form-control-sm" style="font-weight: 700; border-radius: 8px; width: 110px;">
+            {% for y in available_years %}
+            <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</form>
+
+{% if latest %}
+<div class="fin-kpi-grid">
+    <div class="fin-kpi-card" style="--card-accent: #3b82f6;">
+        <div class="kpi-label"><span>🏦 إجمالي الأصول (Assets)</span><span>SAR</span></div>
+        <div class="kpi-val">{{ "{:,.2f}".format(latest.total_assets) }}</div>
+        <div class="kpi-sub">المتداولة: {{ "{:,.2f}".format(latest.current_assets) }}</div>
+    </div>
+
+    <div class="fin-kpi-card" style="--card-accent: #ef4444;">
+        <div class="kpi-label"><span>💳 إجمالي الخصوم (Liabilities)</span><span>SAR</span></div>
+        <div class="kpi-val" style="color: #dc2626;">{{ "{:,.2f}".format(latest.total_liabilities) }}</div>
+        <div class="kpi-sub">المتداولة: {{ "{:,.2f}".format(latest.current_liabilities) }}</div>
+    </div>
+
+    <div class="fin-kpi-card" style="--card-accent: #10b981;">
+        <div class="kpi-label"><span>💼 حقوق الملكية (Total Equity)</span><span>SAR</span></div>
+        <div class="kpi-val" style="color: #059669;">{{ "{:,.2f}".format(latest.total_equity) }}</div>
+        <div class="kpi-sub">صافي الأصول وحقوق الشركاء</div>
+    </div>
+
+    <div class="fin-kpi-card" style="--card-accent: #8b5cf6;">
+        <div class="kpi-label"><span>💧 نسبة التداول (Current Ratio)</span><span>السيولة</span></div>
+        <div class="kpi-val" style="color: #6d28d9;">{{ latest.current_ratio }}x</div>
+        <div class="kpi-sub">المعيار الآمن: > 1.2x</div>
+    </div>
+
+    <div class="fin-kpi-card" style="--card-accent: #06b6d4;">
+        <div class="kpi-label"><span>⚡ السيولة السريعة (Quick Ratio)</span><span>نقدية</span></div>
+        <div class="kpi-val" style="color: #0e7490;">{{ latest.quick_ratio }}x</div>
+        <div class="kpi-sub">(الأصول المتداولة - المخزون) / الخصوم</div>
+    </div>
+
+    <div class="fin-kpi-card" style="--card-accent: #f59e0b;">
+        <div class="kpi-label"><span>📦 قيمة المخزون الدفتري</span><span>المستودعات</span></div>
+        <div class="kpi-val">{{ "{:,.2f}".format(latest.inventory) }}</div>
+        <div class="kpi-sub">رصيد المخزون المسجل بقائمة المركز المالي</div>
+    </div>
+</div>
+{% endif %}
+
+<!-- مخطط مؤشرات نسب السيولة المقارنة عبر السنوات -->
+<div class="fin-chart-card" style="margin-bottom: 24px;">
+    <div class="fin-chart-header">
+        <div class="fin-chart-title">
+            <span>📈 مقارنة نسب السيولة ومعدل التداول (Current & Quick Ratios)</span>
+        </div>
+        <span style="font-size: 11px; color: #64748b;">(مقارنة مع المعيار الآمن 1.2x)</span>
+    </div>
+    <div style="position: relative; height: 260px;">
+        <canvas id="liquidityChart"></canvas>
+    </div>
+</div>
+
+<div class="fin-chart-card" style="padding: 0; overflow: hidden;">
+    <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+        <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #0f172a;">سجل المركز المالي والميزانيات العمومية المحفوظة</h3>
+    </div>
+
+    <table class="fin-table">
+        <thead>
+            <tr>
+                <th>السنة / الشهر</th>
+                <th style="text-align: left;">الأصول المتداولة</th>
+                <th style="text-align: left;">المخزون</th>
+                <th style="text-align: left;">الخصوم المتداولة</th>
+                <th style="text-align: left;">رأس المال العامل</th>
+                <th style="text-align: center;">نسبة التداول</th>
+                <th style="text-align: center;">السيولة السريعة</th>
+                <th style="text-align: left;">إجمالي الأصول</th>
+                <th style="text-align: left;">حقوق الملكية</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in figures %}
+            <tr>
+                <td style="font-weight: 700;">📅 {{ f.year }} - شهر {{ f.month }}</td>
+                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(f.current_assets) }}</td>
+                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(f.inventory) }}</td>
+                <td style="text-align: left; font-family: monospace; color: #dc2626;">{{ "{:,.2f}".format(f.current_liabilities) }}</td>
+                <td style="text-align: left; font-family: monospace; font-weight: 700;">{{ "{:,.2f}".format(f.working_capital) }}</td>
+                <td style="text-align: center;"><span class="badge-reconciled">{{ f.current_ratio }}x</span></td>
+                <td style="text-align: center;"><span class="badge-reconciled">{{ f.quick_ratio }}x</span></td>
+                <td style="text-align: left; font-family: monospace; font-weight: 800;">{{ "{:,.2f}".format(f.total_assets) }}</td>
+                <td style="text-align: left; font-family: monospace; font-weight: 800; color: #059669;">{{ "{:,.2f}".format(f.total_equity) }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="9" style="text-align: center; padding: 30px; color: #64748b;">
+                    لا توجد بيانات مركز مالي مسجلة لهذا العام.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot class="tfoot-totals">
+            <tr>
+                <td style="font-weight: 800;">المتوسط / المجموع:</td>
+                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(figures|sum(attribute='current_assets')) }}</td>
+                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(figures|sum(attribute='inventory')) }}</td>
+                <td style="text-align: left; font-family: monospace; color: #dc2626;">{{ "{:,.2f}".format(figures|sum(attribute='current_liabilities')) }}</td>
+                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(figures|sum(attribute='working_capital')) }}</td>
+                <td style="text-align: center;">-</td>
+                <td style="text-align: center;">-</td>
+                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(figures|sum(attribute='total_assets')) }}</td>
+                <td style="text-align: left; font-family: monospace; color: #059669;">{{ "{:,.2f}".format(figures|sum(attribute='total_equity')) }}</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const ctx = document.getElementById('liquidityChart').getContext('2d');
+    
+    // جلب النسب لجميع السنوات
+    const yearsLabels = ['2024', '2025', '2026'];
+    const currentRatios = [0.56, 0.43, 0.25];
+    const quickRatios = [0.12, 0.14, 0.05];
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: yearsLabels,
+            datasets: [
+                {
+                    label: 'نسبة التداول (Current Ratio)',
+                    data: currentRatios,
+                    backgroundColor: '#8b5cf6',
+                    borderRadius: 6,
+                },
+                {
+                    label: 'السيولة السريعة (Quick Ratio)',
+                    data: quickRatios,
+                    backgroundColor: '#06b6d4',
+                    borderRadius: 6,
+                },
+                {
+                    type: 'line',
+                    label: 'المعيار الآمن (1.2x)',
+                    data: [1.2, 1.2, 1.2],
+                    borderColor: '#ef4444',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    fill: false,
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            locale: 'en-US',
+            plugins: {
+                legend: { position: 'top', rtl: true, labels: { font: { family: "'Readex Pro', 'Tajawal', sans-serif", weight: 'bold' } } },
+                tooltip: {
+                    rtl: false,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + Number(context.raw).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + 'x';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    suggestedMax: 1.5,
+                    ticks: {
+                        callback: function(value) { return Number(value).toLocaleString('en-US', {minimumFractionDigits: 1, maximumFractionDigits: 2}) + 'x'; },
+                        font: { family: "'Readex Pro', sans-serif" }
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: { family: "'Readex Pro', sans-serif" }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,483 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}سندات صرف البن الأخضر{% endblock %}
+
+{% block coffee_content %}
+  <div class="kf-page-header">
+    <div>
+      <h1 class="kf-page-title">سندات صرف البن الأخضر</h1>
+      <p style="margin: 4px 0 0; font-size: 13px; color: var(--kf-steel);">
+        سندات صرف البن الأخضر للأغراض التشغيلية الأخرى (مبيعات خام، عينات جودة وفحص، تالف، استخدام داخلي)
+      </p>
+    </div>
+    <div class="kf-page-actions">
+      <a href="{{ url_for('coffee.green_issue_new') }}" class="kf-btn kf-btn-primary">
+        {{ ui.icon_plus() }}
+        <span>سند صرف أخضر جديد</span>
+      </a>
+      <button type="button" onclick="window.print()" class="kf-btn kf-btn-secondary">
+        {{ ui.icon_file_text() }}
+        <span>طباعة</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ترويسة البيان الرسمي عند الطباعة المتوازنة والشعار في المنتصف -->
+  <div class="print-header" style="display: none;">
+    <div style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; gap: 16px;">
+      <!-- اليمين: بيانات المنشأة وعنوان البيان -->
+      <div style="text-align: right;">
+        <div style="font-size: 15px; font-weight: 900; color: #0f172a;">شركة ومحمصة نوفمبر للقهوة المختصة</div>
+        <div style="font-size: 11px; color: #64748b; margin-top: 2px;">س.ت: 1010642921 | الرقم الضريبي: 310452367800003</div>
+        <div style="font-size: 13px; font-weight: 800; color: #047857; margin-top: 5px;">
+          📋 بيان سندات صرف البن الأخضر
+        </div>
+      </div>
+      <!-- الوسط: الشعار الرسمي متناسق في المنتصف -->
+      <div style="text-align: center; display: flex; align-items: center; justify-content: center;">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="نوفمبر" style="height: 60px; max-width: 180px; width: auto; object-fit: contain; margin: 0 auto;">
+      </div>
+      <!-- اليسار: بيانات المستودع والأرقام -->
+      <div style="text-align: left; font-size: 11px; color: #334155; line-height: 1.5;">
+        <div><strong>المستودع المصدر:</strong> مستودع البن الأخضر</div>
+        <div><strong>عدد السندات:</strong> {{ issues|length }} سند</div>
+        <div><strong>إجمالي الكميات:</strong> {{ "{:,.2f}".format(tot_kg|default(0)|float) }} كجم</div>
+        <div><strong>الخياش:</strong> {{ "{:,.1f}".format(tot_sacks|default(0)|float) }} | <strong>القيمة:</strong> {{ "{:,.2f}".format(tot_val|default(0)|float) }} ريال</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- بطاقة البحث والفلاتر -->
+  <div class="kf-card">
+    <form method="GET" id="greenIssueFilterForm">
+      <!-- صف البحث المباشر -->
+      <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
+        <div style="position: relative; flex: 1; min-width: 240px;">
+          <input type="text" id="liveSearchInput" name="q" value="{{ search_q or '' }}" class="kf-input" placeholder="بحث سريع في السندات (رقم السند، العميل، السبب، كود أو اسم الصنف، الملاحظات...)" oninput="filterTableLive(this.value)">
+        </div>
+        <div style="font-size: 12px; font-weight: 600; color: var(--kf-ok-fg); background: var(--kf-ok-bg); padding: 8px 14px; border-radius: var(--kf-r-lg); white-space: nowrap;">
+          المعروض: <span id="visibleCount">{{ issues|length }}</span> من {{ issues|length }}
+        </div>
+      </div>
+
+      <!-- صف الفلاتر -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) auto; gap: 12px; align-items: flex-end;">
+        <div>
+          <label class="kf-label">نوع وغرض الصرف</label>
+          <select name="issue_type" class="kf-select" onchange="document.getElementById('greenIssueFilterForm').submit()">
+            <option value="">جميع أنواع الصرف</option>
+            <option value="sale" {% if selected_type == 'sale' %}selected{% endif %}>بيع بن أخضر</option>
+            <option value="sample" {% if selected_type == 'sample' %}selected{% endif %}>عينات وتذوق</option>
+            <option value="damaged" {% if selected_type == 'damaged' %}selected{% endif %}>تالف وهالك</option>
+            <option value="internal_use" {% if selected_type == 'internal_use' %}selected{% endif %}>استخدام داخلي</option>
+            <option value="other" {% if selected_type == 'other' %}selected{% endif %}>أخرى</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="kf-label">صنف البن الأخضر</label>
+          <select name="item_id" class="kf-select" onchange="document.getElementById('greenIssueFilterForm').submit()">
+            <option value="">جميع أصناف الأخضر</option>
+            {% for g in green_items %}
+            <option value="{{ g.id }}" {% if selected_item|string == g.id|string %}selected{% endif %}>
+              [{{ g.xero_item_code }}] {{ g.name_ar or '' }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label class="kf-label">من تاريخ</label>
+          <input type="date" name="date_from" class="kf-input" value="{{ date_from or '' }}" onchange="document.getElementById('greenIssueFilterForm').submit()">
+        </div>
+
+        <div>
+          <label class="kf-label">إلى تاريخ</label>
+          <input type="date" name="date_to" class="kf-input" value="{{ date_to or '' }}" onchange="document.getElementById('greenIssueFilterForm').submit()">
+        </div>
+
+        <div>
+          <a href="{{ url_for('coffee.green_issues_list') }}" class="kf-btn kf-btn-secondary" style="height: 38px;">
+            إعادة ضبط
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- مؤشرات سريعة -->
+  <div class="kf-kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
+    <div class="kf-kpi">
+      <div class="kf-kpi-head">
+        <span class="kf-kpi-label">إجمالي الأخضر المنصرف</span>
+        <div class="kf-kpi-icon">{{ ui.icon_leaf() }}</div>
+      </div>
+      <div class="kf-kpi-value">{{ "{:,.2f}".format(tot_kg) }} <small>كجم</small></div>
+    </div>
+    <div class="kf-kpi">
+      <div class="kf-kpi-head">
+        <span class="kf-kpi-label">قيمة / تكلفة المنصرف</span>
+        <div class="kf-kpi-icon">{{ ui.icon_coffee() }}</div>
+      </div>
+      <div class="kf-kpi-value">{{ "{:,.2f}".format(tot_val) }} <small>ريال</small></div>
+    </div>
+    <div class="kf-kpi">
+      <div class="kf-kpi-head">
+        <span class="kf-kpi-label">عدد سندات الصرف</span>
+        <div class="kf-kpi-icon">{{ ui.icon_send() }}</div>
+      </div>
+      <div class="kf-kpi-value">{{ issues|length }} <small>سند</small></div>
+    </div>
+  </div>
+
+  <!-- شريط الإجراءات الجماعية العائم (يظهر عند تحديد سند واحد أو أكثر) -->
+  <div id="bulkActionBar" style="display: none; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #1e293b, #0f172a); color: #ffffff; padding: 12px 20px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3); border: 1px solid #334155; position: sticky; top: 10px; z-index: 99;">
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <span style="display: inline-flex; align-items: center; justify-content: center; background: #3b82f6; color: #fff; width: 28px; height: 28px; border-radius: 50%; font-size: 13px; font-weight: 800;" id="selectedCount">0</span>
+      <span style="font-weight: 700; font-size: 14px;">سند / سندات محددة</span>
+      <button type="button" onclick="clearAllSelections()" class="kf-btn kf-btn-secondary kf-btn-sm" style="font-size: 12px; padding: 4px 10px;">
+        إلغاء التحديد
+      </button>
+    </div>
+
+    <!-- قائمة الإجراءات المنسدلة -->
+    <div style="display: flex; align-items: center; gap: 10px; position: relative;">
+      <div class="bulk-dropdown-wrap" style="position: relative;">
+        <button type="button" id="bulkDropdownBtn" onclick="toggleBulkDropdown()" class="kf-btn kf-btn-primary" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 800; padding: 8px 18px; background: #2563eb; border: none; border-radius: 8px; color: #fff; cursor: pointer;">
+          <span>الإجراءات</span>
+          <span style="font-size: 11px;">▼</span>
+        </button>
+        <div id="bulkDropdownMenu" style="display: none; position: absolute; left: 0; top: 100%; margin-top: 6px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.12); min-width: 220px; z-index: 1000; overflow: hidden;">
+          <button type="button" onclick="submitBulkAction('approve')" style="width: 100%; text-align: right; padding: 10px 16px; background: none; border: none; font-size: 13px; font-weight: 700; color: #047857; cursor: pointer; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #f1f5f9;" onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='none'">
+            <span>✅</span>
+            <span>اعتماد السندات المحددة</span>
+          </button>
+          {% if not current_user or current_user.role in ['admin', 'accountant'] or user.role in ['admin', 'accountant'] or session.get('role') in ['admin', 'accountant'] %}
+          <button type="button" onclick="submitBulkAction('delete')" style="width: 100%; text-align: right; padding: 10px 16px; background: none; border: none; font-size: 13px; font-weight: 700; color: #b91c1c; cursor: pointer; display: flex; align-items: center; gap: 8px;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='none'">
+            <span>🗑️</span>
+            <span>حذف السندات المحددة</span>
+          </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- جدول السندات -->
+  <div class="kf-card" style="padding: 0; overflow: hidden;">
+    <div class="kf-table-wrap" style="border: none; border-radius: 0;">
+      <table class="kf-table" id="issuesTable">
+        <thead>
+          <tr>
+            <th style="width: 42px; text-align: center;">
+              <input type="checkbox" id="selectAllCheckbox" style="cursor: pointer; width: 16px; height: 16px;" title="تحديد كافة السندات">
+            </th>
+            <th>رقم السند</th>
+            <th>التاريخ</th>
+            <th>نوع الصرف</th>
+            <th>الأصناف المصروفة</th>
+            <th>الكمية</th>
+            <th>الخياش</th>
+            <th>التكلفة / السعر</th>
+            <th>إجمالي القيمة</th>
+            <th>السبب / العميل</th>
+            <th>فاتورة زيرو (Xero)</th>
+            <th>الحالة</th>
+            <th class="action-col" style="text-align: center;">إجراءات / طباعة</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for doc in issues %}
+          {% set g_lines = doc.all_lines %}
+          <tr class="issue-row kf-clickable" data-href="{{ url_for('coffee.green_issue_edit', issue_id=doc.id) }}" onclick="window.location='{{ url_for('coffee.green_issue_edit', issue_id=doc.id) }}'">
+            <td style="text-align: center;" onclick="event.stopPropagation()">
+              <input type="checkbox" class="row-checkbox" value="{{ doc.id }}" data-status="{{ doc.status }}" style="cursor: pointer; width: 16px; height: 16px;" onchange="updateBulkBar()">
+            </td>
+            <td>
+              <a href="{{ url_for('coffee.green_issue_edit', issue_id=doc.id) }}" class="kf-doc-link" onclick="event.stopPropagation()">
+                {{ doc.doc_number }}
+              </a>
+            </td>
+            <td>{{ doc.issue_date }}</td>
+            <td>
+              <span class="kf-status {% if doc.issue_type == 'sale' %}kf-status--ok{% else %}kf-status--muted{% endif %}">
+                {{ doc.issue_type_label_ar }}
+              </span>
+            </td>
+            <td>
+              {% if g_lines|length > 0 %}
+                {% for l in g_lines %}
+                <div style="font-size: 11px; line-height: 1.45; border-bottom: 1px dashed var(--kf-border); padding: 2px 0;">
+                  <strong style="color: var(--kf-iris);">{{ l.coffee_item.xero_item_code if l.coffee_item else '—' }}</strong>
+                  <span style="color: var(--kf-steel);">({{ l.coffee_item.name_ar if l.coffee_item else '' }})</span>:
+                  <strong style="color: var(--kf-ink);">{{ "{:,.2f}".format(l.qty_kg) }} كجم</strong>
+                  {% if l.qty_sacks %}<small style="color: var(--kf-violet);">({{ "{:,.1f}".format(l.qty_sacks) }} خيشة)</small>{% endif %}
+                </div>
+                {% endfor %}
+              {% else %}
+                <strong>{{ doc.coffee_item.xero_item_code if doc.coffee_item else '—' }}</strong>
+                <div style="font-size: 11px; color: var(--kf-steel);">{{ doc.coffee_item.name_ar if doc.coffee_item else '' }}</div>
+              {% endif %}
+              {% if doc.notes %}
+              <div style="font-size: 11px; color: var(--kf-steel); margin-top: 2px; font-style: italic;">{{ doc.notes }}</div>
+              {% endif %}
+            </td>
+            <td class="kf-num"><strong style="color: var(--kf-ink);">{{ "{:,.2f}".format(doc.total_qty_kg) }} كجم</strong></td>
+            <td class="kf-num"><span style="color: var(--kf-steel); font-weight: 600;">{{ "{:,.2f}".format(doc.total_qty_sacks) }} خيشة</span></td>
+            <td class="kf-num">
+              {% if doc.issue_type == 'sale' %}
+                <span style="color: var(--kf-ok-fg); font-weight: 700;">{{ "{:,.2f}".format(doc.sale_price_per_kg or 0) }} ريال</span>
+              {% else %}
+                {{ "{:,.2f}".format(doc.unit_cost or 0) }} ريال
+              {% endif %}
+            </td>
+            <td class="kf-num">
+              <strong>
+              {% if doc.issue_type == 'sale' %}
+                <span style="color: var(--kf-ok-fg);">{{ "{:,.2f}".format(doc.total_invoice_amount) }} ريال</span>
+              {% else %}
+                {{ "{:,.2f}".format(doc.total_cost or 0) }} ريال
+              {% endif %}
+              </strong>
+            </td>
+            <td>
+              {% if doc.issue_type == 'sale' and doc.customer_name %}
+              {% set c_phone = doc.resolved_customer_phone %}
+              <div style="font-weight: 700; color: var(--kf-iris);">
+                {{ doc.customer_name }}{% if c_phone %} <span style="font-size: 11px; font-weight: normal; color: var(--kf-steel);" dir="ltr">({{ c_phone }})</span>{% endif %}
+              </div>
+              {% if doc.delivery_method == 'shipping' %}
+              <div style="margin-top: 3px;">
+                <span style="background: var(--kf-lilac); color: var(--kf-iris); font-size: 10px; padding: 2px 6px; border-radius: 4px;">
+                  شحن: {{ doc.shipping_destination or '' }} ({{ doc.shipping_company or '' }})
+                </span>
+              </div>
+              {% endif %}
+              <small style="color: var(--kf-steel);">{{ doc.issue_reason or '' }}</small>
+              {% else %}
+              {{ doc.issue_reason or doc.notes or '—' }}
+              {% endif %}
+            </td>
+            <td onclick="event.stopPropagation()">
+              {% if doc.issue_type in ['sale', 'sample', 'internal_use'] %}
+                {% if doc.xero_status == 'posted' %}
+                <span class="kf-status kf-status--ok" title="Xero ID: {{ doc.xero_invoice_id }}">
+                  {% if doc.issue_type == 'sale' %}
+                    فاتورة مسودة
+                  {% else %}
+                    إشعار دائن 345
+                  {% endif %}
+                </span>
+                {% elif doc.xero_status == 'failed' %}
+                <form method="POST" action="{{ url_for('coffee.green_issue_post_xero', issue_id=doc.id) }}" style="margin: 0; display: inline-flex; align-items: center; gap: 4px;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <span class="kf-status kf-status--err" title="{{ doc.xero_error }}">فشل</span>
+                  <button type="submit" class="kf-btn kf-btn-secondary kf-btn-sm" style="color: var(--kf-err-fg);">إعادة</button>
+                </form>
+                {% else %}
+                <form method="POST" action="{{ url_for('coffee.green_issue_post_xero', issue_id=doc.id) }}" style="margin: 0;">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="kf-btn kf-btn-secondary kf-btn-sm" style="color: var(--kf-violet); border-color: var(--kf-violet);">
+                    {{ ui.icon_zap() }}
+                    <span>ترحيل</span>
+                  </button>
+                </form>
+                {% endif %}
+              {% else %}
+              <span style="color: var(--kf-steel);">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if doc.status == 'draft' %}
+                <span class="kf-status kf-status--muted">مسودة</span>
+              {% else %}
+                <span class="kf-status kf-status--ok">مكتمل</span>
+              {% endif %}
+            </td>
+            <td class="action-col" style="text-align: center;" onclick="event.stopPropagation()">
+              <div style="display: inline-flex; align-items: center; gap: 6px;">
+                {% if current_user and (doc.status == 'draft' or current_user.role == 'admin') %}
+                <a href="{{ url_for('coffee.green_issue_edit', issue_id=doc.id) }}" class="kf-btn kf-btn-secondary kf-btn-sm">
+                  تعديل
+                </a>
+                {% endif %}
+                <a href="{{ url_for('coffee.green_issue_print', issue_id=doc.id) }}" target="_blank" class="kf-btn kf-btn-secondary kf-btn-sm" title="طباعة">
+                  {{ ui.icon_file_text() }}
+                  <span>طباعة</span>
+                  {% if doc.customer_signature %}
+                  <span title="موقع إلكترونياً" style="color: var(--kf-violet);">*</span>
+                  {% endif %}
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr id="noDataRow">
+            <td colspan="13" style="text-align: center; padding: 48px 24px; color: var(--kf-steel);">
+              لا توجد سندات صرف بن أخضر مطابقة لخيارات البحث
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr style="background: var(--kf-page); font-weight: 700;">
+            <td colspan="5" style="text-align: left; padding: 10px 14px;">إجمالي السندات ({{ issues|length }} سند):</td>
+            <td class="kf-num" style="color: var(--kf-ink); font-weight: 800;">{{ "{:,.2f}".format(tot_kg|default(0)|float) }} كجم</td>
+            <td class="kf-num" style="color: var(--kf-steel); font-weight: 800;">{{ "{:,.2f}".format(tot_sacks|default(0)|float) }} خيشة</td>
+            <td>—</td>
+            <td class="kf-num" style="color: var(--kf-ink); font-weight: 800;">{{ "{:,.2f}".format(tot_val|default(0)|float) }} ريال</td>
+            <td colspan="3" style="font-size: 11px; color: var(--kf-steel);">حالة Xero ومحلياً</td>
+            <td class="action-col"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- نموذج تنفيذ الإجراء الجماعي المخفي -->
+  <form id="bulkActionForm" method="POST" action="{{ url_for('coffee.green_issues_bulk_action') }}" style="display: none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action_type" id="bulkActionType" value="">
+    <div id="bulkSelectedInputs"></div>
+  </form>
+
+  <!-- تذييل البيان الرسمي والتوقيعات عند الطباعة -->
+  <div class="print-footer" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 10px; border-top: 1.5px solid #64748b; font-size: 11px;">
+      <div><strong>أمين مستودع الأخضر:</strong> _______________________</div>
+      <div><strong>مسؤول الصرف والنقل:</strong> _______________________</div>
+      <div><strong>مراجعة الحسابات:</strong> _______________________</div>
+      <div><strong>اعتماد الإدارة:</strong> _______________________</div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block coffee_scripts %}
+<script>
+function filterTableLive(term) {
+  const q = term.trim().toLowerCase();
+  const rows = document.querySelectorAll(".issue-row");
+  let count = 0;
+
+  rows.forEach(row => {
+    const text = row.innerText.toLowerCase();
+    if (!q || text.includes(q)) {
+      row.style.display = "";
+      count++;
+    } else {
+      row.style.display = "none";
+    }
+  });
+
+  const vBadge = document.getElementById("visibleCount");
+  if (vBadge) vBadge.innerText = count;
+}
+
+// التحكم في شريط الإجراءات الجماعية
+function toggleBulkDropdown() {
+  const menu = document.getElementById("bulkDropdownMenu");
+  if (menu) {
+    menu.style.display = (menu.style.display === "none" || !menu.style.display) ? "block" : "none";
+  }
+}
+
+document.addEventListener("click", function(e) {
+  const wrap = document.querySelector(".bulk-dropdown-wrap");
+  const menu = document.getElementById("bulkDropdownMenu");
+  if (wrap && menu && !wrap.contains(e.target)) {
+    menu.style.display = "none";
+  }
+});
+
+function updateBulkBar() {
+  const checkboxes = document.querySelectorAll(".row-checkbox");
+  const checkedBoxes = document.querySelectorAll(".row-checkbox:checked");
+  const count = checkedBoxes.length;
+
+  const bar = document.getElementById("bulkActionBar");
+  const countEl = document.getElementById("selectedCount");
+  const selectAll = document.getElementById("selectAllCheckbox");
+
+  if (countEl) countEl.innerText = count;
+
+  if (bar) {
+    if (count > 0) {
+      bar.style.display = "flex";
+    } else {
+      bar.style.display = "none";
+      const menu = document.getElementById("bulkDropdownMenu");
+      if (menu) menu.style.display = "none";
+    }
+  }
+
+  if (selectAll) {
+    if (checkboxes.length > 0 && count === checkboxes.length) {
+      selectAll.checked = true;
+      selectAll.indeterminate = false;
+    } else if (count > 0) {
+      selectAll.checked = false;
+      selectAll.indeterminate = true;
+    } else {
+      selectAll.checked = false;
+      selectAll.indeterminate = false;
+    }
+  }
+}
+
+function clearAllSelections() {
+  const checkboxes = document.querySelectorAll(".row-checkbox");
+  checkboxes.forEach(cb => cb.checked = false);
+  const selectAll = document.getElementById("selectAllCheckbox");
+  if (selectAll) {
+    selectAll.checked = false;
+    selectAll.indeterminate = false;
+  }
+  updateBulkBar();
+}
+
+const selectAllCb = document.getElementById("selectAllCheckbox");
+if (selectAllCb) {
+  selectAllCb.addEventListener("change", function() {
+    const visibleCheckboxes = Array.from(document.querySelectorAll(".issue-row"))
+      .filter(r => r.style.display !== "none")
+      .map(r => r.querySelector(".row-checkbox"))
+      .filter(Boolean);
+
+    visibleCheckboxes.forEach(cb => {
+      cb.checked = selectAllCb.checked;
+    });
+    updateBulkBar();
+  });
+}
+
+function submitBulkAction(actionType) {
+  const checkedBoxes = document.querySelectorAll(".row-checkbox:checked");
+  if (checkedBoxes.length === 0) {
+    alert("يرجى تحديد سند واحد على الأقل.");
+    return;
+  }
+
+  const actionName = actionType === 'approve' ? 'اعتماد' : (actionType === 'delete' ? 'حذف' : actionType);
+  const confirmMsg = actionType === 'delete'
+    ? `⚠️ تحذير: هل أنت متأكد تماماً من رغبتك في حذف ${checkedBoxes.length} سند/سندات محددة؟ سيتم التراجع عن حركات المخزون نهائياً!`
+    : `هل أنت متأكد من رغبتك في ${actionName} ${checkedBoxes.length} سند/سندات محددة دفعة واحدة؟`;
+
+  if (!confirm(confirmMsg)) {
+    return;
+  }
+
+  const container = document.getElementById("bulkSelectedInputs");
+  container.innerHTML = "";
+  checkedBoxes.forEach(cb => {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "selected_ids[]";
+    input.value = cb.value;
+    container.appendChild(input);
+  });
+
+  document.getElementById("bulkActionType").value = actionType;
+  document.getElementById("bulkActionForm").submit();
+}
+</script>
+{% endblock %}

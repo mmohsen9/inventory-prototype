@@ -12,3 +12,4 @@ Awaiting the user's provision of the real Foodics Production API credentials.
 4. **Persistent Disk Trade-off:** Disables zero-downtime deploys and limits service to 1 instance. Ideal for SQLite concurrency safety.
 5. **Execution Order:** Phased execution with acceptance gates. Do not proceed to the next phase without explicit user approval.
 6. **Continuous Evolution (Phase 6):** Safe migrations with Flask-Migrate (Alembic batch mode for SQLite), isolated local dev environment, feature branches, and zero-data-loss upgrades.
+7. **Performance & Reliability 31 Standards (Audited):** Mandatory pre-flight quality and performance review before any upgrade. See comprehensive audit table in Arabic plan.

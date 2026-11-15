@@ -1,23 +1,33 @@
-{% extends "base.html" %}
+{% extends "cafe_base.html" %}
 
 {% block title %}{{ t('nav_transfers') }}{% endblock %}
 
-{% block content %}
+{% block cafe_content %}
 <div class="page-header">
     <div class="page-title">
         <h2>🚚 {{ t('nav_transfers') }} ({{ t('transfers_list_title') }})</h2>
         <p>{{ t('transfers_list_subtitle') }}</p>
     </div>
-    <div class="page-actions">
+    <div class="page-actions" style="display: flex; gap: 8px;">
         {% if user.role in ['admin', 'warehouse', 'accountant'] %}
         <a href="{{ url_for('transfer_new') }}" class="btn btn-primary">
             ➕ {{ t('new_transfer') }}
         </a>
         {% endif %}
+        <button onclick="window.print()" class="btn btn-secondary btn-sm" style="font-weight: 700; cursor: pointer;">
+            🖨️ {{ 'طباعة البيان' if lang == 'ar' else 'Print Statement' }}
+        </button>
     </div>
 </div>
 
-{% set pending_incoming = transfers | selectattr('status', 'equalto', 'in_transit') | selectattr('to_location_id', 'equalto', user.location_id) | list if (user.role == 'branch_staff' and user.location_id) else [] %}
+{% set pending_incoming = [] %}
+{% if user.role == 'branch_staff' %}
+    {% for tr in transfers %}
+        {% if tr.status == 'in_transit' and user.can_access_location(tr.to_location_id) %}
+            {% set _ = pending_incoming.append(tr) %}
+        {% endif %}
+    {% endfor %}
+{% endif %}
 {% if user.role == 'branch_staff' and pending_incoming %}
 <div class="card" style="margin-bottom: 20px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 2px solid #3b82f6; padding: 16px 20px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
@@ -51,18 +61,26 @@
                     <th>{{ t('items') }}</th>
                     <th>{{ 'مسؤول الإرسال والاستلام' if lang == 'ar' else 'Dispatch & Receipt' }}</th>
                     <th>{{ t('status') }}</th>
-                    <th>{{ t('actions') }}</th>
+                    <th class="action-col">{{ t('actions') }}</th>
                 </tr>
             </thead>
             <tbody>
                 {% for tr in transfers %}
-                <tr>
-                    <td><strong>#{{ tr.id }}</strong></td>
+                <tr class="clickable-row"
+                    data-href="{{ url_for('transfer_edit', transfer_id=tr.id) }}"
+                    onclick="handleVoucherRowClick(event, '{{ url_for('transfer_edit', transfer_id=tr.id) }}')"
+                    style="cursor: pointer;"
+                    title="{{ 'انقر لفتح وتعديل السند' if lang == 'ar' else 'Click to open voucher' }}">
+                    <td>
+                        <a href="{{ url_for('transfer_edit', transfer_id=tr.id) }}" class="doc-link" title="{{ 'فتح السند' if lang == 'ar' else 'Open voucher' }}">
+                            <strong>#{{ tr.id }}</strong>
+                        </a>
+                    </td>
                     <td><strong>{{ loc_name(tr.from_location) }}</strong></td>
                     <td><strong>{{ loc_name(tr.to_location) }}</strong></td>
                     <td style="color: var(--gray-600); font-size: 13px;">{{ tr.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td><span class="badge badge-draft">{{ tr.lines|length }}</span></td>
-                    <td style="font-size: 12px; min-width: 150px;">
+                    <td style="font-size: 12px;">
                         <div style="color: var(--gray-700);">
                             <span style="color: var(--gray-500);">{{ 'المُرسل:' if lang == 'ar' else 'Sender:' }}</span> {{ tr.creator.name if tr.creator else '-' }}
                         </div>
@@ -86,8 +104,8 @@
                     <td>
                         <span class="badge badge-{{ tr.status }}">{{ status_name(tr) }}</span>
                     </td>
-                    <td>
-                        <div style="display: flex; gap: 6px;">
+                    <td class="action-col" onclick="event.stopPropagation();">
+                        <div style="display: flex; gap: 6px; align-items: center; justify-content: flex-end;">
                             <a href="{{ url_for('transfer_edit', transfer_id=tr.id) }}" class="btn btn-secondary btn-sm">
                                 {% if tr.status == 'draft' or user.role in ['admin', 'accountant'] %}✏️ {{ t('edit') }}{% else %}👁️ {{ t('details') }}{% endif %}
                             </a>
@@ -95,6 +113,13 @@
                             <a href="{{ url_for('transfer_receive', transfer_id=tr.id) }}" class="btn btn-primary btn-sm">
                                 📥 {{ t('receive_materials') }}
                             </a>
+                            {% endif %}
+                            {% if tr.status == 'draft' or user.role in ['admin', 'accountant'] %}
+                            <form method="POST" action="{{ url_for('transfer_delete', transfer_id=tr.id) }}" style="display:inline;" onsubmit="return confirm('{{ 'هل أنت متأكد من حذف سند صرف المواد هذا نهائياً وعكس أي أثر مخزني؟' if lang == 'ar' else 'Are you sure you want to delete this disbursement voucher?' }}');">
+                                <button type="submit" class="btn btn-danger btn-sm" title="{{ t('delete') }}" style="padding: 4px 8px; font-size: 12px;">
+                                    🗑️
+                                </button>
+                            </form>
                             {% endif %}
                         </div>
                     </td>

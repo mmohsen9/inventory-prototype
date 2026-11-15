@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: november-inventory
+    runtime: python
+    region: frankfurt
+    plan: starter
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 10
+    buildCommand: pip install -r requirements.txt && python migrate_core_indexes.py
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
+    healthCheckPath: /health
+    envVars:
+      - key: PRODUCTION
+        value: "true"
+      - key: RENDER
+        value: "true"
+      - key: DATABASE_URL
+        value: sqlite:////var/data/rafa_inventory.db
+      - key: UPLOAD_DIR
+        value: /var/data/uploads
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.11.1
+

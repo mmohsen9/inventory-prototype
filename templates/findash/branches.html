@@ -1,0 +1,455 @@
+{% extends "findash/base.html" %}
+
+{% block findash_content %}
+<div class="foodics-page-container">
+    <!-- الترويسة وأزرار التحكم -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+        <div>
+            <h2 style="margin: 0 0 4px 0; font-size: 20px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                <span>🏪</span> مبيعات Foodics
+            </h2>
+            <div style="font-size: 13px; color: #64748b;">تحليل مبيعات نقاط البيع حسب الفرع والمنتج من تقارير Foodics.</div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <!-- اختيار السنة -->
+            <form method="GET" action="{{ url_for('findash.branches') }}" id="yearForm" style="display: flex; align-items: center; gap: 8px;">
+                <input type="hidden" name="tab" value="{{ foodics_tab or 'by_branch' }}">
+                {% if selected_branch and selected_branch != '(كل الفروع)' %}
+                <input type="hidden" name="branch" value="{{ selected_branch }}">
+                {% endif %}
+                <label style="font-size: 13px; font-weight: 700; color: #475569;">السنة:</label>
+                <select name="year" onchange="this.form.submit()" class="form-control form-control-sm" style="font-weight: 700; border-radius: 8px; width: 130px; background: #ffffff; border: 1px solid #cbd5e1;">
+                    {% for y in available_years %}
+                    <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>عام {{ y }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+
+            <!-- زر تحديث/استيراد Foodics -->
+            <form method="POST" action="{{ url_for('findash.sync_foodics') }}" style="margin: 0;">
+                <input type="hidden" name="year" value="{{ selected_year }}">
+                <button type="submit" class="btn btn-sm btn-outline-primary" style="font-weight: 700; border-radius: 8px; display: flex; align-items: center; gap: 6px; padding: 6px 14px; background: #f8fafc; border: 1px solid #cbd5e1; color: #334155;">
+                    <span>🔄</span> تحديث/استيراد Foodics
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- شريط التبويبات الثلاثة: حسب الفرع | أفضل المنتجات | أضعف المنتجات -->
+    <div style="display: flex; gap: 6px; border-bottom: 2px solid #e2e8f0; margin-bottom: 24px;">
+        <a href="{{ url_for('findash.branches', year=selected_year, tab='by_branch', search_br=search_br) }}" 
+           class="foodics-tab-link {% if foodics_tab == 'by_branch' or not foodics_tab %}active{% endif %}">
+           حسب الفرع
+        </a>
+        <a href="{{ url_for('findash.branches', year=selected_year, tab='top_products', branch=selected_branch, top_n=top_n, search_prod=search_prod) }}" 
+           class="foodics-tab-link {% if foodics_tab == 'top_products' %}active{% endif %}">
+           أفضل المنتجات
+        </a>
+        <a href="{{ url_for('findash.branches', year=selected_year, tab='worst_products', branch=selected_branch, top_n=top_n, search_prod=search_prod) }}" 
+           class="foodics-tab-link {% if foodics_tab == 'worst_products' %}active{% endif %}">
+           أضعف المنتجات
+        </a>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- التبويب 1: حسب الفرع (By Branch) -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    {% if foodics_tab == 'by_branch' or not foodics_tab %}
+    <div class="fin-chart-card" style="margin-bottom: 24px; padding: 22px;">
+        <div style="font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 16px;">مبيعات الفروع</div>
+
+        <!-- فلتر تحديد الفرع (قائمة منسدلة) -->
+        <form method="GET" action="{{ url_for('findash.branches') }}" style="margin-bottom: 20px;">
+            <input type="hidden" name="year" value="{{ selected_year }}">
+            <input type="hidden" name="tab" value="by_branch">
+            <div style="display: flex; gap: 10px; align-items: center; max-width: 480px;">
+                <label style="font-size: 13px; font-weight: 700; color: #475569; white-space: nowrap;">تحديد الفرع:</label>
+                <select name="search_br" onchange="this.form.submit()" class="form-control form-control-sm" style="font-weight: 700; border-radius: 8px; background: #ffffff;">
+                    <option value="">(كل الفروع)</option>
+                    {% for br in branches_list %}
+                        {% if br != '(كل الفروع)' %}
+                        <option value="{{ br }}" {% if search_br == br %}selected{% endif %}>{{ br }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+                {% if search_br %}
+                <a href="{{ url_for('findash.branches', year=selected_year, tab='by_branch') }}" class="btn btn-sm btn-secondary" style="border-radius: 8px; white-space: nowrap;">عرض الكل</a>
+                {% endif %}
+            </div>
+        </form>
+
+        <!-- بطاقات المؤشرات الأربعة الرئيسية (KPI Cards) مطابقة لـ Streamlit -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); text-align: right;">
+                <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">صافي المبيعات</div>
+                <div style="font-size: 24px; font-weight: 900; color: #0f172a; font-family: monospace;">{{ "{:,.0f}".format(branch_sales.totals.net_sum) }}</div>
+            </div>
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); text-align: right;">
+                <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">عدد الطلبات</div>
+                <div style="font-size: 24px; font-weight: 900; color: #0f172a; font-family: monospace;">{{ "{:,}".format(branch_sales.totals.orders_sum) }}</div>
+            </div>
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); text-align: right;">
+                <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">متوسط الطلب</div>
+                <div style="font-size: 24px; font-weight: 900; color: #0f172a; font-family: monospace;">{{ "{:,.1f}".format(branch_sales.totals.avg_order) }}</div>
+            </div>
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); text-align: right;">
+                <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">عدد الفروع</div>
+                <div style="font-size: 24px; font-weight: 900; color: #0f172a; font-family: monospace;">{{ branch_sales.totals.branch_count }}</div>
+            </div>
+        </div>
+
+        <!-- جدول مبيعات الفروع بجميع الأعمدة الـ 11 مطابقة تماماً للمستند الرسمي -->
+        <div style="width: 100%; overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 24px;">
+            <table class="fin-table" style="margin: 0;">
+                <thead style="background: #f8fafc;">
+                    <tr>
+                        <th style="width: 6%;">السنة</th>
+                        <th>الفرع</th>
+                        <th style="width: 8%;">كود الفرع</th>
+                        <th style="text-align: left; width: 10%;">إجمالي المبيعات</th>
+                        <th style="text-align: left; width: 10%;">صافي المبيعات</th>
+                        <th style="text-align: left; width: 8%;">الضرائب</th>
+                        <th style="text-align: left; width: 8%;">الخصم</th>
+                        <th style="text-align: center; width: 7%;">عدد الطلبات</th>
+                        <th style="text-align: left; width: 9%;">متوسط الطلب</th>
+                        <th style="text-align: center; width: 6%;">عدد الزوار</th>
+                        <th style="text-align: center; width: 6%;">عدد العملاء</th>
+                        <th style="text-align: center; width: 6%;">صافي الكمية</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in branch_sales.branches %}
+                    <tr>
+                        <td style="color: #64748b;">{{ b.year }}</td>
+                        <td><div class="cell-name-wrap" style="color: #0f172a;">{{ b.branch }}</div></td>
+                        <td><span class="fin-code-badge">{{ b.branch_code }}</span></td>
+                        <td style="text-align: left;"><span class="fin-num">{{ "{:,.2f}".format(b.gross) }}</span></td>
+                        <td style="text-align: left;"><span class="fin-num" style="font-weight: 800; color: #0f172a;">{{ "{:,.2f}".format(b.net) }}</span></td>
+                        <td style="text-align: left;"><span class="fin-num" style="color: #64748b;">{{ "{:,.2f}".format(b.tax) }}</span></td>
+                        <td style="text-align: left;"><span class="fin-num" style="color: #dc2626;">{{ "{:,.2f}".format(b.discount) }}</span></td>
+                        <td style="text-align: center;"><span class="fin-num" style="font-weight: 700;">{{ "{:,}".format(b.orders) }}</span></td>
+                        <td style="text-align: left;"><span class="fin-num">{{ "{:,.2f}".format(b.avg_order) }}</span></td>
+                        <td style="text-align: center;"><span class="fin-num">{{ "{:,}".format(b.visitors) }}</span></td>
+                        <td style="text-align: center;"><span class="fin-num">{{ "{:,}".format(b.customers) }}</span></td>
+                        <td style="text-align: center;"><span class="fin-num">{{ "{:,.1f}".format(b.qty) }}</span></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="12" style="text-align: center; padding: 24px; color: #64748b;">
+                            لا توجد مبيعات فروع لهذه السنة.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                {% if branch_sales.branches %}
+                <tfoot class="tfoot-totals" style="background: #f1f5f9; font-weight: 800; border-top: 2px solid #cbd5e1;">
+                    <tr>
+                        <td style="font-weight: 800; font-size: 13px;">{{ selected_year }}</td>
+                        <td style="font-weight: 800; font-size: 13px;">-</td>
+                        <td style="font-weight: 800; font-size: 13px;">-</td>
+                        <td style="text-align: left; font-family: monospace; font-weight: 800; font-size: 13px;">{{ "{:,.2f}".format(branch_sales.totals.gross_sum) }}</td>
+                        <td style="text-align: left; font-family: monospace; font-weight: 900; color: #1e293b; font-size: 13px;">{{ "{:,.2f}".format(branch_sales.totals.net_sum) }}</td>
+                        <td style="text-align: left; font-family: monospace; font-weight: 800; font-size: 13px;">{{ "{:,.2f}".format(branch_sales.totals.tax_sum) }}</td>
+                        <td style="text-align: left; font-family: monospace; font-weight: 800; color: #dc2626; font-size: 13px;">{{ "{:,.2f}".format(branch_sales.totals.discount_sum) }}</td>
+                        <td style="text-align: center; font-weight: 800; font-size: 13px;">{{ "{:,}".format(branch_sales.totals.orders_sum) }}</td>
+                        <td style="text-align: left; font-family: monospace; font-weight: 800; font-size: 13px;">{{ "{:,.2f}".format(branch_sales.totals.avg_order) }}</td>
+                        <td style="text-align: center; font-weight: 800; font-size: 13px;">{{ "{:,}".format(branch_sales.totals.visitors_sum) }}</td>
+                        <td style="text-align: center; font-weight: 800; font-size: 13px;">{{ "{:,}".format(branch_sales.totals.customers_sum) }}</td>
+                        <td style="text-align: center; font-family: monospace; font-weight: 800; font-size: 13px;">{{ "{:,.1f}".format(branch_sales.totals.qty_sum) }}</td>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+
+        <!-- رسم بياني لمقارنة صافي مبيعات الفروع -->
+        {% if branch_sales.branches %}
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+            <div style="font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 14px;">📊 مقارنة صافي المبيعات بين الفروع</div>
+            {% set max_net = branch_sales.branches[0].net if branch_sales.branches else 1.0 %}
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                {% for b in branch_sales.branches %}
+                {% set pct = (b.net / max_net * 100) if max_net else 0 %}
+                <div>
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 4px;">
+                        <span>🏪 {{ b.branch }}</span>
+                        <span style="font-family: monospace; color: #4338ca;">{{ "{:,.0f}".format(b.net) }} SAR ({{ "{:,.1f}".format(b.net / branch_sales.totals.net_sum * 100) if branch_sales.totals.net_sum else 0 }}%)</span>
+                    </div>
+                    <div style="background: #e2e8f0; height: 10px; border-radius: 6px; overflow: hidden;">
+                        <div style="background: linear-gradient(90deg, #3b82f6, #6366f1); height: 100%; width: {{ pct }}%; border-radius: 6px;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- قسم قابل للطي: الخصومات والزوار -->
+        <details style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px;">
+            <summary style="font-weight: 700; font-size: 13px; color: #334155; cursor: pointer;">
+                🔍 الخصومات والزوار
+            </summary>
+            <div style="margin-top: 14px; overflow-x: auto;">
+                <table class="fin-table" style="margin: 0;">
+                    <thead>
+                        <tr>
+                            <th>الفرع</th>
+                            <th style="text-align: left;">الخصم</th>
+                            <th style="text-align: center;">عدد الزوار</th>
+                            <th style="text-align: center;">عدد العملاء</th>
+                            <th style="text-align: center;">صافي الكمية</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in branch_sales.branches %}
+                        <tr>
+                            <td style="font-weight: 700;">{{ b.branch }}</td>
+                            <td style="text-align: left; color: #dc2626; font-family: monospace;">{{ "{:,.2f}".format(b.discount) }}</td>
+                            <td style="text-align: center;">{{ "{:,}".format(b.visitors) }}</td>
+                            <td style="text-align: center;">{{ "{:,}".format(b.customers) }}</td>
+                            <td style="text-align: center; font-family: monospace;">{{ "{:,.1f}".format(b.qty) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </details>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- التبويب 2: أفضل المنتجات (Top Products) -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    {% if foodics_tab == 'top_products' %}
+    <div class="fin-chart-card" style="margin-bottom: 24px; padding: 22px;">
+        <div style="font-size: 16px; font-weight: 800; color: #0f172a; margin-bottom: 16px;">أفضل المنتجات</div>
+
+        <!-- فلاتر الفرع وعدد المنتجات والبحث -->
+        <form method="GET" action="{{ url_for('findash.branches') }}" style="display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px;">
+            <input type="hidden" name="year" value="{{ selected_year }}">
+            <input type="hidden" name="tab" value="top_products">
+
+            <div>
+                <label style="font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">الفرع:</label>
+                <select name="branch" onchange="this.form.submit()" class="form-control form-control-sm" style="font-weight: 700; border-radius: 8px; width: 170px;">
+                    {% for br in branches_list %}
+                    <option value="{{ br }}" {% if selected_branch == br %}selected{% endif %}>{{ br }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label style="font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">عدد المنتجات:</label>
+                <select name="top_n" onchange="this.form.submit()" class="form-control form-control-sm" style="font-weight: 700; border-radius: 8px; width: 110px;">
+                    {% for n in [5, 10, 15, 20, 30, 50] %}
+                    <option value="{{ n }}" {% if top_n == n %}selected{% endif %}>{{ n }} منتج</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 200px;">
+                <label style="font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">بحث بالمنتج:</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" name="search_prod" value="{{ search_prod }}" placeholder="اكتب جزء من اسم المنتج..." class="form-control form-control-sm" style="border-radius: 8px;">
+                    <button type="submit" class="btn btn-sm btn-primary" style="font-weight: 700; border-radius: 8px; padding: 0 16px;">تطبيق</button>
+                    {% if search_prod %}
+                    <a href="{{ url_for('findash.branches', year=selected_year, tab='top_products', branch=selected_branch, top_n=top_n) }}" class="btn btn-sm btn-secondary" style="border-radius: 8px;">إلغاء</a>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+
+        <!-- بطاقات الـ KPI الثلاثة (صافي المبيعات المعروضة، التكلفة، هامش الربح) -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); text-align: right;">
+                <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">صافي المبيعات (المعروضة)</div>
+                <div style="font-size: 24px; font-weight: 900; color: #0f172a; font-family: monospace;">{{ "{:,.0f}".format(top_products.summary.net_sum) }}</div>
+            </div>
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); text-align: right;">
+                <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">التكلفة</div>
+                <div style="font-size: 24px; font-weight: 900; color: #0f172a; font-family: monospace;">{{ "{:,.0f}".format(top_products.summary.cost_sum) }}</div>
+            </div>
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); text-align: right;">
+                <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">هامش الربح</div>
+                <div style="font-size: 24px; font-weight: 900; color: #059669; font-family: monospace;">
+                    {{ "{:,.0f}".format(top_products.summary.profit_sum) }}
+                    <span style="font-size: 14px; font-weight: 700; color: #10b981;">({{ top_products.summary.overall_margin_pct }}%)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- جدول أفضل المنتجات -->
+        <div style="width: 100%; overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 10px; margin-bottom: 24px;">
+            <table class="fin-table" style="margin: 0;">
+                <thead style="background: #f8fafc;">
+                    <tr>
+                        <th>المنتج</th>
+                        <th style="width: 10%;">كود المنتج</th>
+                        <th style="text-align: left; width: 12%;">صافي المبيعات</th>
+                        <th style="text-align: center; width: 7%;">الكمية</th>
+                        <th style="text-align: left; width: 10%;">التكلفة</th>
+                        <th style="text-align: left; width: 9%;">الخصم</th>
+                        <th style="text-align: left; width: 10%;">مبلغ الإرجاع</th>
+                        <th style="text-align: left; width: 11%;">هامش الربح</th>
+                        <th style="text-align: center; width: 8%;">هامش %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in top_products.products %}
+                    <tr>
+                        <td><div class="cell-name-wrap" style="color: #0f172a;">☕ {{ p.product }}</div></td>
+                        <td><span class="fin-code-badge">{{ p.product_code }}</span></td>
+                        <td style="text-align: left;"><span class="fin-num" style="font-weight: 800; color: #4338ca;">{{ "{:,.2f}".format(p.net) }}</span></td>
+                        <td style="text-align: center;"><span class="fin-num">{{ "{:,.1f}".format(p.qty) }}</span></td>
+                        <td style="text-align: left;"><span class="fin-num" style="color: #64748b;">{{ "{:,.2f}".format(p.cost) }}</span></td>
+                        <td style="text-align: left;"><span class="fin-num" style="color: #dc2626;">{{ "{:,.2f}".format(p.discount) }}</span></td>
+                        <td style="text-align: left;"><span class="fin-num">{{ "{:,.2f}".format(p.returns_amount) }}</span></td>
+                        <td style="text-align: left;"><span class="fin-num" style="font-weight: 800; color: #059669;">{{ "{:,.2f}".format(p.profit) }}</span></td>
+                        <td style="text-align: center;"><span class="badge-reconciled">{{ p.margin_pct }}%</span></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 24px; color: #64748b;">
+                            لا توجد مبيعات منتجات لهذه الفترة.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- رسم بياني لأعلى 15 منتج مبيعاً -->
+        {% if top_products.products %}
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px;">
+            <div style="font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 14px;">📈 صافي مبيعات أعلى المنتجات</div>
+            {% set top_max_net = top_products.products[0].net if top_products.products else 1.0 %}
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                {% for p in top_products.products[:15] %}
+                {% set pct = (p.net / top_max_net * 100) if top_max_net else 0 %}
+                <div>
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-bottom: 4px;">
+                        <span>{{ loop.index }}. {{ p.product }}</span>
+                        <span style="font-family: monospace; color: #4338ca;">{{ "{:,.0f}".format(p.net) }} SAR</span>
+                    </div>
+                    <div style="background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden;">
+                        <div style="background: linear-gradient(90deg, #10b981, #059669); height: 100%; width: {{ pct }}%; border-radius: 4px;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- التبويب 3: أضعف المنتجات (Weakest Products) -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    {% if foodics_tab == 'worst_products' %}
+    <div class="fin-chart-card" style="margin-bottom: 24px; padding: 22px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <div style="font-size: 16px; font-weight: 800; color: #0f172a;">أضعف المنتجات</div>
+        </div>
+        <div style="font-size: 13px; color: #64748b; margin-bottom: 16px;">الأقل مبيعًا حسب صافي المبيعات — مفيد لمراجعة القائمة أو التسعير.</div>
+
+        <!-- فلاتر الفرع وعدد المنتجات والبحث -->
+        <form method="GET" action="{{ url_for('findash.branches') }}" style="display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px;">
+            <input type="hidden" name="year" value="{{ selected_year }}">
+            <input type="hidden" name="tab" value="worst_products">
+
+            <div>
+                <label style="font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">الفرع:</label>
+                <select name="branch" onchange="this.form.submit()" class="form-control form-control-sm" style="font-weight: 700; border-radius: 8px; width: 170px;">
+                    {% for br in branches_list %}
+                    <option value="{{ br }}" {% if selected_branch == br %}selected{% endif %}>{{ br }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label style="font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">عدد المنتجات:</label>
+                <select name="top_n" onchange="this.form.submit()" class="form-control form-control-sm" style="font-weight: 700; border-radius: 8px; width: 110px;">
+                    {% for n in [5, 10, 15, 20, 30] %}
+                    <option value="{{ n }}" {% if top_n == n %}selected{% endif %}>{{ n }} منتج</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 200px;">
+                <label style="font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">بحث بالمنتج:</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" name="search_prod" value="{{ search_prod }}" placeholder="اكتب جزء من اسم المنتج..." class="form-control form-control-sm" style="border-radius: 8px;">
+                    <button type="submit" class="btn btn-sm btn-primary" style="font-weight: 700; border-radius: 8px; padding: 0 16px;">تطبيق</button>
+                    {% if search_prod %}
+                    <a href="{{ url_for('findash.branches', year=selected_year, tab='worst_products', branch=selected_branch, top_n=top_n) }}" class="btn btn-sm btn-secondary" style="border-radius: 8px;">إلغاء</a>
+                    {% endif %}
+                </div>
+            </div>
+        </form>
+
+        <!-- جدول أضعف المنتجات مبيعاً -->
+        <div style="width: 100%; overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 10px;">
+            <table class="fin-table" style="margin: 0;">
+                <thead style="background: #f8fafc;">
+                    <tr>
+                        <th>المنتج</th>
+                        <th style="width: 10%;">كود المنتج</th>
+                        <th style="text-align: left; width: 12%;">صافي المبيعات</th>
+                        <th style="text-align: center; width: 7%;">الكمية</th>
+                        <th style="text-align: left; width: 10%;">التكلفة</th>
+                        <th style="text-align: left; width: 9%;">الخصم</th>
+                        <th style="text-align: left; width: 10%;">مبلغ الإرجاع</th>
+                        <th style="text-align: left; width: 11%;">هامش الربح</th>
+                        <th style="text-align: center; width: 8%;">هامش %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in worst_products.products %}
+                    <tr>
+                        <td><div class="cell-name-wrap" style="color: #0f172a;">⚠️ {{ p.product }}</div></td>
+                        <td><span class="fin-code-badge">{{ p.product_code }}</span></td>
+                        <td style="text-align: left;"><span class="fin-num" style="font-weight: 800; color: #d97706;">{{ "{:,.2f}".format(p.net) }}</span></td>
+                        <td style="text-align: center;"><span class="fin-num">{{ "{:,.1f}".format(p.qty) }}</span></td>
+                        <td style="text-align: left;"><span class="fin-num" style="color: #64748b;">{{ "{:,.2f}".format(p.cost) }}</span></td>
+                        <td style="text-align: left;"><span class="fin-num" style="color: #dc2626;">{{ "{:,.2f}".format(p.discount) }}</span></td>
+                        <td style="text-align: left;"><span class="fin-num">{{ "{:,.2f}".format(p.returns_amount) }}</span></td>
+                        <td style="text-align: left;"><span class="fin-num" style="font-weight: 800; color: {% if p.profit >= 0 %}#059669{% else %}#dc2626{% endif %};">{{ "{:,.2f}".format(p.profit) }}</span></td>
+                        <td style="text-align: center;"><span class="badge-diff">{{ p.margin_pct }}%</span></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 24px; color: #64748b;">
+                            لا توجد بيانات منتجات مسجلة.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.foodics-tab-link {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #64748b;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+.foodics-tab-link:hover {
+    color: #0f172a;
+}
+.foodics-tab-link.active {
+    color: #4338ca;
+    border-bottom-color: #4338ca;
+    background: #eef2ff;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+</style>
+{% endblock %}

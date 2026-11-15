@@ -7,72 +7,163 @@
     <!-- خط تجوال و ستايل النظام الموحد -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript>
+        <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    </noscript>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/logo.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/logo.png') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <!-- Boosthis Performance Monitoring -->
+    <script defer src="https://www.boosthis.com/kit.js" 
+            data-key="bksend_a25d06dc36951aeb7c3bd88fc3b342bf6bc815e9b05c26144356184702aef113" 
+            data-install="866f5d9d-b21f-4156-8786-96fee7091fbb" 
+            data-project="inventory-prototype"
+            data-env="{{ app_env|default('production') }}"
+            data-environment="{{ app_env|default('production') }}"></script>
+    <script>
+        // تعريف مبكر لمعالج النقر على الصفوف لتفادي أخطاء ReferenceError عند النقر السريع
+        window.handleVoucherRowClick = window.handleVoucherRowClick || function(event, url) {
+            if (!url) return;
+            if (event.target.closest('input, button, select, textarea, label, .action-col, .voucher-checkbox-cell, [onclick*="stopPropagation"]')) return;
+            if (event.target.closest('a')) return;
+            window.location.href = url;
+        };
+    </script>
     <style>
         body {
-            font-family: {% if lang == 'en' %}'Inter', 'Segoe UI', sans-serif{% else %}'Tajawal', 'Segoe UI', sans-serif{% endif %};
+            font-family: {% if lang == 'en' %}'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif{% else %}'Tajawal', 'Segoe UI', sans-serif{% endif %};
+        }
+        {% if lang == 'en' %}
+        html[dir="ltr"] body {
+            direction: ltr !important;
+            text-align: left !important;
+        }
+        html[dir="ltr"] .form-group,
+        html[dir="ltr"] .form-group label,
+        html[dir="ltr"] .item-add-title,
+        html[dir="ltr"] .data-table th,
+        html[dir="ltr"] .data-table td,
+        html[dir="ltr"] .card,
+        html[dir="ltr"] .nav-links,
+        html[dir="ltr"] .brand-info,
+        html[dir="ltr"] .coffee-hero,
+        html[dir="ltr"] .report-card,
+        html[dir="ltr"] .stat-card,
+        html[dir="ltr"] .section-header,
+        html[dir="ltr"] .form-card {
+            text-align: left !important;
+        }
+        html[dir="ltr"] .data-table th:last-child,
+        html[dir="ltr"] .data-table td:last-child {
+            text-align: center !important;
+        }
+        html[dir="ltr"] .search-wrap {
+            position: relative;
+        }
+        html[dir="ltr"] .search-icon-inside {
+            left: 14px !important;
+            right: auto !important;
+        }
+        html[dir="ltr"] .search-wrap input {
+            padding-left: 38px !important;
+            padding-right: 14px !important;
+        }
+        html[dir="ltr"] .form-header-title,
+        html[dir="ltr"] .card-header,
+        html[dir="ltr"] .page-header {
+            flex-direction: row !important;
+        }
+        html[dir="ltr"] .search-result-item span[style*="float:left"] {
+            float: right !important;
+        }
+        {% endif %}
+        /* صفوف الجداول المتفاعلة للسندات */
+        tr.clickable-row {
+            cursor: pointer !important;
+            transition: background-color 0.15s ease;
+        }
+        tr.clickable-row td {
+            cursor: pointer !important;
+        }
+        tr.clickable-row td.action-col,
+        tr.clickable-row td.voucher-checkbox-cell,
+        tr.clickable-row td.action-col *,
+        tr.clickable-row td.voucher-checkbox-cell * {
+            cursor: default !important;
+        }
+        tr.clickable-row:hover td {
+            background-color: #f1f5f9 !important;
+        }
+        [data-theme="dark"] tr.clickable-row:hover td {
+            background-color: #1e293b !important;
+        }
+        tr.clickable-row:active td {
+            background-color: #e2e8f0 !important;
         }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <header class="top-navbar">
+    <header class="top-navbar {% if request.endpoint and 'coffee' in request.endpoint %}division-coffee{% elif request.endpoint == 'users_list' %}division-users{% elif request.endpoint and 'findash' in request.endpoint %}division-findash{% elif request.endpoint and 'foodics' in request.endpoint %}division-foodics{% else %}division-cafe{% endif %}">
         <div class="nav-container">
-            <a href="{{ url_for('dashboard') }}" class="brand-section">
-                <div class="brand-icon">🏢</div>
-                <div class="brand-info">
-                    <h1>{{ t('app_title') }}</h1>
-                    <span>{{ t('app_subtitle') }}</span>
+            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                {% if user %}
+                <!-- زر القائمة الجانبية والتكاملات على اليمين -->
+                <button type="button" class="btn-hamburger" id="navDrawerBtn" onclick="toggleNavDrawer()" title="القائمة الجانبية والتكاملات">
+                    ☰
+                    {% if pending_reviews_count > 0 %}
+                    <span style="position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; background: var(--color-ember-alert); border-radius: 50%; border: 2px solid white;"></span>
+                    {% endif %}
+                </button>
+                {% endif %}
+
+                <a href="{{ url_for('dashboard') }}" class="brand-section">
+                    <div class="brand-icon" style="background: #ffffff; padding: 2px; overflow: hidden; border: 1px solid rgba(0,0,0,0.08);">
+                        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="نوفمبر كفي" style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                    <div class="brand-info">
+                        <h1>{{ t('app_title') }}</h1>
+                        <span>{{ t('app_subtitle') }}</span>
+                    </div>
+                </a>
+
+                {% if user %}
+                <!-- شارة التمييز اللوني الفوري للقسم المفتوح حالياً -->
+                <div class="top-nav-division-pill-wrap" style="display: flex; align-items: center;">
+                    {% if request.endpoint and 'coffee' in request.endpoint %}
+                    <span class="top-division-badge division-coffee-badge" title="أنت تتصفح حالياً: قسم القهوة والمحمصة المركزية">
+                        <span class="badge-dot coffee-dot"></span>
+                        <span>☕ قسم القهوة والمحمصة</span>
+                    </span>
+                    {% elif request.endpoint == 'users_list' %}
+                    <span class="top-division-badge division-users-badge" title="أنت تتصفح حالياً: إدارة المستخدمين والصلاحيات">
+                        <span class="badge-dot users-dot"></span>
+                        <span>👥 إدارة المستخدمين والصلاحيات</span>
+                    </span>
+                    {% elif request.endpoint and 'foodics' in request.endpoint %}
+                    <span class="top-division-badge division-foodics-badge" title="أنت تتصفح حالياً: تكامل فوديكس ومزامنة المبيعات">
+                        <span class="badge-dot foodics-dot"></span>
+                        <span>⚡ تكامل فوديكس السحابي</span>
+                    </span>
+                    {% elif request.endpoint and 'findash' in request.endpoint %}
+                    <span class="top-division-badge division-findash-badge" title="أنت تتصفح حالياً: لوحة التحكم والتقارير المالية التفاعلية">
+                        <span class="badge-dot findash-dot"></span>
+                        <span>📊 التقارير المالية والداشبورد</span>
+                    </span>
+                    {% else %}
+                    <span class="top-division-badge division-cafe-badge" title="أنت تتصفح حالياً: قسم الكافيهات والفروع">
+                        <span class="badge-dot cafe-dot"></span>
+                        <span>🏪 قسم الكافيهات والفروع</span>
+                    </span>
+                    {% endif %}
                 </div>
-            </a>
+                {% endif %}
+            </div>
 
             {% if user %}
-            <nav class="nav-links">
-                <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
-                    📊 {{ t('nav_dashboard') }}
-                </a>
-                <a href="{{ url_for('purchases_list') }}" class="nav-item {% if 'purchase' in request.endpoint %}active{% endif %}">
-                    📦 {{ t('nav_purchases') }}
-                </a>
-                <a href="{{ url_for('transfers_list') }}" class="nav-item {% if 'transfer' in request.endpoint %}active{% endif %}">
-                    🚚 {{ t('nav_transfers') }}
-                    {% if user.role == 'branch_staff' and branch_incoming_count > 0 %}
-                    <span style="background: #2563eb; color: white; border-radius: 10px; padding: 2px 7px; font-size: 11px; font-weight: 700;">
-                        {{ branch_incoming_count }}
-                    </span>
-                    {% endif %}
-                </a>
-                <a href="{{ url_for('count_new') }}" class="nav-item {% if 'count' in request.endpoint %}active{% endif %}">
-                    📝 {{ t('nav_count') }}
-                </a>
-                <a href="{{ url_for('reports_stock') }}" class="nav-item {% if 'reports' in request.endpoint %}active{% endif %}">
-                    📈 {{ t('nav_reports') }}
-                </a>
-                {% if user.role in ['admin', 'accountant'] %}
-                <a href="{{ url_for('users_list') }}" class="nav-item {% if request.endpoint == 'users_list' %}active{% endif %}">
-                    👥 {{ t('nav_users') }}
-                </a>
-                <a href="{{ url_for('accountant_review') }}" class="nav-item {% if request.endpoint == 'accountant_review' %}active{% endif %}">
-                    🔍 {{ t('nav_control_hub') }}
-                    {% if pending_reviews_count > 0 %}
-                    <span style="background: #ef4444; color: white; border-radius: 10px; padding: 2px 7px; font-size: 11px; font-weight: 700;">
-                        {{ pending_reviews_count }}
-                    </span>
-                    {% endif %}
-                </a>
-                <a href="{{ url_for('foodics_hub') }}" class="nav-item {% if 'foodics' in request.endpoint %}active{% endif %}">
-                    ⚡ تكامل فوديكس
-                </a>
-                {% endif %}
-                {% if user.role != 'accountant' %}
-                <a href="{{ url_for('new_item_request') }}" class="nav-item {% if request.endpoint == 'new_item_request' %}active{% endif %}">
-                    ✨ {{ t('nav_item_request') }}
-                </a>
-                {% endif %}
-            </nav>
-
+            <!-- تم نقل أزرار أقسام النظام (الكافيهات والقهوة) إلى القائمة الجانبية -->
             <div class="nav-user">
                 <!-- جرس الإشعارات والتنبيهات المباشرة -->
                 <div class="notif-bell-wrapper" id="notifBellWrapper">
@@ -88,7 +179,7 @@
                     <div class="notif-dropdown" id="notifDropdown">
                         <div class="notif-header">
                             <h4>🔔 {{ 'إشعارات المخزون' if lang == 'ar' else 'Inventory Notifications' }}</h4>
-                            <button type="button" id="markAllReadBtn" onclick="markAllNotificationsRead()" class="btn-sm" style="background: none; border: none; color: #4f46e5; cursor: pointer; font-size: 11px; font-weight: 700; text-decoration: underline; {% if unread_notifications_count == 0 %}display: none;{% endif %}">
+                            <button type="button" id="markAllReadBtn" onclick="markAllNotificationsRead()" class="btn-sm" style="background: none; border: none; color: var(--color-midnight-ink); cursor: pointer; font-size: 11px; font-weight: 700; text-decoration: underline; {% if unread_notifications_count == 0 %}display: none;{% endif %}">
                                 {{ 'تحديد الكل كمقروء' if lang == 'ar' else 'Mark all as read' }}
                             </button>
                         </div>
@@ -107,18 +198,24 @@
                                         <span>• SKU: <code>{{ n.item_sku }}</code></span>
                                         {% endif %}
                                         {% if n.has_supplier %}
-                                        <span style="background: #ecfdf5; color: #047857; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 700; border: 1px solid #a7f3d0;">
+                                        <span style="background: #ecfdf5; color: #166534; padding: 1px 7px; border-radius: var(--radius-full); font-size: 11px; font-weight: 600; border: 1px solid #a7f3d0;">
                                             🤝 مربوط بالمورد: {{ n.supplier_name }}
                                         </span>
                                         {% else %}
-                                        <span style="background: #fef2f2; color: #b91c1c; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 700; border: 1px solid #fecaca;">
+                                        <span style="background: #fef2f2; color: #991b1b; padding: 1px 7px; border-radius: var(--radius-full); font-size: 11px; font-weight: 600; border: 1px solid #fecaca;">
                                             ⚠️ غير مربوط بمورد
                                         </span>
                                         {% endif %}
                                     </div>
-                                    {% if n.item_sku %}
+                                    {% if n.type == 'purchase_pending_review' %}
                                     <div style="margin-top: 8px;">
-                                        <button type="button" class="btn-sm btn-primary" onclick="event.stopPropagation(); openResolveModal('{{ n.item_sku }}', {{ n.id }});" style="font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 700; background: #4f46e5; color: white; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                                        <a href="{{ url_for('purchase_edit', purchase_id=n.related_id) if n.related_id else url_for('accountant_review') }}" class="btn-sm btn-primary" onclick="event.stopPropagation(); markNotifRead({{ n.id }});" style="font-size: 11px; padding: 3px 10px; border-radius: var(--radius-full); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; background: #2563eb; color: #fff;">
+                                            🔍 {{ 'مراجعة واعتماد السند ←' if lang == 'ar' else 'Review & Approve Voucher ←' }}
+                                        </a>
+                                    </div>
+                                    {% elif n.item_sku %}
+                                    <div style="margin-top: 8px;">
+                                        <button type="button" class="btn-sm btn-primary" onclick="event.stopPropagation(); openResolveModal('{{ n.item_sku }}', {{ n.id }});" style="font-size: 11px; padding: 3px 10px; border-radius: var(--radius-full); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
                                             ⚙️ معالجة وربط المورد / تعديل
                                         </button>
                                     </div>
@@ -132,34 +229,156 @@
                             {% endfor %}
                         </ul>
                         <div class="notif-footer">
-                            <a href="{{ url_for('foodics_hub') }}" style="font-size: 12px; font-weight: 700; color: #4f46e5; text-decoration: none;">
+                            <a href="{{ url_for('foodics_hub') }}" style="font-size: 12px; font-weight: 600; color: var(--color-midnight-ink); text-decoration: none;">
                                 ⚡ {{ 'مركز فوديكس ومتابعة الأصناف' if lang == 'ar' else 'Foodics Hub & Items' }} &larr;
                             </a>
                         </div>
                     </div>
                 </div>
 
-                <a href="{{ url_for('toggle_lang') }}" class="btn-sm" style="background: rgba(255,255,255,0.15); color: white; text-decoration: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Switch Language">
+                <a href="{{ url_for('toggle_lang') }}" class="btn-lang" title="Switch Language">
                     🌐 {{ t('switch_lang') }}
                 </a>
                 <div class="user-badge">
                     <span>👤 {{ user.name }}</span>
                     <span class="role-pill {{ user.role }}">{{ role_name(user) }}</span>
-                    {% if user.location %}
-                    <span style="font-size: 11px; color: #cbd5e1;">({{ loc_name(user.location) }})</span>
+                    {% if user.is_multi_branch %}
+                    <span style="display: inline-flex; align-items: center; gap: 4px; margin-right: 4px;">
+                        <select onchange="if(this.value) window.location.href='/switch-branch/' + this.value;" title="تبديل الفرع النشط حالياً" style="font-size: 11px; font-weight: 700; color: #1e3a8a; background: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 6px; padding: 2px 6px; cursor: pointer; outline: none;">
+                            {% for b_loc in authorized_locations %}
+                            <option value="{{ b_loc.id }}" {% if active_location and active_location.id == b_loc.id %}selected{% endif %}>
+                                📍 {{ loc_name(b_loc) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </span>
+                    {% elif user.location %}
+                    <span style="font-size: 11px; color: var(--color-slate);">({{ loc_name(user.location) }})</span>
                     {% endif %}
                 </div>
                 <a href="{{ url_for('logout') }}" class="btn-logout" title="{{ t('logout') }}">🚪 {{ t('logout') }}</a>
             </div>
             {% else %}
             <div class="nav-user">
-                <a href="{{ url_for('toggle_lang') }}" class="btn-sm" style="background: rgba(255,255,255,0.15); color: white; text-decoration: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Switch Language">
+                <a href="{{ url_for('toggle_lang') }}" class="btn-lang" title="Switch Language">
                     🌐 {{ t('switch_lang') }}
                 </a>
             </div>
             {% endif %}
         </div>
     </header>
+
+    <!-- خلفية ودرج التنقل العائم الجانبي (Flyout Side Drawer) -->
+    <div class="nav-drawer-backdrop" id="navDrawerBackdrop" onclick="closeNavDrawer()"></div>
+    <aside class="nav-drawer" id="navDrawer" aria-label="قائمة التنقل الجانبية">
+        <div class="nav-drawer-header">
+            <div class="nav-drawer-title" style="display: flex; align-items: center; gap: 10px;">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" style="height: 26px; width: auto; object-fit: contain;">
+                <span>نظام المخزون والعمليات</span>
+            </div>
+            <button type="button" class="nav-drawer-close" onclick="closeNavDrawer()" title="إغلاق القائمة">✕</button>
+        </div>
+        <div class="nav-drawer-body">
+            <!-- أقسام النظام الرئيسية -->
+            <div style="margin-bottom: 14px;">
+                <div class="nav-drawer-section-title">🏢 أقسام المنظومة</div>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <a href="{{ url_for('dashboard') }}" class="nav-drawer-link {% if request.endpoint and not 'coffee' in request.endpoint and not 'accountant' in request.endpoint and not 'users' in request.endpoint and not 'item_request' in request.endpoint %}active{% endif %}" style="font-weight: 700;">
+                        <span>🏪 قسم الكافيهات والفروع</span>
+                        {% if user and user.role == 'branch_staff' and branch_incoming_count > 0 %}
+                        <span class="nav-counter-pill">{{ branch_incoming_count }}</span>
+                        {% endif %}
+                    </a>
+                    {% if user and user.role != 'branch_staff' and (user.role in ['admin', 'accountant', 'warehouse'] or user.has_permission('coffee.view_dashboard')) %}
+                    <a href="{{ url_for('coffee.dashboard') }}" class="nav-drawer-link {% if request.endpoint and 'coffee' in request.endpoint %}active{% endif %}" style="font-weight: 700;">
+                        <span>☕ قسم القهوة والتحميص</span>
+                    </a>
+                    {% endif %}
+                    {% if not user or user.has_permission('finance.dashboard') %}
+                    <a href="{{ url_for('findash.index') }}" class="nav-drawer-link {% if request.endpoint and 'findash' in request.endpoint %}active{% endif %}" style="font-weight: 700;">
+                        <span>📊 الداشبورد المالي والتقارير</span>
+                        <span class="badge" style="font-size: 10px; background: #e0e7ff; color: #4338ca;">Xero & Foodics</span>
+                    </a>
+                    {% endif %}
+                    {% if not user or user.has_permission('admin.users') or (user and user.role in ['admin', 'accountant']) %}
+                    <a href="{{ url_for('users_list') }}" class="nav-drawer-link {% if request.endpoint == 'users_list' %}active{% endif %}" style="font-weight: 700;">
+                        <span>👥 إدارة المستخدمين والصلاحيات</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- قسم التكاملات والربط -->
+            <div>
+                <div class="nav-drawer-section-title">⚡ التكاملات والربط السحابي</div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    {% if not user or user.has_permission('foodics.hub') or (user and user.role in ['admin', 'accountant']) %}
+                    <a href="{{ url_for('foodics_hub') }}" class="nav-drawer-link {% if 'foodics' in request.endpoint %}active{% endif %}">
+                        <span>⚡ تكامل فوديكس ومزامنة المبيعات</span>
+                        <span class="badge" style="font-size: 10px; background: #ecfdf5; color: #166534;">API Live</span>
+                    </a>
+                    {% endif %}
+                    {% if not user or user.has_permission('coffee.settings') or (user and user.role in ['admin', 'accountant']) %}
+                    <a href="{{ url_for('coffee.settings') }}" class="nav-drawer-link {% if 'settings' in request.endpoint %}active{% endif %}">
+                        <span>⚙️ إعدادات ربط Xero والأرقام المحاسبية</span>
+                        <span class="badge" style="font-size: 10px; background: #eff6ff; color: #1e40af;">Xero API</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- قسم الرقابة والمحاسبة -->
+            <div>
+                <div class="nav-drawer-section-title">🔍 الرقابة والمحاسبة</div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    {% if user.role in ['admin', 'accountant'] %}
+                    <a href="{{ url_for('accountant_review') }}" class="nav-drawer-link {% if request.endpoint == 'accountant_review' %}active{% endif %}">
+                        <span>🔍 غرفة مراجعة ورقابة المحاسب</span>
+                        {% if pending_reviews_count > 0 %}
+                        <span class="nav-counter-pill alert">{{ pending_reviews_count }}</span>
+                        {% endif %}
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('reports_stock') }}" class="nav-drawer-link {% if 'reports' in request.endpoint and 'coffee' not in request.endpoint %}active{% endif %}">
+                        <span>📈 تقارير المخزون وحركات الأصناف</span>
+                    </a>
+                    {% if user.role in ['admin', 'accountant'] %}
+                    <a href="{{ url_for('reports_suppliers') }}" class="nav-drawer-link {% if request.endpoint == 'reports_suppliers' %}active{% endif %}">
+                        <span>📑 كشف استلامات الموردين</span>
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('coffee.audit_log') }}" class="nav-drawer-link {% if 'audit' in request.endpoint %}active{% endif %}">
+                        <span>📋 سجل التدقيق وتتبع العمليات</span>
+                    </a>
+                    <a href="{{ url_for('reports_movements') }}" class="nav-drawer-link {% if request.endpoint == 'reports_movements' %}active{% endif %}">
+                        <span>📊 سجل حركات المخزون (دفتر الأستاذ)</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- قسم الإدارة والنظام -->
+            <div>
+                <div class="nav-drawer-section-title">👥 الإدارة والطلبات</div>
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    {% if user.role in ['admin', 'accountant'] %}
+                    <a href="{{ url_for('users_list') }}" class="nav-drawer-link {% if request.endpoint == 'users_list' %}active{% endif %}">
+                        <span>👥 إدارة المستخدمين والصلاحيات</span>
+                    </a>
+                    {% endif %}
+                    {% if user.role != 'accountant' %}
+                    <a href="{{ url_for('new_item_request') }}" class="nav-drawer-link {% if request.endpoint == 'new_item_request' %}active{% endif %}">
+                        <span>✨ طلب إضافة صنف جديد للمخزون</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div style="margin-top: auto; padding-top: 14px; border-top: 1px solid var(--color-linen); display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12px; color: var(--color-slate);">نسخة النظام v2.5</span>
+                <a href="{{ url_for('logout') }}" class="btn-sm btn-secondary" style="text-decoration: none; padding: 4px 12px;">تسجيل الخروج 🚪</a>
+            </div>
+        </div>
+    </aside>
 
     <main class="main-wrapper">
         <div class="alerts-container">
@@ -185,8 +404,44 @@
         <p>نظام إدخال حركات المخزون - مساكن رفاء &copy; {{ now.year }} | متوافق مع Foodics API</p>
     </footer>
 
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
+    // التحكم في الدرج الجانبي العائم (Flyout Drawer)
+    function toggleNavDrawer() {
+        const drawer = document.getElementById("navDrawer");
+        const backdrop = document.getElementById("navDrawerBackdrop");
+        if (drawer && backdrop) {
+            if (drawer.classList.contains("show")) {
+                closeNavDrawer();
+            } else {
+                openNavDrawer();
+            }
+        }
+    }
+
+    function openNavDrawer() {
+        const drawer = document.getElementById("navDrawer");
+        const backdrop = document.getElementById("navDrawerBackdrop");
+        if (drawer && backdrop) {
+            drawer.classList.add("show");
+            backdrop.classList.add("show");
+            document.body.style.overflow = "hidden";
+        }
+    }
+
+    function closeNavDrawer() {
+        const drawer = document.getElementById("navDrawer");
+        const backdrop = document.getElementById("navDrawerBackdrop");
+        if (drawer && backdrop) {
+            drawer.classList.remove("show");
+            backdrop.classList.remove("show");
+            document.body.style.overflow = "";
+        }
+    }
+
+    document.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") closeNavDrawer();
+    });
+
     // التحكم في قائمة الإشعارات المنسدلة والتحديث الحي
     let knownNotifIds = new Set([
         {% for n in unread_notifications %} {{ n.id }}, {% endfor %}
@@ -319,13 +574,19 @@
                                             : `<span style="background: #fef2f2; color: #b91c1c; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 700; border: 1px solid #fecaca;">⚠️ غير مربوط بمورد</span>`
                                         }
                                     </div>
-                                    ${n.sku ? `
+                                    ${n.type === 'purchase_pending_review' && n.link_url ? `
+                                    <div style="margin-top: 8px;">
+                                        <a href="${n.link_url}" onclick="event.stopPropagation(); markNotifRead(${n.id});" style="font-size: 11px; padding: 3px 10px; border-radius: 4px; font-weight: 700; background: #2563eb; color: white; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                                            🔍 مراجعة واعتماد السند ←
+                                        </a>
+                                    </div>
+                                    ` : (n.sku ? `
                                     <div style="margin-top: 8px;">
                                         <button type="button" class="btn-sm btn-primary" onclick="event.stopPropagation(); openResolveModal('${n.sku}', ${n.id});" style="font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: 700; background: #4f46e5; color: white; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
                                             ⚙️ معالجة وربط المورد / تعديل
                                         </button>
                                     </div>
-                                    ` : ''}
+                                    ` : '')}
                                 </div>
                             </li>
                         `).join('');
@@ -388,12 +649,18 @@
                         banner.style.background = '#ecfdf5';
                         banner.style.color = '#047857';
                         banner.style.border = '1px solid #a7f3d0';
-                        banner.innerHTML = '🤝 الصنف مربوط حالياً بالمورد: <strong>' + item.supplier_name + '</strong> (يمكنك تغييره أو تعديل بيانات الصنف)';
+                        let supsHtml = '';
+                        if (item.linked_suppliers && item.linked_suppliers.length > 0) {
+                            supsHtml = '<div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px;">' +
+                                item.linked_suppliers.map(s => '<span style="background: #047857; color: white; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700;">🏢 ' + s.name + (s.cost ? ' - ' + s.cost + ' ر.س' : '') + '</span>').join('') +
+                                '</div>';
+                        }
+                        banner.innerHTML = '<div>🤝 <strong>موردو الصنف المعتمدون (' + (item.linked_suppliers ? item.linked_suppliers.length : 1) + ' مورد):</strong> ' + supsHtml + '</div>';
                     } else {
                         banner.style.background = '#fef2f2';
                         banner.style.color = '#b91c1c';
                         banner.style.border = '1px solid #fecaca';
-                        banner.innerHTML = '⚠️ الملاحظة الحالية: هذا الصنف غير مربوط بأي مورد حتى الآن! يرجى اختيار مورد أو كتابة اسمه لحل الملاحظة.';
+                        banner.innerHTML = '⚠️ الملاحظة الحالية: هذا الصنف غير مربوط بأي مورد حتى الآن! يرجى اختيار مورد أو كتابة اسمه لربطه واعتماده وحل الملاحظة.';
                     }
                 }
             })
@@ -545,7 +812,64 @@
         </div>
     </div>
 
-    {% block extra_js %}{% endblock %}
+    <!-- نافذة تحديث وحدة المخزون (مطابق تماماً لنموذج فوديكس) -->
+    <div id="itemUnitsModal" class="modal-backdrop" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
+        <div class="modal-content" style="background: white; width: 100%; max-width: 480px; border-radius: 14px; box-shadow: 0 20px 40px rgba(0,0,0,0.25); border: 1px solid #cbd5e1; overflow: hidden;">
+            <div style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #fafafa;">
+                <div style="font-size: 15px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <span>📦 تحديث وحدة المخزون:</span>
+                    <span id="unitsModalItemName" style="color: #6366f1; font-size: 14px; font-weight: 700;"></span>
+                </div>
+                <button type="button" onclick="closeItemUnitsModal()" style="background: none; border: none; font-size: 20px; color: #94a3b8; cursor: pointer; line-height: 1; padding: 4px;">✕</button>
+            </div>
+            
+            <form id="itemUnitsForm" onsubmit="submitItemUnitsForm(event)" style="padding: 20px;">
+                <input type="hidden" id="unitsModalItemId">
+                <input type="hidden" id="unitsModalItemSku">
+
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">
+                        كود الصنف (SKU):
+                    </label>
+                    <input type="text" id="unitsModalSkuDisplay" readonly class="form-control" style="background: #f1f5f9; font-family: monospace; font-weight: 700; color: #334155;">
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #0f172a; display: block; margin-bottom: 4px;">
+                        وحدة التخزين الأساسية (الوحدة الكبرى - مثلاً كرتون) *
+                    </label>
+                    <input type="text" id="unitsModalStorageUnit" required class="form-control" placeholder="مثال: كرتون، صندوق، ربطة..." style="font-weight: 600;" oninput="updateUnitsModalFormula()">
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #0f172a; display: block; margin-bottom: 4px;">
+                        وحدة المكونات / المفرد (الوحدة الصغرى - مثلاً كوب أو حبة)
+                    </label>
+                    <input type="text" id="unitsModalIngredientUnit" class="form-control" placeholder="مثال: كوب، حبة، ظرف..." style="font-weight: 600;" oninput="updateUnitsModalFormula()">
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="font-size: 12px; font-weight: 700; color: #0f172a; display: block; margin-bottom: 4px;">
+                        معامل التحويل (كم وحدة صغرى داخل الوحدة الكبرى؟) *
+                    </label>
+                    <input type="number" step="any" min="0.0001" id="unitsModalFactor" required class="form-control" placeholder="مثال: 500" style="font-weight: 800; font-size: 16px; color: #0284c7;" oninput="updateUnitsModalFormula()">
+                </div>
+
+                <div id="unitsModalFormulaPreview" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 18px; font-size: 13px; font-weight: 700; color: #166534; text-align: center;">
+                    💡 1 كرتون = 500 كوب
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" onclick="closeItemUnitsModal()" class="btn btn-secondary" style="padding: 8px 18px; font-size: 13px; font-weight: 700;">
+                        إغلاق
+                    </button>
+                    <button type="submit" id="unitsModalSaveBtn" class="btn btn-primary" style="padding: 8px 24px; font-size: 13px; font-weight: 800; background: #6366f1; border-color: #4f46e5;">
+                        💾 حفظ الوحدة
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
         // الحقن التلقائي لرمز الحماية من تزوير الطلبات (CSRF) لكافة النماذج والطلبات
@@ -601,5 +925,25 @@
             };
         });
     </script>
+    <script>
+        // معالج النقر الفوري على صفوف السندات لفتح السند
+        window.handleVoucherRowClick = function(event, url) {
+            if (!url) return;
+            // استثناء عناصر التحكم التفاعلية
+            if (event.target.closest('input, button, select, textarea, label, .action-col, .voucher-checkbox-cell, [onclick*="stopPropagation"]')) {
+                return;
+            }
+            // إذا نقر المستخدم على وسم رابط <a> اتركه ينتقل بطبيعته
+            if (event.target.closest('a')) {
+                return;
+            }
+            window.location.href = url;
+        };
+    </script>
+    <!-- تطبيق التفاعل الأمامي والبحث الفوري عن الأصناف والباركود -->
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=20261110_interactive_v5"></script>
+    <!-- محرك الترجمة الفورية الثنائية -->
+    <script src="{{ url_for('static', filename='js/app-translator.js') }}"></script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

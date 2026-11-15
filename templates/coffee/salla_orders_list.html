@@ -1,0 +1,312 @@
+{% extends "coffee/coffee_base.html" %}
+{% block title %}طلبات ومبيعات متجر سلة - مبيعات المواقع الإلكترونية{% endblock %}
+
+{% block coffee_content %}
+<div class="kf-page-header" style="margin-bottom: 20px;">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+        <span style="font-size: 26px;">🛒</span>
+        <h1 style="font-size: 22px; font-weight: 800; color: #78350f; margin: 0;">طلبات ومبيعات متجر سلة (Salla E-Commerce)</h1>
+        <span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px;">مبيعات المواقع الإلكترونية</span>
+      </div>
+      <p style="font-size: 13px; color: #64748b; margin: 0;">
+        متابعة واستقبال فواتير متجر سلة، وتجميع مبيعات اليوم في سند صرف بن محمص وسند صرف المواد الجاهزة وترحيلها لـ Xero على حساب <strong style="color: #b45309;">(203)</strong>.
+      </p>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <button type="button" class="btn" onclick="openPastePayloadModal()" style="font-size: 13px; font-weight: 700; border-radius: 8px; border: 1.5px solid #2563eb; color: #1d4ed8; background: #eff6ff; padding: 7px 14px; cursor: pointer;">
+        📋 لصق بيانات الطلب (Payload)
+      </button>
+
+      <button type="button" class="btn" onclick="openImportCsvModal()" style="font-size: 13px; font-weight: 700; border-radius: 8px; border: 1.5px solid #059669; color: #047857; background: #ecfdf5; padding: 7px 14px; cursor: pointer;">
+        📥 استيراد طلبات سلة (CSV)
+      </button>
+
+      <a href="{{ url_for('coffee.salla_mappings_list') }}" class="btn btn-outline-secondary" style="font-size: 13px; font-weight: 700; border-radius: 8px; padding: 7px 14px;">
+        🔄 جدول مطابقة الأصناف
+      </a>
+      <form action="{{ url_for('coffee.salla_close_daily') }}" method="POST" onsubmit="return confirm('هل أنت متأكد من تنفيذ الإغلاق والترحيل اليومي لكافة طلبات سلة المعلقة؟ سيتم إصدار سند صرف المحمص، وسند صرف المواد الجاهزة، وترحيل فاتورة Xero.');" style="margin: 0;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+        <button type="submit" class="btn" style="background: linear-gradient(135deg, #b45309, #d97706); color: #fff; font-weight: 800; font-size: 13px; padding: 8px 18px; border-radius: 8px; box-shadow: 0 4px 12px rgba(180, 83, 9, 0.25); cursor: pointer;">
+          🚀 إغلاق وترحيل مبيعات اليوم
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- شريط تنبيه إذا كان هناك أصناف غير مطابقة -->
+{% if unmapped_count and unmapped_count > 0 %}
+<div style="background: linear-gradient(135deg, #fef2f2, #fee2e2); border: 1.5px solid #fca5a5; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+  <div style="display: flex; align-items: center; gap: 12px;">
+    <span style="font-size: 24px;">⚠️</span>
+    <div>
+      <div style="font-size: 14px; font-weight: 800; color: #991b1b;">يوجد {{ unmapped_count }} طلب يحتوي على أصناف جديدة غير مطابقة في سلة!</div>
+      <div style="font-size: 12px; color: #b91c1c;">تم تعليق هذه الطلبات مؤقتاً لحين تحديد صنف المحمصة أو المستودع المنصرف منه لتفادي أي خطأ في الأرصدة.</div>
+    </div>
+  </div>
+  <a href="{{ url_for('coffee.salla_mappings_list', filter='unmapped') }}" class="btn btn-danger btn-sm" style="font-weight: 800; border-radius: 6px;">
+    عرض الأصناف المعلقة ومطابقتها الآن ←
+  </a>
+</div>
+{% endif %}
+
+<!-- كروت مؤشرات KPI -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 24px;">
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+    <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">إجمالي طلبات سلة المستلمة</div>
+    <div style="font-size: 24px; font-weight: 900; color: #1e293b;">{{ total_orders }}</div>
+    <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">كافة الطلبات المسجلة بالطابور</div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #fed7aa; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+    <div style="font-size: 12px; font-weight: 700; color: #c2410c; margin-bottom: 6px;">طلبات بانتظار الإغلاق اليومي</div>
+    <div style="font-size: 24px; font-weight: 900; color: #ea580c;">{{ pending_orders_count }}</div>
+    <div style="font-size: 11px; color: #ea580c; margin-top: 4px;">جاهزة للصرف والترحيل لـ Xero</div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+    <div style="font-size: 12px; font-weight: 700; color: #15803d; margin-bottom: 6px;">طلبات تم صرفها وترحيلها</div>
+    <div style="font-size: 24px; font-weight: 900; color: #16a34a;">{{ dispatched_orders_count }}</div>
+    <div style="font-size: 11px; color: #16a34a; margin-top: 4px;">تم خصم مخزونها وترحيل فواتيرها</div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #fecaca; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+    <div style="font-size: 12px; font-weight: 700; color: #b91c1c; margin-bottom: 6px;">طلبات معلقة بانتظار المطابقة</div>
+    <div style="font-size: 24px; font-weight: 900; color: #dc2626;">{{ unmapped_count }}</div>
+    <div style="font-size: 11px; color: #dc2626; margin-top: 4px;">تحتاج ربط أصناف جديدة</div>
+  </div>
+</div>
+
+<!-- جدول الطلبات الواردة -->
+<div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+  <div style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #fafafa;">
+    <span style="font-size: 14px; font-weight: 800; color: #334155;">قائمة طلبات سلة المسجلة بالنظام</span>
+    <div style="display: flex; gap: 8px;">
+      <a href="{{ url_for('coffee.salla_orders_list') }}" class="btn btn-sm {% if not current_filter %}btn-dark{% else %}btn-outline-secondary{% endif %}" style="font-size: 11px; font-weight: 700;">الكل</a>
+      <a href="{{ url_for('coffee.salla_orders_list', status='pending') }}" class="btn btn-sm {% if current_filter == 'pending' %}btn-dark{% else %}btn-outline-secondary{% endif %}" style="font-size: 11px; font-weight: 700;">بانتظار الإغلاق</a>
+      <a href="{{ url_for('coffee.salla_orders_list', status='pending_mapping') }}" class="btn btn-sm {% if current_filter == 'pending_mapping' %}btn-danger{% else %}btn-outline-danger{% endif %}" style="font-size: 11px; font-weight: 700;">غير مطابقة ⚠️</a>
+      <a href="{{ url_for('coffee.salla_orders_list', status='dispatched') }}" class="btn btn-sm {% if current_filter == 'dispatched' %}btn-dark{% else %}btn-outline-secondary{% endif %}" style="font-size: 11px; font-weight: 700;">مرحلة</a>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table" style="margin: 0; font-size: 13px; text-align: right;">
+      <thead style="background: #f8fafc; color: #475569; font-size: 12px;">
+        <tr>
+          <th style="padding: 12px 16px;">رقم الطلب في سلة</th>
+          <th style="padding: 12px 16px;">التاريخ والوقت</th>
+          <th style="padding: 12px 16px;">العميل</th>
+          <th style="padding: 12px 16px;">محتويات الطلب والأوزان</th>
+          <th style="padding: 12px 16px;">إجمالي الفاتورة</th>
+          <th style="padding: 12px 16px;">الحالة</th>
+          <th style="padding: 12px 16px;">سند الصرف المجمع</th>
+          <th style="padding: 12px 16px; text-align: center;">إجراء</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if orders %}
+          {% for ord in orders %}
+          <tr style="border-bottom: 1px solid #f1f5f9; {% if ord.has_unmapped_items %}background: #fff5f5;{% endif %}">
+            <td style="padding: 12px 16px; font-weight: 800; color: #0284c7;">
+              #{{ ord.salla_order_id }}
+              {% if ord.order_reference %}<br><small style="color: #64748b; font-weight: normal;">{{ ord.order_reference }}</small>{% endif %}
+            </td>
+            <td style="padding: 12px 16px; color: #475569;">
+              {{ ord.order_date.strftime('%Y-%m-%d') if ord.order_date else '—' }}
+              <br><small style="color: #94a3b8;">{{ ord.order_date.strftime('%H:%M') if ord.order_date else '' }}</small>
+            </td>
+            <td style="padding: 12px 16px;">
+              <span style="font-weight: 700; color: #1e293b;">{{ ord.customer_name }}</span>
+              {% if ord.customer_phone %}<br><small style="color: #64748b;">📞 {{ ord.customer_phone }}</small>{% endif %}
+            </td>
+            <td style="padding: 12px 16px; max-width: 320px;">
+              <div style="font-size: 12px; color: #334155; line-height: 1.5;">
+                {{ ord.items_summary or '—' }}
+              </div>
+              {% if ord.has_unmapped_items and ord.unmapped_items_details %}
+                <div style="color: #dc2626; font-size: 11px; font-weight: 700; margin-top: 4px;">
+                  ⚠️ أصناف غير مطابقة: {{ ord.unmapped_items_details }}
+                </div>
+              {% endif %}
+            </td>
+            <td style="padding: 12px 16px; font-weight: 800; color: #0f172a;">
+              {{ "%.2f"|format(ord.total_amount or 0.0) }} ر.س
+              {% if ord.shipping_amount and ord.shipping_amount > 0 %}
+                <br><small style="color: #64748b; font-weight: normal;">شحن: {{ "%.2f"|format(ord.shipping_amount) }} ر.س</small>
+              {% endif %}
+            </td>
+            <td style="padding: 12px 16px;">
+              {% if ord.status == 'pending' %}
+                <span class="badge" style="background: #fed7aa; color: #9a3412; font-weight: 700; padding: 4px 8px; border-radius: 6px;">بانتظار الترحيل</span>
+              {% elif ord.status == 'pending_mapping' or ord.has_unmapped_items %}
+                <span class="badge" style="background: #fecaca; color: #991b1b; font-weight: 800; padding: 4px 8px; border-radius: 6px;">⚠️ صنف غير مطابق</span>
+              {% elif ord.status == 'dispatched' %}
+                <span class="badge" style="background: #bbf7d0; color: #166534; font-weight: 700; padding: 4px 8px; border-radius: 6px;">✓ تم الترحيل</span>
+              {% else %}
+                <span class="badge bg-secondary">{{ ord.status }}</span>
+              {% endif %}
+            </td>
+            <td style="padding: 12px 16px;">
+              {% if ord.roasted_dispatch %}
+                <a href="{{ url_for('coffee.roasted_dispatch_edit', dispatch_id=ord.roasted_dispatch_id) }}" style="font-weight: 700; color: #b45309; text-decoration: underline;">
+                  {{ ord.roasted_dispatch.doc_number }}
+                </a>
+              {% else %}
+                <span style="color: #94a3b8;">—</span>
+              {% endif %}
+            </td>
+            <td style="padding: 12px 16px; text-align: center;">
+              {% if ord.has_unmapped_items %}
+                <a href="{{ url_for('coffee.salla_mappings_list') }}" class="btn btn-sm btn-danger" style="font-size: 11px; font-weight: 800; border-radius: 6px;">
+                  ربط الصنف
+                </a>
+              {% else %}
+                <span style="color: #94a3b8; font-size: 12px;">مكتمل</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 36px; color: #94a3b8;">
+              <span style="font-size: 32px; display: block; margin-bottom: 8px;">📭</span>
+              لا توجد طلبات مسجلة حالياً في طابور سلة. ستظهر الطلبات تلقائياً فور استقبال Webhook سلة.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- 1. نافذة لصق حمولة الويب هوك (Payload JSON) يدويًا               -->
+<!-- ============================================================== -->
+<div id="pasteSallaPayloadModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 20px;" onclick="if(event.target===this) closePastePayloadModal();">
+  <div style="background: #ffffff; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 20px 40px rgba(0,0,0,0.25); max-width: 680px; width: 100%; overflow: hidden; animation: kfModalFadeIn 0.2s ease-out;" onclick="event.stopPropagation();">
+    <form action="{{ url_for('coffee.salla_orders_paste_payload') }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+      
+      <div style="background: #eff6ff; border-bottom: 1px solid #bfdbfe; padding: 16px 22px; display: flex; align-items: center; justify-content: space-between;">
+        <h5 style="margin: 0; font-size: 16px; font-weight: 800; color: #1e40af; display: flex; align-items: center; gap: 8px;">
+          <span>📋</span> لصق وتنزيل بيانات الفاتورة من سلة (Payload JSON)
+        </h5>
+        <button type="button" onclick="closePastePayloadModal()" style="background: none; border: none; font-size: 20px; font-weight: 700; color: #64748b; cursor: pointer; line-height: 1;" aria-label="Close">&times;</button>
+      </div>
+
+      <div style="padding: 22px;">
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 18px;">
+          <div style="font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 6px;">💡 حل سريع للفواتير التي لم تصل أثناء إيقاف السيرفر:</div>
+          <ol style="font-size: 12px; color: #475569; padding-right: 20px; margin: 0; line-height: 1.8;">
+            <li>في لوحة متجر سلة، اذهب إلى <strong>إعدادات المتجر > Webhooks > سجل العمليات</strong>.</li>
+            <li>افتح الفاتورة ذات العلامة الحمراء، وانسخ نص الـ <strong>Payload</strong> الظاهر في المربع بالكامل.</li>
+            <li>الصق النص هنا واضغط <strong>استيراد وتنزيل الطلب</strong>، وسيقوم النظام بتنزيله فوراً في الطابور!</li>
+          </ol>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="font-weight: 700; font-size: 13px; color: #334155; display: block; margin-bottom: 6px;">نص الـ Payload (كود JSON من سلة) *</label>
+          <textarea name="payload_json" id="payload_json_input" rows="8" placeholder='{ "event": "invoice.created", "data": { ... } }' required style="width: 100%; box-sizing: border-box; font-family: Consolas, monospace; font-size: 12px; direction: ltr; text-align: left; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 10px;"></textarea>
+        </div>
+
+        <div style="font-size: 11px; color: #64748b;">
+          🛡️ <strong>حماية ذكية:</strong> النظام يطابق أصناف الفاتورة تلقائياً مع المحمصة والمستودع، ويستبعد أي طلب مكرر.
+        </div>
+      </div>
+
+      <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 22px; display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" onclick="closePastePayloadModal()" class="btn btn-secondary" style="font-weight: 700; border-radius: 8px; padding: 8px 18px; cursor: pointer;">إلغاء</button>
+        <button type="submit" class="btn" style="background: #2563eb; color: #fff; font-weight: 800; border-radius: 8px; padding: 8px 22px; cursor: pointer; border: none;">✓ استيراد وتنزيل الطلب</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- 2. نافذة استيراد طلبات سلة من ملف CSV                          -->
+<!-- ============================================================== -->
+<div id="importSallaCsvModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 99999; align-items: center; justify-content: center; padding: 20px;" onclick="if(event.target===this) closeImportCsvModal();">
+  <div style="background: #ffffff; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 20px 40px rgba(0,0,0,0.25); max-width: 580px; width: 100%; overflow: hidden; animation: kfModalFadeIn 0.2s ease-out;" onclick="event.stopPropagation();">
+    <form action="{{ url_for('coffee.salla_orders_import_csv') }}" method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+      
+      <div style="background: #f0fdf4; border-bottom: 1px solid #bbf7d0; padding: 16px 22px; display: flex; align-items: center; justify-content: space-between;">
+        <h5 style="margin: 0; font-size: 16px; font-weight: 800; color: #166534; display: flex; align-items: center; gap: 8px;">
+          <span>📥</span> استيراد وتنزيل طلبات متجر سلة (CSV)
+        </h5>
+        <button type="button" onclick="closeImportCsvModal()" style="background: none; border: none; font-size: 20px; font-weight: 700; color: #64748b; cursor: pointer; line-height: 1;" aria-label="Close">&times;</button>
+      </div>
+
+      <div style="padding: 22px;">
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; margin-bottom: 18px;">
+          <div style="font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 6px;">💡 طريقة استخراج الملف من سلة بنقرة واحدة:</div>
+          <ol style="font-size: 12px; color: #475569; padding-right: 20px; margin: 0; line-height: 1.8;">
+            <li>من لوحة سلة، اذهب إلى <strong>الطلبات</strong>.</li>
+            <li>اضغط زر <strong>تصدير</strong> أعلى الجدول، واختر صيغة <strong>CSV</strong>.</li>
+            <li>ارفع الملف المحمل هنا، وسيقوم النظام فورياً بقراءة كافة طلبات اليوم ومطابقتها وتنزيلها في الطابور!</li>
+          </ol>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="font-weight: 700; font-size: 13px; color: #334155; display: block; margin-bottom: 6px;">اختر ملف الطلبات المصدر من سلة (.csv) *</label>
+          <input type="file" name="salla_csv_file" class="form-control" accept=".csv,text/csv" required style="border-radius: 8px; padding: 10px; width: 100%; box-sizing: border-box;">
+        </div>
+
+        <div style="font-size: 11px; color: #64748b;">
+          🛡️ <strong>حماية ذكية:</strong> النظام يمنع تكرار أي طلب تم استيراده مسبقاً، ويطابق الأصناف تلقائياً مع مستودع المحمصة والمستودع الرئيسي.
+        </div>
+      </div>
+
+      <div style="background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 14px 22px; display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" onclick="closeImportCsvModal()" class="btn btn-secondary" style="font-weight: 700; border-radius: 8px; padding: 8px 18px; cursor: pointer;">إلغاء</button>
+        <button type="submit" class="btn" style="background: #059669; color: #fff; font-weight: 800; border-radius: 8px; padding: 8px 22px; cursor: pointer; border: none;">✓ بدء استيراد الطلبات</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+@keyframes kfModalFadeIn {
+  from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+</style>
+
+<script>
+function openPastePayloadModal() {
+  var m = document.getElementById('pasteSallaPayloadModal');
+  if (m) {
+    m.style.display = 'flex';
+    setTimeout(function() {
+      var ta = document.getElementById('payload_json_input');
+      if (ta) ta.focus();
+    }, 100);
+  }
+}
+
+function closePastePayloadModal() {
+  var m = document.getElementById('pasteSallaPayloadModal');
+  if (m) m.style.display = 'none';
+}
+
+function openImportCsvModal() {
+  var m = document.getElementById('importSallaCsvModal');
+  if (m) m.style.display = 'flex';
+}
+
+function closeImportCsvModal() {
+  var m = document.getElementById('importSallaCsvModal');
+  if (m) m.style.display = 'none';
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closePastePayloadModal();
+    closeImportCsvModal();
+  }
+});
+</script>
+
+{% endblock %}

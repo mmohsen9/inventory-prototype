@@ -1,0 +1,899 @@
+{% extends "base.html" %}
+
+{% block title %}الداشبورد المالي والتقارير التفاعلية - {{ t('app_title') }}{% endblock %}
+
+{% block extra_css %}
+<!-- خطوط Readex Pro و Tajawal الحديثة -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+<!-- مكتبة الرسم البياني التفاعلي Chart.js -->
+<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+<script>
+// إعداد عام لـ Chart.js: الأرقام باللغة الإنجليزية (Western digits 0-9) والخطوط الحديثة
+if (window.Chart) {
+    Chart.defaults.locale = 'en-US';
+    Chart.defaults.font.family = "'Readex Pro', 'Tajawal', -apple-system, sans-serif";
+    if (Chart.defaults.plugins && Chart.defaults.plugins.tooltip) {
+        Chart.defaults.plugins.tooltip.rtl = false;
+    }
+}
+</script>
+<script>
+// تشغيل المزامنة الفورية اللحظية لعام 2026 عبر AJAX
+function triggerLiveSync2026() {
+    const btn = document.getElementById('btn-live-sync-2026');
+    const oldHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳ جاري الاتصال بـ Xero...</span>';
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+    fetch("{{ url_for('findash.api_sync_live_2026') }}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken || "",
+            "X-Requested-With": "XMLHttpRequest"
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showFindashToast(data.message || "تمت المزامنة اللحظية الحية لعام 2026 بنجاح", true);
+            if (data.reports_scope_missing) {
+                setTimeout(() => {
+                    if (confirm("تم تحديث رصيد المخزون بنجاح (105 صنف).\n\nلقراءة تقارير الأرباح والخسائر والمركز المالي من زيرو مباشرة للشهور الحالية، هل ترغب في تفعيل صلاحية تقارير زيرو الآن؟")) {
+                        window.location.href = data.connect_url || "/coffee/xero/connect";
+                        return;
+                    }
+                    window.location.reload();
+                }, 1600);
+            } else {
+                setTimeout(() => { window.location.reload(); }, 1500);
+            }
+        } else {
+            showFindashToast("تنبيه: " + (data.error || "تعذرت المزامنة المباشرة"), false);
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = oldHtml;
+            }
+        }
+    })
+    .catch(err => {
+        showFindashToast("حدث خطأ أثناء طلب المزامنة: " + err, false);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = oldHtml;
+        }
+    });
+}
+
+</script>
+
+<style>
+/* هوية القسم المالي الفاخرة (Sapphire & Indigo Accent) */
+:root {
+    --fin-primary: #3b82f6;
+    --fin-primary-dark: #1d4ed8;
+    --fin-accent: #6366f1;
+    --fin-bg-card: rgba(255, 255, 255, 0.95);
+    --fin-border: rgba(99, 102, 241, 0.15);
+}
+
+.fin-header-banner {
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #1e293b 100%);
+    border-radius: var(--radius-xl, 16px);
+    padding: 24px 30px;
+    color: #ffffff;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.fin-header-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.fin-header-title h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.fin-header-title p {
+    margin: 4px 0 0 0;
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.fin-side-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #475569;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.fin-side-link:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.fin-side-link.active {
+    background: #eef2ff;
+    color: #4338ca;
+    border-color: #c7d2fe;
+    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.08);
+    font-weight: 800;
+    position: relative;
+}
+
+.fin-side-link.active::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 4px;
+    background: #4f46e5;
+    border-radius: 4px;
+}
+
+@media (max-width: 1024px) {
+    .fin-app-layout {
+        flex-direction: column !important;
+        gap: 10px !important;
+        padding: 0 !important;
+    }
+    .fin-vertical-sidebar {
+        width: 100% !important;
+        min-width: 0 !important;
+        position: static !important;
+        padding: 8px 10px !important;
+        border-radius: 12px !important;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04) !important;
+        margin-bottom: 4px !important;
+    }
+    .fin-sidebar-brand-card,
+    .fin-sidebar-user-card,
+    .fin-sidebar-totals-toggle,
+    .fin-sidebar-nav-title {
+        display: none !important;
+    }
+    .fin-vertical-nav {
+        flex-direction: row !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        gap: 6px !important;
+        padding: 4px 2px !important;
+        white-space: nowrap !important;
+    }
+    .fin-vertical-nav::-webkit-scrollbar {
+        display: none;
+    }
+    .fin-side-link {
+        padding: 6px 14px !important;
+        font-size: 12px !important;
+        border-radius: 20px !important;
+        flex-shrink: 0 !important;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+    }
+    .fin-side-link.active {
+        background: #4f46e5 !important;
+        color: #ffffff !important;
+        border-color: #4338ca !important;
+    }
+    .fin-side-link.active::after {
+        display: none !important;
+    }
+    .fin-kpi-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+        margin-bottom: 16px !important;
+    }
+    .fin-filter-bar {
+        padding: 10px 12px !important;
+    }
+    .fin-filter-bar > div {
+        width: 100% !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
+    }
+    .fin-main-content {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    .fin-table th, .fin-table td {
+        padding: 6px 7px !important;
+        font-size: 11px !important;
+    }
+}
+
+@media (max-width: 540px) {
+    .fin-kpi-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .fin-kpi-card {
+        padding: 12px 14px !important;
+    }
+    .fin-kpi-card .kpi-val {
+        font-size: 20px !important;
+    }
+}
+
+.fin-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.fin-kpi-card {
+    background: var(--fin-bg-card);
+    border: 1px solid var(--fin-border);
+    border-radius: var(--radius-lg, 14px);
+    padding: 18px 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fin-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+}
+
+.fin-kpi-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 4px;
+    background: var(--card-accent, #6366f1);
+}
+
+.fin-kpi-card .kpi-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.fin-kpi-card .kpi-val {
+    font-size: 24px;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.2;
+}
+
+.fin-kpi-card .kpi-sub {
+    font-size: 11px;
+    font-weight: 600;
+    color: #94a3b8;
+    margin-top: 6px;
+}
+
+.fin-chart-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--radius-lg, 14px);
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+    margin-bottom: 24px;
+}
+
+.fin-chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.fin-chart-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 1. استغلال كامل المساحة في يمين ويسار الشاشة وتوسيع الحاوية بنسبة 100% */
+.main-wrapper:has(.fin-app-layout),
+body:has(.fin-app-layout) .main-wrapper,
+html:has(.fin-app-layout) .main-wrapper {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 16px !important;
+    margin: 4px auto !important;
+}
+
+.fin-app-layout {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+    padding: 4px 2px !important;
+    display: flex !important;
+    gap: 16px !important;
+    align-items: flex-start !important;
+    box-sizing: border-box !important;
+}
+
+.fin-vertical-sidebar {
+    width: 235px !important;
+    min-width: 235px !important;
+    flex-shrink: 0 !important;
+    padding: 14px 10px !important;
+    border-radius: 14px !important;
+}
+
+.fin-main-content {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    width: calc(100% - 251px) !important;
+}
+
+.fin-app-layout, .fin-table, .fin-kpi-card, .fin-chart-card, .fin-filter-bar, .fin-vertical-sidebar {
+    font-family: 'Readex Pro', 'Tajawal', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-feature-settings: "tnum";
+    letter-spacing: -0.1px;
+}
+
+/* 2. جداول متكيفة مرنة بعرض 100% دون التسبب في شريط تمرير سفلي */
+.fin-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    table-layout: auto !important;
+}
+
+.fin-table th {
+    background: #f8fafc;
+    color: #1e293b;
+    font-weight: 800;
+    font-size: 11.5px !important;
+    padding: 7px 8px !important;
+    border-bottom: 2px solid #cbd5e1;
+    text-align: right;
+    letter-spacing: -0.1px;
+    white-space: nowrap;
+}
+
+.fin-table td {
+    padding: 6px 8px !important;
+    font-size: 11.5px !important;
+    color: #0f172a;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: right;
+    vertical-align: middle;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.35;
+}
+
+.fin-table tr:hover td {
+    background: #f8fafc;
+}
+
+/* حقول أسماء الأصناف والحسابات تلتف بسلاسة دون تمديد أفقيا */
+.fin-table td.cell-name,
+.fin-table td .cell-name-wrap {
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    white-space: normal !important;
+    line-height: 1.35 !important;
+    font-weight: 700;
+}
+
+/* ترقية خطوط الأرقام العشوائية وتحويلها إلى خط عصري متناسق مع الأرقام الجدلية */
+.fin-table td code, .fin-table td [style*="monospace"], .fin-table th [style*="monospace"] {
+    font-family: 'Readex Pro', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-variant-numeric: tabular-nums !important;
+    font-feature-settings: "tnum" !important;
+}
+
+/* ضبط اتجاه الأرقام المالية لمنع التواء إشارة السالب لليسار في الجداول العربية */
+.fin-table td[style*="text-align: left"],
+.fin-table th[style*="text-align: left"],
+.fin-table td[style*="text-align:left"],
+.fin-table th[style*="text-align:left"] {
+    direction: ltr !important;
+    unicode-bidi: isolate !important;
+}
+
+/* فئة للأرقام المالية الصريحة لمنع التواء إشارة السالب وتنسيق الأرقام بوضوح */
+.fin-num {
+    font-variant-numeric: tabular-nums !important;
+    font-feature-settings: "tnum" !important;
+    font-family: 'Readex Pro', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    direction: ltr !important;
+    display: inline-block !important;
+    unicode-bidi: isolate !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    font-size: 11.5px !important;
+}
+
+/* وسوم الأكواد المدمجة والمضغوطة */
+.fin-code-badge {
+    background: #f1f5f9;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+    padding: 1px 5px !important;
+    border-radius: 4px !important;
+    font-size: 10.5px !important;
+    font-weight: 700;
+    font-family: 'Readex Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+    white-space: nowrap;
+    display: inline-block;
+    direction: ltr;
+}
+
+/* ضغط حجم الشارات والوسوم لتوفير المساحة */
+.badge-reconciled, .badge-diff {
+    padding: 1px 6px !important;
+    font-size: 10.5px !important;
+    white-space: nowrap !important;
+}
+
+.fin-filter-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    background: #ffffff;
+    padding: 12px 18px;
+    border-radius: var(--radius-lg, 12px);
+    border: 1px solid #e2e8f0;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.badge-reconciled {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.badge-diff {
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fde68a;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* صف التجميع الإجمالي أسفل الجداول */
+.fin-table tfoot.tfoot-totals {
+    display: none;
+}
+body.show-table-totals .fin-table tfoot.tfoot-totals {
+    display: table-footer-group;
+}
+.fin-table tfoot.tfoot-totals tr {
+    background: #f1f5f9;
+    font-weight: 800;
+    border-top: 2px solid #cbd5e1;
+    border-bottom: 2px solid #cbd5e1;
+}
+.fin-table tfoot.tfoot-totals td {
+    color: #0f172a;
+    font-weight: 800;
+    font-size: 13px;
+    padding: 12px 14px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<script>
+(function() {
+    var mw = document.querySelector('.main-wrapper');
+    if (mw) {
+        mw.style.maxWidth = '100%';
+        mw.style.width = '100%';
+        mw.style.padding = '0 16px';
+        mw.style.margin = '4px auto';
+    }
+})();
+</script>
+<div class="fin-app-layout">
+    <!-- العمود الجانبي الأيمن: القائمة الطولية (الشيتات والتنقل) مطابق لتصميم الداشبورد التفاعلي -->
+    <aside class="fin-vertical-sidebar" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); position: sticky; top: 16px;">
+        <!-- بطاقة التطبيق والهوية -->
+        <div class="fin-sidebar-brand-card" style="border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 16px; text-align: right;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                <span style="font-size: 22px;">☕</span>
+                <span style="font-size: 16px; font-weight: 800; color: #0f172a;">الكوب الأول</span>
+            </div>
+            <div style="font-size: 11px; color: #64748b; font-weight: 600;">نظام إدارة المخزون والمبيعات التفاعلي</div>
+        </div>
+
+        <!-- معلومات المستخدم -->
+        <div class="fin-sidebar-user-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; text-align: right;">
+            <div style="font-size: 10px; font-weight: 700; color: #94a3b8;">اسم المستخدم</div>
+            <div style="font-size: 13px; font-weight: 800; color: #1e293b;">{{ user.username if user else 'admin' }}</div>
+        </div>
+
+        <!-- خيار إظهار صف التجميع أسفل الجداول -->
+        <label class="fin-sidebar-totals-toggle" style="display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: #334155; cursor: pointer; background: #f1f5f9; padding: 8px 10px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 16px; text-align: right;">
+            <input type="checkbox" id="global-totals-toggle" onchange="toggleTableTotals(this.checked)" checked style="accent-color: #4f46e5; cursor: pointer; width: 16px; height: 16px;">
+            <span>إظهار صف التجميع أسفل الجداول ⓘ</span>
+        </label>
+
+        <!-- عنوان قائمة الشيتات -->
+        <div class="fin-sidebar-nav-title" style="font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; padding-right: 4px; text-align: right;">
+            انتقل إلى (الشيتات):
+        </div>
+
+        <!-- الروابط الرأسية الطولية (Vertical Links) مع حماية الصلاحيات -->
+        <nav class="fin-vertical-nav" style="display: flex; flex-direction: column; gap: 4px;">
+            {% if not user or user.has_permission('finance.dashboard') %}
+            <a href="{{ url_for('findash.index', year=request.args.get('year', 2026), month=request.args.get('month', 0)) }}" class="fin-side-link {% if active_tab == 'dashboard' %}active{% endif %}">
+                <span style="font-size: 16px;">📊</span>
+                <span>لوحة المعلومات</span>
+            </a>
+            {% endif %}
+            {% if not user or user.has_permission('finance.sales') %}
+            <a href="{{ url_for('findash.sales') }}" class="fin-side-link {% if active_tab == 'sales' %}active{% endif %}">
+                <span style="font-size: 16px;">👥</span>
+                <span>ملخص مبيعات العملاء والفروع</span>
+            </a>
+            <a href="{{ url_for('findash.channels', year=request.args.get('year', 2026)) }}" class="fin-side-link {% if active_tab == 'channels' %}active{% endif %}">
+                <span style="font-size: 16px;">📱</span>
+                <span>مبيعات التطبيقات والموقع</span>
+            </a>
+            {% endif %}
+            {% if not user or user.has_permission('finance.pnl') %}
+            <a href="{{ url_for('findash.pnl', year=request.args.get('year', 2026), month=request.args.get('month', 0)) }}" class="fin-side-link {% if active_tab == 'pnl' %}active{% endif %}">
+                <span style="font-size: 16px;">📑</span>
+                <span>قائمة الدخل (P&L)</span>
+            </a>
+            {% endif %}
+            {% if not user or user.has_permission('finance.inventory') %}
+            <a href="{{ url_for('findash.inventory') }}" class="fin-side-link {% if active_tab == 'inventory' %}active{% endif %}">
+                <span style="font-size: 16px;">📦</span>
+                <span>المخزون والحركات</span>
+            </a>
+            {% endif %}
+            {% if not user or user.has_permission('finance.budget') %}
+            <a href="{{ url_for('findash.budget') }}" class="fin-side-link {% if active_tab == 'budget' %}active{% endif %}">
+                <span style="font-size: 16px;">🎯</span>
+                <span>الموازنة والتوقعات</span>
+            </a>
+            {% endif %}
+            {% if not user or user.has_permission('finance.pnl') %}
+            <a href="{{ url_for('findash.analysis') }}" class="fin-side-link {% if active_tab == 'analysis' %}active{% endif %}">
+                <span style="font-size: 16px;">📈</span>
+                <span>التحليل المالي والمقارنات</span>
+            </a>
+            {% endif %}
+            {% if not user or user.has_permission('finance.foodics') %}
+            <a href="{{ url_for('findash.branches', year=request.args.get('year', 2026), month=request.args.get('month', 0)) }}" class="fin-side-link {% if active_tab == 'branches' %}active{% endif %}">
+                <span style="font-size: 16px;">🏪</span>
+                <span>مبيعات Foodics</span>
+            </a>
+            {% endif %}
+            {% if not user or user.has_permission('finance.balance_sheet') %}
+            <a href="{{ url_for('findash.balance_sheet', year=request.args.get('year', 2026), month=request.args.get('month', 0)) }}" class="fin-side-link {% if active_tab == 'balance_sheet' %}active{% endif %}">
+                <span style="font-size: 16px;">⚖️</span>
+                <span>المركز المالي والنسب</span>
+            </a>
+            {% endif %}
+            {% if not user or user.has_permission('finance.sync') %}
+            <a href="{{ url_for('findash.sync_hub', year=request.args.get('year', 2026)) }}" class="fin-side-link {% if active_tab == 'sync' %}active{% endif %}">
+                <span style="font-size: 16px;">🔄</span>
+                <span>المزامنة والتسويات</span>
+            </a>
+            {% endif %}
+        </nav>
+
+        <!-- زر استيراد الملفات التاريخية في الأسفل -->
+        {% if not user or user.has_permission('finance.sync') %}
+        <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+            <button onclick="openArchiveModal()" class="btn btn-secondary btn-sm" style="width: 100%; font-weight: 700; font-size: 12px; padding: 8px 10px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                📁 استيراد الملفات المحفوظة
+            </button>
+        </div>
+        {% endif %}
+    </aside>
+
+    <!-- مساحة المحتوى الرئيسية (الجانب الأيسر في RTL) -->
+    <main class="fin-main-content" style="flex: 1; min-width: 0;">
+        <!-- ترويسة القسم المالي المميزة -->
+        <div class="fin-header-banner" style="margin-bottom: 20px;">
+            <div class="fin-header-title">
+                <div style="width: 44px; height: 44px; background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(165, 180, 252, 0.3); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px;">
+                    📊
+                </div>
+                <div>
+                    <h2>لوحة التحكم المالية والتقارير التفاعلية</h2>
+                    <p>التحليل المالي المتقدم • ربط Xero و Foodics السحابي • الموازنة ومطابقة الفروقات</p>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                {% if last_xero_live_sync %}
+                <span style="font-size: 11px; font-weight: 700; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 6px 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+                    <span style="display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);"></span>
+                    Xero حي: {{ last_xero_live_sync }}
+                </span>
+                {% endif %}
+                <button id="btn-live-sync-2026" onclick="triggerLiveSync2026()" class="btn btn-success btn-sm" style="background: #059669; border: none; color: #ffffff; font-weight: 700; font-size: 12px; padding: 7px 14px; border-radius: 8px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <span>⚡ تحديث فوري من زيرو (2026)</span>
+                </button>
+                <a href="{{ url_for('findash.sync_hub') }}" class="btn btn-primary btn-sm" style="background: #4f46e5; border: none; font-weight: 700; font-size: 12px; padding: 7px 14px; border-radius: 8px;">
+                    ⚡ مركز المزامنة والتسويات
+                </a>
+            </div>
+        </div>
+
+        <!-- حاوية الإشعارات العائمة Toast -->
+        <div id="findash-toast" style="display:none; position:fixed; bottom:24px; left:24px; z-index:9999; max-width:420px; padding:14px 18px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.2); font-size:13px; font-weight:700; transition:all 0.3s ease;"></div>
+
+        <!-- محتوى الصفحة المتغير -->
+        {% block findash_content %}{% endblock %}
+    </main>
+</div>
+
+<script>
+// التحكم التفاعلي بظهور صف التجميع الإجمالي وحفظه محلياً
+function toggleTableTotals(show) {
+    document.body.classList.toggle('show-table-totals', show);
+    localStorage.setItem('findash_show_totals', show ? '1' : '0');
+    const cb = document.getElementById('global-totals-toggle');
+    if (cb) cb.checked = show;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const saved = localStorage.getItem('findash_show_totals');
+    const show = (saved === null || saved === '1');
+    toggleTableTotals(show);
+});
+
+// نافذة إشعارات توست بديلة للـ alert
+function showFindashToast(msg, isSuccess = true) {
+    const t = document.getElementById('findash-toast');
+    if (!t) return;
+    t.innerText = msg;
+    t.style.background = isSuccess ? '#065f46' : '#991b1b';
+    t.style.color = '#ffffff';
+    t.style.border = isSuccess ? '1px solid #34d399' : '1px solid #f87171';
+    t.style.display = 'block';
+    t.style.opacity = '1';
+    setTimeout(() => {
+        t.style.opacity = '0';
+        setTimeout(() => { t.style.display = 'none'; }, 300);
+    }, 4500);
+}
+
+// تشغيل استيراد الملفات التاريخية عبر AJAX
+function triggerHistoricalImport() {
+    if (!confirm("هل ترغب في استيراد ومزامنة كافة ملفات التقارير المحفوظة للأعوام 2024 و 2025 و 2026؟")) return;
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerText = "⏳ جاري الاستيراد...";
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+    fetch("{{ url_for('findash.api_import_historical') }}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken || ""
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        showFindashToast(data.message || "اكتمل الاستيراد بنجاح!", true);
+        setTimeout(() => location.reload(), 1200);
+    })
+    .catch(err => {
+        showFindashToast("حدث خطأ أثناء الاستيراد: " + err, false);
+        btn.disabled = false;
+        btn.innerText = "📁 استيراد الملفات التاريخية";
+    });
+}
+
+// =========================================================================
+// محرك البحث الحي اللحظي للجداول (Instant Live Search Engine)
+// =========================================================================
+function initLiveTableSearch(inputEl, tableSelector, counterSelector) {
+    if (!inputEl) return;
+    const table = document.querySelector(tableSelector);
+    if (!table) return;
+
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+
+    const originalRows = Array.from(tbody.querySelectorAll('tr'));
+    const totalCount = originalRows.length;
+    const counterEl = counterSelector ? document.querySelector(counterSelector) : null;
+
+    function doFilter() {
+        const query = inputEl.value.trim().toLowerCase();
+        let matchCount = 0;
+
+        originalRows.forEach(row => {
+            if (row.classList.contains('no-data-row')) return;
+            const text = row.innerText.toLowerCase();
+            if (!query || text.includes(query)) {
+                row.style.display = '';
+                matchCount++;
+                if (query.length >= 2) {
+                    highlightInRow(row, query);
+                } else {
+                    removeHighlights(row);
+                }
+            } else {
+                row.style.display = 'none';
+                removeHighlights(row);
+            }
+        });
+
+        if (counterEl) {
+            if (query) {
+                counterEl.innerHTML = `<span style="background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 11px;">🔍 يظهر ${matchCount} من ${totalCount}</span>`;
+            } else {
+                counterEl.innerHTML = '';
+            }
+        }
+
+        let emptyMsg = tbody.querySelector('.live-search-empty');
+        if (matchCount === 0 && query) {
+            if (!emptyMsg) {
+                const cols = table.querySelectorAll('thead th').length || 6;
+                emptyMsg = document.createElement('tr');
+                emptyMsg.className = 'live-search-empty';
+                emptyMsg.innerHTML = `<td colspan="${cols}" style="text-align: center; padding: 25px; color: #64748b; font-weight: 700;">⚠️ لا توجد نتائج مطابقة لـ "${inputEl.value.trim()}"</td>`;
+                tbody.appendChild(emptyMsg);
+            }
+            emptyMsg.style.display = '';
+        } else if (emptyMsg) {
+            emptyMsg.style.display = 'none';
+        }
+    }
+
+    function highlightInRow(row, query) {
+        row.querySelectorAll('td').forEach(cell => {
+            if (cell.querySelector('input, select, button, a, canvas')) return;
+            const raw = cell.getAttribute('data-raw-text') || cell.innerText;
+            if (!cell.hasAttribute('data-raw-text')) cell.setAttribute('data-raw-text', raw);
+            
+            const idx = raw.toLowerCase().indexOf(query);
+            if (idx !== -1) {
+                const before = raw.substring(0, idx);
+                const matched = raw.substring(idx, idx + query.length);
+                const after = raw.substring(idx + query.length);
+                cell.innerHTML = `${escapeHtml(before)}<mark style="background: #fef08a; color: #854d0e; padding: 1px 3px; border-radius: 3px; font-weight: 800;">${escapeHtml(matched)}</mark>${escapeHtml(after)}`;
+            } else {
+                cell.innerText = raw;
+            }
+        });
+    }
+
+    function removeHighlights(row) {
+        row.querySelectorAll('td').forEach(cell => {
+            if (cell.hasAttribute('data-raw-text')) {
+                cell.innerText = cell.getAttribute('data-raw-text');
+                cell.removeAttribute('data-raw-text');
+            }
+        });
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    inputEl.addEventListener('input', doFilter);
+    inputEl.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            inputEl.value = '';
+            doFilter();
+        }
+    });
+
+    if (inputEl.value.trim()) {
+        doFilter();
+    }
+}
+
+// التفعيل التلقائي لأي حقل بحث يحمل الخاصية data-live-search
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-live-search]').forEach(inp => {
+        const targetTable = inp.getAttribute('data-live-search');
+        const counterTarget = inp.getAttribute('data-search-counter');
+        initLiveTableSearch(inp, targetTable, counterTarget);
+    });
+});
+
+
+// تشغيل المزامنة الفورية اللحظية لعام 2026 عبر AJAX
+function triggerLiveSync2026() {
+    const btn = document.getElementById('btn-live-sync-2026');
+    const oldHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳ جاري الاتصال بـ Xero...</span>';
+    }
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+    fetch("{{ url_for('findash.api_sync_live_2026') }}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken || "",
+            "X-Requested-With": "XMLHttpRequest"
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showFindashToast(data.message || "تمت المزامنة اللحظية الحية لعام 2026 بنجاح", true);
+            if (data.reports_scope_missing) {
+                setTimeout(() => {
+                    if (confirm("تم تحديث رصيد المخزون بنجاح (105 صنف).\n\nلقراءة تقارير الأرباح والخسائر والمركز المالي من زيرو مباشرة للشهور الحالية، هل ترغب في تفعيل صلاحية تقارير زيرو الآن؟")) {
+                        window.location.href = data.connect_url || "/coffee/xero/connect";
+                        return;
+                    }
+                    window.location.reload();
+                }, 1600);
+            } else {
+                setTimeout(() => { window.location.reload(); }, 1500);
+            }
+        } else {
+            showFindashToast("تنبيه: " + (data.error || "تعذرت المزامنة المباشرة"), false);
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = oldHtml;
+            }
+        }
+    })
+    .catch(err => {
+        showFindashToast("حدث خطأ أثناء طلب المزامنة: " + err, false);
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = oldHtml;
+        }
+    });
+}
+
+</script>
+{% endblock %}
+

@@ -1,0 +1,971 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}أمر التحميص {{ order.order_number }}{% endblock %}
+
+{% block coffee_extra_css %}
+<style>
+    .coffee-details-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    .order-header-card {
+        background: #fff;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+    .order-title-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        border-bottom: 1px solid var(--gray-200);
+        padding-bottom: 16px;
+        margin-bottom: 20px;
+    }
+    .order-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        background: var(--gray-50);
+        padding: 16px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--gray-200);
+    }
+    .meta-item label {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--gray-500);
+        margin-bottom: 2px;
+    }
+    .meta-item span {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--gray-800);
+    }
+    .phase-card {
+        background: #fff;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+    .phase-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    .phase-title h3 {
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--gray-900);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .status-pill {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 14px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+    .status-draft { background: #f1f5f9; color: #475569; }
+    .status-approved_green { background: #e0f2fe; color: #0369a1; }
+    .status-roasting { background: #fef3c7; color: #92400e; }
+    .status-completed { background: #ecfdf5; color: #047857; }
+    .status-cancelled { background: #fef2f2; color: #b91c1c; }
+    .xero-posted { background: #ecfdf5; color: #047857; font-weight: 700; }
+    .xero-pending { background: #fffbeb; color: #b45309; }
+    .xero-failed { background: #fef2f2; color: #b91c1c; font-weight: 700; }
+    .xero-partial { background: #fef3c7; color: #92400e; font-weight: 700; }
+
+    .summary-kpi-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .sum-box {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: var(--radius-sm);
+        padding: 12px 16px;
+        text-align: center;
+    }
+    .sum-box.green { background: #ecfdf5; border-color: #a7f3d0; }
+    .sum-box.roasted { background: #fef3c7; border-color: #fde68a; }
+    .sum-box.loss { background: #fef2f2; border-color: #fecaca; }
+    .sum-box.cost { background: #eff6ff; border-color: #bfdbfe; }
+    .sum-lbl { font-size: 11px; font-weight: 700; color: var(--gray-600); margin-bottom: 4px; }
+    .sum-val { font-size: 18px; font-weight: 800; color: var(--gray-900); }
+
+    .xero-box {
+        background: #f8fafc;
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-md);
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block coffee_content %}
+<div class="content-container coffee-details-container">
+
+    <div class="order-header-card">
+        <div class="order-title-bar">
+            <div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <h2 style="font-size: 22px; font-weight: 800; color: var(--gray-900);">
+                        🔥 أمر التحميص: {{ order.order_number }}
+                    </h2>
+                    <span class="status-pill status-{{ order.status }}">{{ order.status_label_ar }}</span>
+                    <span class="status-pill xero-{{ order.xero_status }}">Xero: {{ order.xero_status_label_ar }}</span>
+                </div>
+                <div style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">
+                    تم الإنشاء: {{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '—' }}
+                    {% if order.creator %}بواسطة {{ order.creator.name }}{% endif %}
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <a href="{{ url_for('coffee.roasting_print', order_id=order.id) }}" target="_blank" class="btn-sm" style="text-decoration: none; background: #78350f; color: #fff; font-weight: 700; padding: 7px 15px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                    🖨️ طباعة أمر التحميص
+                </a>
+                <a href="{{ url_for('coffee.roasting_list') }}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-weight: 700; font-size: 13px; border-radius: var(--radius-sm); text-decoration: none; border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700); box-shadow: var(--shadow-sm); transition: all 0.2s;">
+                    ⬅️ رجوع للخلف
+                </a>
+            </div>
+        </div>
+
+        <div class="order-meta-grid">
+            <div class="meta-item">
+                <label>تاريخ الأمر</label>
+                <span>{{ order.order_date }} {% if order.order_time %}({{ order.order_time }}){% endif %}</span>
+            </div>
+            <div class="meta-item">
+                <label>مستودع الأخضر (المصدر)</label>
+                <span>{{ gw.name_ar }}</span>
+            </div>
+            <div class="meta-item">
+                <label>مستودع المحمص (الوجهة)</label>
+                <span>{{ rw.name_ar }}</span>
+            </div>
+            <div class="meta-item">
+                <label>مسؤول التحميص</label>
+                <span>{{ order.roasting_supervisor or '—' }}</span>
+            </div>
+            {% if order.reference_number %}
+            <div class="meta-item">
+                <label>الرقم المرجعي</label>
+                <span>{{ order.reference_number }}</span>
+            </div>
+            {% endif %}
+            {% if order.completion_date %}
+            <div class="meta-item">
+                <label>تاريخ الاكتمال</label>
+                <span>{{ order.completion_date }} {% if order.completion_time %}({{ order.completion_time }}){% endif %}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- بطاقات إجمالي الكميات والتكاليف (عند الإدخال أو الاكتمال) -->
+    {% if order.status in ('roasting', 'completed') or (order.total_roasted_kg and order.total_roasted_kg > 0) %}
+    <div class="summary-kpi-bar">
+        <div class="sum-box green">
+            <div class="sum-lbl">إجمالي الأخضر الداخل</div>
+            <div class="sum-val">{{ "{:,.2f}".format(order.total_green_kg) }} كجم</div>
+        </div>
+        <div class="sum-box roasted">
+            <div class="sum-lbl">إجمالي المحمص الناتج</div>
+            <div class="sum-val">{{ "{:,.2f}".format(order.total_roasted_kg) }} كجم</div>
+        </div>
+        <div class="sum-box loss">
+            <div class="sum-lbl">متوسط نسبة الفاقد</div>
+            <div class="sum-val" style="color: {% if order.avg_loss_pct > 17 %}#b91c1c{% else %}#047857{% endif %};">
+                {{ "{:,.1f}".format(order.avg_loss_pct) }}%
+            </div>
+        </div>
+        <div class="sum-box cost">
+            <div class="sum-lbl">إجمالي تكلفة التشغيلة</div>
+            <div class="sum-val">{{ "{:,.2f}".format(order.total_green_cost) }} ريال</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ───────────────────────────────────────────────────────────── -->
+    <!-- المرحلة الأولى: تفاصيل صرف البن الأخضر -->
+    <!-- ───────────────────────────────────────────────────────────── -->
+    <div class="phase-card">
+        <div class="phase-title">
+            <h3>🌱 المرحلة 1: البن الأخضر المصروف للتحميص</h3>
+            {% if order.status == 'draft' and has_perm('coffee.approve_green_issue') %}
+            <form method="POST" action="{{ url_for('coffee.roasting_approve_green', order_id=order.id) }}" onsubmit="return confirm('هل أنت متأكد من اعتماد صرف البن الأخضر وخصمه من المخزون؟');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-primary" style="background: #047857; border: none; padding: 8px 18px; font-weight: 700; border-radius: var(--radius-sm); color: #fff; cursor: pointer;">
+                    ✅ اعتماد صرف الأخضر وخصم الرصيد
+                </button>
+            </form>
+            {% elif order.green_approved_at %}
+            <span style="font-size: 12px; color: #047857; font-weight: 700;">
+                ✅ تم اعتماد الصرف في {{ order.green_approved_at.strftime('%Y-%m-%d %H:%M') }}
+            </span>
+            {% endif %}
+        </div>
+
+        {% if order.status == 'draft' %}
+        <!-- صندوق إضافة صنف بن أخضر جديد للأمر -->
+        <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: var(--radius-sm); padding: 16px; margin-bottom: 20px;">
+            <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 10px;">
+                ➕ إضافة صنف بن أخضر إضافي لهذا الأمر:
+            </div>
+            <form method="POST" action="{{ url_for('coffee.roasting_add_line', order_id=order.id) }}" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) auto; gap: 10px; align-items: flex-end;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="form-group" style="margin: 0; min-width: 220px;">
+                    <label style="font-size: 11px; font-weight: 700;">صنف البن الأخضر (GB)</label>
+                    <select name="green_item_id" id="editAddGreenId" class="form-control" style="font-size: 12px; height: 38px;" required onchange="onEditAddGreenChanged()">
+                        <option value="">-- اختر صنف البن الأخضر --</option>
+                        {% for g in green_items %}
+                        <option value="{{ g.id }}" data-base="{{ g.base_code }}" data-sack="{{ g.default_sack_weight or 60 }}">
+                            [{{ g.xero_item_code }}] {{ g.name_ar or g.xero_item_code }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin: 0; min-width: 200px;">
+                    <label style="font-size: 11px; font-weight: 700;">البن المحمص المقابل (RB)</label>
+                    <select name="roasted_item_id" id="editAddRoastedId" class="form-control" style="font-size: 12px; height: 38px;" required>
+                        <option value="">-- اختر صنف المحمص --</option>
+                        {% for r in roasted_items %}
+                        <option value="{{ r.id }}" data-base="{{ r.base_code }}">
+                            [{{ r.xero_item_code }}] {{ r.name_ar or r.xero_item_code }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin: 0; max-width: 130px;">
+                    <label style="font-size: 11px; font-weight: 700;">الكمية (كجم)</label>
+                    <input type="number" step="0.01" min="0.01" name="green_qty_kg" id="editAddQtyKg" class="form-control" style="font-size: 12px; height: 38px; font-weight: 700;" placeholder="0.00" required oninput="calcEditAddSacks()">
+                </div>
+
+                <div class="form-group" style="margin: 0; max-width: 110px;">
+                    <label style="font-size: 11px; font-weight: 700;">وزن الخيشة</label>
+                    <input type="number" step="0.5" name="green_sack_weight" id="editAddSackWt" class="form-control" style="font-size: 12px; height: 38px;" value="60" oninput="calcEditAddSacks()">
+                </div>
+
+                <div class="form-group" style="margin: 0; max-width: 100px;">
+                    <label style="font-size: 11px; font-weight: 700;">الأخياش</label>
+                    <input type="text" id="editAddQtySacksDisp" class="form-control" style="font-size: 12px; height: 38px; background: #e2e8f0; font-weight: 700;" readonly value="0.00">
+                </div>
+
+                <button type="submit" class="btn-primary" style="background: #047857; border: none; height: 38px; padding: 0 16px; font-weight: 700; border-radius: var(--radius-sm); color: #fff; cursor: pointer; white-space: nowrap;">
+                    ➕ إضافة للأمر
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>صنف البن الأخضر (GB)</th>
+                        <th>الكمية الداخلة (كجم)</th>
+                        <th>الأخياش</th>
+                        <th>تكلفة الكيلو</th>
+                        <th>إجمالي التكلفة</th>
+                        <th>الرصيد بالمستودع</th>
+                        <th>الصنف المحمص المقابل</th>
+                        <th>الناتج الفعلي (كجم)</th>
+                        <th>نسبة الفاقد %</th>
+                        <th>نوع الربط</th>
+                        {% if order.status == 'draft' %}
+                        <th>الإجراءات</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in order.lines %}
+                    <tr>
+                        <td>{{ line.line_number }}</td>
+                        <td>
+                            <strong>{{ line.green_item.xero_item_code if line.green_item else '—' }}</strong>
+                            <div style="font-size: 11px; color: var(--gray-500);">{{ line.green_item.name_ar if line.green_item else '' }}</div>
+                        </td>
+                        <td>
+                            {% if order.status == 'draft' %}
+                            <form method="POST" action="{{ url_for('coffee.roasting_update_line', order_id=order.id, line_id=line.id) }}" style="display: flex; gap: 6px; align-items: center;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="number" step="0.01" min="0.01" name="green_qty_kg" value="{{ line.green_qty_kg }}" class="form-control" style="width: 90px; padding: 4px 6px; font-size: 12px; font-weight: 700;" required>
+                                <input type="hidden" name="green_sack_weight" value="{{ line.green_sack_weight or 60 }}">
+                                <input type="hidden" name="roasted_qty_kg_actual" value="{{ line.roasted_qty_kg_actual if line.roasted_qty_kg_actual is not none else '' }}">
+                                <button type="submit" class="btn-sm" style="background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer;" title="تحديث الكمية">
+                                    💾
+                                </button>
+                            </form>
+                            {% else %}
+                            <strong>{{ "{:,.2f}".format(line.green_qty_kg) }} كجم</strong>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if line.green_qty_sacks %}
+                            {{ line.green_qty_sacks }} خيشة ({{ line.green_sack_weight }} كجم)
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td>{{ "{:,.2f}".format(line.green_unit_cost) }} ريال</td>
+                        <td><strong>{{ "{:,.2f}".format(line.green_total_cost) }} ريال</strong></td>
+                        <td>
+                            {% if order.status == 'draft' %}
+                            {% set bal = green_balances.get(line.green_item_id, 0.0) %}
+                            <span style="font-weight: 700; color: {% if bal >= line.green_qty_kg %}#047857{% else %}#b91c1c{% endif %};">
+                                {{ "{:,.2f}".format(bal) }} كجم
+                                {% if bal < line.green_qty_kg %}⚠️ غير كافٍ{% endif %}
+                            </span>
+                            {% else %}
+                            <span style="color: var(--gray-500);">تم الخصم ✅</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong>{{ line.roasted_item.xero_item_code if line.roasted_item else '—' }}</strong>
+                        </td>
+                        <td>
+                            {% if line.roasted_qty_kg_actual %}
+                            <strong style="color: #1e3a8a;">{{ "{:,.2f}".format(line.roasted_qty_kg_actual) }} كجم</strong>
+                            {% else %}
+                            <span style="color: var(--gray-400);">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if line.loss_pct is not none %}
+                            <span style="font-weight: 700; color: {% if line.loss_pct > 20 %}#b91c1c{% elif line.loss_pct < 17 %}#b45309{% else %}#047857{% endif %};">
+                                {{ "{:,.1f}".format(line.loss_pct) }}%
+                            </span>
+                            {% else %}
+                            <span style="color: var(--gray-400);">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if line.link_type == 'auto' %}
+                            <span style="background: #ecfdf5; color: #047857; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;">تلقائي</span>
+                            {% else %}
+                            <span style="background: #fffbeb; color: #b45309; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700;" title="{{ line.manual_link_reason }}">يدوي ℹ️</span>
+                            {% endif %}
+                        </td>
+                        {% if order.status == 'draft' %}
+                        <td>
+                            <div style="display: flex; gap: 6px; align-items: center;">
+                                <button type="button" class="btn-sm"
+                                    data-line-id="{{ line.id }}"
+                                    data-line-num="{{ line.line_number }}"
+                                    data-green-id="{{ line.green_item_id }}"
+                                    data-roasted-id="{{ line.roasted_item_id or '' }}"
+                                    data-qty-kg="{{ line.green_qty_kg }}"
+                                    data-sack-wt="{{ line.green_sack_weight or 60 }}"
+                                    data-roasted-actual="{{ line.roasted_qty_kg_actual if line.roasted_qty_kg_actual is not none else '' }}"
+                                    data-notes="{{ line.notes or '' }}"
+                                    onclick="onEditLineBtnClick(this)"
+                                    style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="تعديل الصنف والكمية والناتج">
+                                    ✏️ تعديل
+                                </button>
+                                {% if order.lines|length > 1 %}
+                                <form method="POST" action="{{ url_for('coffee.roasting_delete_line', order_id=order.id, line_id=line.id) }}" onsubmit="return confirm('هل تريد بالتأكيد حذف هذا الصنف من أمر التحميص؟');" style="margin: 0;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" style="background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;" title="حذف الصنف">
+                                        🗑️
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal: تعديل صنف أمر التحميص -->
+    <div id="editLineModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+        <div style="background:#fff; border-radius:12px; width:100%; max-width:550px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.2), 0 10px 10px -5px rgba(0,0,0,0.1); border:1px solid #e2e8f0; overflow:hidden;">
+            <div style="padding:16px 20px; background:#fffbeb; border-bottom:1px solid #fde68a; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; font-size:16px; font-weight:800; color:#78350f; display:flex; align-items:center; gap:8px;">
+                    <span>✏️</span>
+                    <span id="editModalTitle">تعديل صنف أمر التحميص</span>
+                </h3>
+                <button type="button" onclick="closeEditLineModal()" style="background:none; border:none; font-size:24px; color:#92400e; cursor:pointer; line-height:1; font-weight:700;">&times;</button>
+            </div>
+
+            <form id="editLineForm" method="POST" action="" style="padding:20px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div style="margin-bottom:14px;">
+                    <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">
+                        صنف البن الأخضر (GB) <span style="color:#dc2626;">*</span>
+                    </label>
+                    <select name="green_item_id" id="modalGreenItemId" class="form-control" style="width:100%; font-size:13px; height:40px;" required onchange="onModalGreenChanged()">
+                        {% for g in green_items %}
+                        <option value="{{ g.id }}" data-base="{{ g.base_code }}" data-sack="{{ g.default_sack_weight or 60 }}">
+                            [{{ g.xero_item_code }}] {{ g.name_ar or g.xero_item_code }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div style="margin-bottom:14px;">
+                    <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">
+                        صنف البن المحمص المقابل (RB) <span style="color:#dc2626;">*</span>
+                    </label>
+                    <select name="roasted_item_id" id="modalRoastedItemId" class="form-control" style="width:100%; font-size:13px; height:40px;" required>
+                        {% for r in roasted_items %}
+                        <option value="{{ r.id }}" data-base="{{ r.base_code }}">
+                            [{{ r.xero_item_code }}] {{ r.name_ar or r.xero_item_code }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:14px;">
+                    <div>
+                        <label style="display:block; font-size:11px; font-weight:700; color:#334155; margin-bottom:4px;">
+                            الكمية الداخلة (كجم) <span style="color:#dc2626;">*</span>
+                        </label>
+                        <input type="number" step="0.01" min="0.01" name="green_qty_kg" id="modalQtyKg" class="form-control" style="width:100%; font-size:13px; height:38px; font-weight:700;" required oninput="calcModalSacks(); calcModalLoss();">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:11px; font-weight:700; color:#334155; margin-bottom:4px;">
+                            وزن الخيشة (كجم)
+                        </label>
+                        <input type="number" step="0.5" min="1" name="green_sack_weight" id="modalSackWt" class="form-control" style="width:100%; font-size:13px; height:38px;" value="60" oninput="calcModalSacks()">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:11px; font-weight:700; color:#334155; margin-bottom:4px;">
+                            الأخياش المحسوبة
+                        </label>
+                        <input type="text" id="modalQtySacksDisp" class="form-control" style="width:100%; font-size:13px; height:38px; background:#f1f5f9; font-weight:700; color:#475569;" readonly value="0.00">
+                    </div>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px dashed #93c5fd; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label style="font-size: 12px; font-weight: 800; color: #1e3a8a; margin: 0; display: flex; align-items: center; gap: 6px;">
+                            <span>☕</span> الناتج الفعلي للبن المحمص (كجم)
+                        </label>
+                        <span style="font-size: 11px; color: #64748b;">(اختياري أثناء المسودة)</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center;">
+                        <div>
+                            <input type="number" step="0.01" min="0" name="roasted_qty_kg_actual" id="modalRoastedQtyActual" class="form-control" style="width: 100%; font-size: 13px; height: 38px; font-weight: 700; border-color: #93c5fd;" placeholder="الكمية الناتجة الفعلي..." oninput="calcModalLoss()">
+                        </div>
+                        <div>
+                            <div id="modalLossBadge" style="font-size: 12px; padding: 7px 10px; border-radius: 6px; background: #e2e8f0; color: #475569; font-weight: 700; text-align: center; border: 1px solid #cbd5e1;">
+                                الفاقد: —
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:18px;">
+                    <label style="display:block; font-size:12px; font-weight:700; color:#334155; margin-bottom:4px;">
+                        ملاحظات السطر
+                    </label>
+                    <input type="text" name="notes" id="modalNotes" class="form-control" style="width:100%; font-size:12px; height:38px;" placeholder="أي ملاحظات إضافية على هذا الصنف...">
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:8px; border-top:1px solid #e2e8f0; padding-top:14px;">
+                    <button type="button" onclick="closeEditLineModal()" class="btn-sm" style="padding:8px 16px; border-radius:6px; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; font-weight:700; cursor:pointer;">
+                        إلغاء
+                    </button>
+                    <button type="submit" class="btn-primary" style="background:#78350f; border:none; padding:8px 20px; font-weight:700; border-radius:6px; color:#fff; cursor:pointer;">
+                        💾 حفظ التعديل
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ───────────────────────────────────────────────────────────── -->
+    <!-- المرحلة الثانية: الناتج الفعلي والفاقد -->
+    <!-- ───────────────────────────────────────────────────────────── -->
+    {% if order.status in ('draft', 'approved_green', 'roasting', 'completed') %}
+    <div class="phase-card">
+        <div class="phase-title">
+            <h3>☕ المرحلة 2: ناتج التحميص، الفاقد، وتكلفة الكيلو</h3>
+            {% if order.status == 'roasting' and has_perm('coffee.approve_roasting_result') %}
+            <form method="POST" action="{{ url_for('coffee.roasting_approve_result', order_id=order.id) }}" onsubmit="return confirm('هل أنت متأكد من اعتماد الناتج الفعلي وإضافة البن المحمص لمستودع المحمص؟');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-primary" style="background: #b45309; border: none; padding: 8px 18px; font-weight: 700; border-radius: var(--radius-sm); color: #fff; cursor: pointer;">
+                    🚀 اعتماد الناتج وإكمال الأمر
+                </button>
+            </form>
+            {% elif order.status == 'completed' %}
+            <span style="font-size: 12px; color: #047857; font-weight: 700;">
+                ✅ أمر مكتمل ومعتمد في {{ order.roasting_approved_at.strftime('%Y-%m-%d %H:%M') if order.roasting_approved_at else '—' }}
+            </span>
+            {% endif %}
+        </div>
+
+        {% if order.status in ('draft', 'approved_green', 'roasting') and (has_perm('coffee.enter_roasting_result') or has_perm('coffee.create_roasting_order')) %}
+        <!-- نموذج إدخال الناتج الفعلي -->
+        <form method="POST" action="{{ url_for('coffee.roasting_enter_result', order_id=order.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-grid-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                <div class="form-group">
+                    <label style="font-size: 12px; font-weight: 700; color: var(--gray-700);">تاريخ انتهاء التحميص</label>
+                    <input type="date" name="completion_date" class="form-control" value="{{ order.completion_date or today }}">
+                </div>
+                <div class="form-group">
+                    <label style="font-size: 12px; font-weight: 700; color: var(--gray-700);">وقت الانتهاء</label>
+                    <input type="time" name="completion_time" class="form-control" value="{{ order.completion_time or '12:00' }}">
+                </div>
+                <div class="form-group">
+                    <label style="font-size: 12px; font-weight: 700; color: var(--gray-700);">ملاحظات الجودة / التحميص</label>
+                    <input type="text" name="roasting_notes" class="form-control" value="{{ order.roasting_notes or '' }}" placeholder="درجة التحميص، ملف التعريف...">
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>الصنف المحمص (RB)</th>
+                            <th>الكمية الداخلة (كجم)</th>
+                            <th>الناتج الفعلي (كجم) *</th>
+                            <th>الفاقد (كجم)</th>
+                            <th>نسبة الفاقد %</th>
+                            <th>النسبة المرجعية المعتمدة</th>
+                            <th>تكلفة كيلو المحمص (ريال)</th>
+                            <th>سبب تجاوز الفاقد (إن وجد)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for line in order.lines %}
+                        <tr>
+                            <input type="hidden" name="line_id[]" value="{{ line.id }}">
+                            <td>
+                                <strong>{{ line.roasted_item.xero_item_code if line.roasted_item else '—' }}</strong>
+                            </td>
+                            <td>{{ "{:,.2f}".format(line.green_qty_kg) }} كجم</td>
+                            <td>
+                                <input type="number" step="0.01" min="0" max="{{ line.green_qty_kg }}" name="roasted_qty_actual[]" id="actKg_{{ line.id }}" class="form-control" value="{{ line.roasted_qty_kg_actual or '' }}" placeholder="أدخل الناتج..." oninput="calcLineResult({{ line.id }}, {{ line.green_qty_kg }}, {{ line.green_total_cost }}, 20.0)" style="width: 120px; font-weight: 700;">
+                            </td>
+                            <td>
+                                <span id="lossKg_{{ line.id }}">
+                                    {{ "{:,.2f}".format(line.loss_kg) if line.loss_kg is not none else '—' }}
+                                </span> كجم
+                            </td>
+                            <td>
+                                <span id="lossPct_{{ line.id }}" style="font-weight: 700; color: {% if line.loss_pct is not none and line.loss_pct > 20 %}#b91c1c{% elif line.loss_pct is not none and line.loss_pct < 17 %}#b45309{% else %}#047857{% endif %};">
+                                    {{ "{:,.1f}".format(line.loss_pct) if line.loss_pct is not none else '—' }}%
+                                    {% if line.loss_pct is not none %}
+                                        {% if line.loss_pct > 20 %}
+                                            <span style="font-size: 10px; background: #fee2e2; color: #b91c1c; padding: 2px 4px; border-radius: 4px;">⚠️ مرتفع</span>
+                                        {% elif line.loss_pct < 17 %}
+                                            <span style="font-size: 10px; background: #fef3c7; color: #b45309; padding: 2px 4px; border-radius: 4px;">ℹ️ منخفض</span>
+                                        {% else %}
+                                            <span style="font-size: 10px; background: #dcfce7; color: #15803d; padding: 2px 4px; border-radius: 4px;">✅ مثالي</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; font-size: 11px; padding: 3px 8px; border-radius: 6px;">17% - 20%</span>
+                            </td>
+                            <td>
+                                <strong id="unitCost_{{ line.id }}" style="color: #1e3a8a;">
+                                    {{ "{:,.4f}".format(line.roasted_unit_cost) if line.roasted_unit_cost else '—' }}
+                                </strong>
+                            </td>
+                            <td>
+                                <input type="text" name="loss_exceed_reason[]" id="exReason_{{ line.id }}" class="form-control" value="{{ line.loss_exceed_reason or '' }}" placeholder="إلزامي عند تجاوز 20%" style="font-size: 11px; {% if not line.loss_exceeds_reference %}display: none;{% endif %}">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px;">
+                <button type="submit" class="btn-primary" style="background: #4f46e5; border: none; padding: 9px 24px; font-weight: 700; border-radius: var(--radius-sm); color: #fff; cursor: pointer;">
+                    💾 حفظ نتائج التحميص
+                </button>
+                {% if has_perm('coffee.approve_roasting_result') %}
+                <button type="submit" formaction="{{ url_for('coffee.roasting_approve_result', order_id=order.id) }}" onclick="return confirm('هل أنت متأكد من اعتماد الناتج الفعلي وإضافة البن المحمص لمستودع المحمص؟');" class="btn-primary" style="background: #b45309; border: none; padding: 9px 24px; font-weight: 700; border-radius: var(--radius-sm); color: #fff; cursor: pointer;">
+                    🚀 اعتماد الناتج وإكمال الأمر فوراً
+                </button>
+                {% endif %}
+            </div>
+        </form>
+
+        {% else %}
+        <!-- عرض النتائج فقط في حالة الاكتمال -->
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>الصنف المحمص</th>
+                        <th>كمية الأخضر الداخلة</th>
+                        <th>كمية المحمص الناتجة</th>
+                        <th>كمية الفاقد</th>
+                        <th>نسبة الفاقد %</th>
+                        <th>النسبة المرجعية المعتمدة</th>
+                        <th>تكلفة كيلو المحمص</th>
+                        <th>إجمالي تكلفة الصنف</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in order.lines %}
+                    <tr>
+                        <td><strong>{{ line.roasted_item.xero_item_code if line.roasted_item else '—' }}</strong></td>
+                        <td>{{ "{:,.2f}".format(line.green_qty_kg) }} كجم</td>
+                        <td><strong style="color: #78350f;">{{ "{:,.2f}".format(line.roasted_qty_kg_actual or 0) }} كجم</strong></td>
+                        <td>{{ "{:,.2f}".format(line.loss_kg or 0) }} كجم</td>
+                        <td>
+                            <strong style="color: {% if line.loss_pct and line.loss_pct > 20 %}#b91c1c{% elif line.loss_pct and line.loss_pct < 17 %}#b45309{% else %}#047857{% endif %};">
+                                {{ "{:,.1f}".format(line.loss_pct or 0) }}%
+                            </strong>
+                            {% if line.loss_pct %}
+                                {% if line.loss_pct > 20 %}
+                                    <span style="font-size: 10px; background: #fee2e2; color: #b91c1c; padding: 2px 4px; border-radius: 4px;">⚠️ مرتفع</span>
+                                {% elif line.loss_pct < 17 %}
+                                    <span style="font-size: 10px; background: #fef3c7; color: #b45309; padding: 2px 4px; border-radius: 4px;">ℹ️ منخفض</span>
+                                {% else %}
+                                    <span style="font-size: 10px; background: #dcfce7; color: #15803d; padding: 2px 4px; border-radius: 4px;">✅ مثالي</span>
+                                {% endif %}
+                            {% endif %}
+                            {% if line.loss_exceed_reason %}
+                            <div style="font-size: 11px; color: #b91c1c;">سبب: {{ line.loss_exceed_reason }}</div>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; font-size: 11px; padding: 3px 8px; border-radius: 6px;">17% - 20%</span></td>
+                        <td><strong>{{ "{:,.4f}".format(line.roasted_unit_cost or 0) }} ريال</strong></td>
+                        <td><strong>{{ "{:,.2f}".format(line.green_total_cost) }} ريال</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ───────────────────────────────────────────────────────────── -->
+    <!-- المرحلة الثالثة: الترحيل المحاسبي لـ Xero -->
+    <!-- ───────────────────────────────────────────────────────────── -->
+    {% if order.status == 'completed' %}
+    <div class="phase-card">
+        <div class="phase-title">
+            <h3>📈 المرحلة 3: الترحيل المحاسبي لنظام Xero</h3>
+            <span class="status-pill xero-{{ order.xero_status }}">{{ order.xero_status_label_ar }}</span>
+        </div>
+
+        <div class="xero-box">
+            <div>
+                <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 6px; color: var(--gray-800);">
+                    حالة الترحيل المحاسبي لـ Xero API
+                </h4>
+                {% if order.xero_status == 'posted' %}
+                <p style="color: #047857; font-size: 13px; font-weight: 600; margin: 0;">
+                    ✅ تم الترحيل لـ Xero بنجاح:
+                    <br>• إشعار خصم الأخضر (Credit Note): <code>{{ order.xero_credit_note_id or 'تم' }}</code>
+                    <br>• فاتورة شراء المحمص (Bill): <code>{{ order.xero_bill_id or 'تم' }}</code>
+                    <br>• تاريخ الترحيل: {{ order.xero_posted_at.strftime('%Y-%m-%d %H:%M') if order.xero_posted_at else '—' }}
+                </p>
+                {% elif order.xero_status in ('pending', 'failed', 'partial') %}
+                <p style="color: #b45309; font-size: 13px; margin: 0;">
+                    {% if order.xero_error_message %}
+                    <span style="color: #b91c1c; font-weight: 700;">خطأ: {{ order.xero_error_message }}</span>
+                    <br>
+                    {% endif %}
+                    يتم إنشاء إشعار خصم لحساب 635 (الأخضر) وفاتورة شراء لحساب 636 (المحمص) مع التسوية التلقائية بالهللة.
+                </p>
+                {% endif %}
+            </div>
+
+            {% if order.xero_status != 'posted' and has_perm('coffee.post_to_xero') %}
+            <div>
+                <form method="POST" action="{{ url_for('coffee.roasting_post_xero', order_id=order.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-primary" style="background: #1e3a8a; border: none; padding: 10px 20px; font-weight: 700; border-radius: var(--radius-sm); color: #fff; cursor: pointer;">
+                        ⚡ ترحيل لأمر التحميص لـ Xero الآن
+                    </button>
+                </form>
+            </div>
+            {% elif order.xero_status == 'posted' and has_perm('coffee.post_to_xero') %}
+            <div>
+                <form method="POST" action="{{ url_for('coffee.roasting_attach_xero', order_id=order.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-sm" style="background: #fff; border: 1px solid #c7d2fe; color: #4338ca; padding: 9px 18px; border-radius: var(--radius-sm); font-weight: 700; cursor: pointer;" title="إعادة إرفاق نسخة أمر التحميص الرسمية في زيرو">
+                        📎 إعادة إرفاق السند لـ Xero
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- زر إلغاء الأمر للمسودة -->
+    {% if order.status in ('draft', 'approved_green') and has_perm('coffee.create_roasting_order') %}
+    <div style="margin-top: 16px; text-align: left;">
+        <form method="POST" action="{{ url_for('coffee.roasting_cancel', order_id=order.id) }}" onsubmit="return confirm('هل أنت متأكد من إلغاء أمر التحميص وعكس الحركات المخزنية إن وجدت؟');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn-sm" style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; padding: 8px 16px; font-weight: 700; border-radius: 4px; cursor: pointer;">
+                ❌ إلغاء أمر التحميص بالكامل
+            </button>
+        </form>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+function calcLineResult(lineId, greenKg, greenTotalCost, refLossPct) {
+    let actInput = document.getElementById("actKg_" + lineId);
+    let actKg = parseFloat(actInput.value) || 0;
+    let lossKgSpan = document.getElementById("lossKg_" + lineId);
+    let lossPctSpan = document.getElementById("lossPct_" + lineId);
+    let unitCostSpan = document.getElementById("unitCost_" + lineId);
+    let exReasonInput = document.getElementById("exReason_" + lineId);
+
+    if (actKg <= 0 || actKg > greenKg) {
+        lossKgSpan.innerText = "—";
+        lossPctSpan.innerText = "—";
+        unitCostSpan.innerText = "—";
+        if (exReasonInput) exReasonInput.style.display = "none";
+        return;
+    }
+
+    let lossKg = greenKg - actKg;
+    let lossPct = (lossKg / greenKg) * 100;
+    let unitCost = greenTotalCost / actKg;
+
+    lossKgSpan.innerText = lossKg.toFixed(2);
+    unitCostSpan.innerText = unitCost.toFixed(4) + " ريال";
+
+    // نطاق الفاقد المرجعي المعتمد: 17% إلى 20%
+    if (lossPct > 20.0) {
+        lossPctSpan.innerHTML = lossPct.toFixed(1) + "% <span style='font-size:10px; background:#fee2e2; color:#b91c1c; padding:2px 6px; border-radius:4px;'>⚠️ فاقد مرتفع (>20%)</span>";
+        lossPctSpan.style.color = "#b91c1c";
+        if (exReasonInput) {
+            exReasonInput.style.display = "block";
+            exReasonInput.required = true;
+        }
+    } else if (lossPct < 17.0) {
+        lossPctSpan.innerHTML = lossPct.toFixed(1) + "% <span style='font-size:10px; background:#fef3c7; color:#b45309; padding:2px 6px; border-radius:4px;'>ℹ️ فاقد منخفض (<17%)</span>";
+        lossPctSpan.style.color = "#b45309";
+        if (exReasonInput) {
+            exReasonInput.style.display = "none";
+            exReasonInput.required = false;
+        }
+    } else {
+        lossPctSpan.innerHTML = lossPct.toFixed(1) + "% <span style='font-size:10px; background:#dcfce7; color:#15803d; padding:2px 6px; border-radius:4px;'>✅ نطاق مثالي (17%-20%)</span>";
+        lossPctSpan.style.color = "#047857";
+        if (exReasonInput) {
+            exReasonInput.style.display = "none";
+            exReasonInput.required = false;
+        }
+    }
+}
+
+function onEditAddGreenChanged() {
+    let sel = document.getElementById("editAddGreenId");
+    if (!sel) return;
+    let opt = sel.options[sel.selectedIndex];
+    if (!opt) return;
+    let base = opt.getAttribute("data-base");
+    let sack = opt.getAttribute("data-sack") || 60;
+    let sackInput = document.getElementById("editAddSackWt");
+    if (sackInput) sackInput.value = sack;
+
+    let roastedSel = document.getElementById("editAddRoastedId");
+    if (roastedSel && base) {
+        for (let i = 0; i < roastedSel.options.length; i++) {
+            let rOpt = roastedSel.options[i];
+            if (rOpt.getAttribute("data-base") === base) {
+                roastedSel.selectedIndex = i;
+                break;
+            }
+        }
+    }
+    calcEditAddSacks();
+}
+
+function calcEditAddSacks() {
+    let kgInput = document.getElementById("editAddQtyKg");
+    let sackInput = document.getElementById("editAddSackWt");
+    let disp = document.getElementById("editAddQtySacksDisp");
+    if (!kgInput || !sackInput || !disp) return;
+
+    let kg = parseFloat(kgInput.value) || 0;
+    let sack = parseFloat(sackInput.value) || 60;
+    let sacks = sack > 0 ? (kg / sack) : 0;
+    disp.value = sacks.toFixed(2);
+}
+
+function onEditLineBtnClick(btn) {
+    if (!btn) return;
+    var lineId = btn.getAttribute('data-line-id');
+    var lineNum = btn.getAttribute('data-line-num');
+    var greenId = btn.getAttribute('data-green-id');
+    var roastedId = btn.getAttribute('data-roasted-id');
+    var qtyKg = btn.getAttribute('data-qty-kg');
+    var sackWt = btn.getAttribute('data-sack-wt');
+    var roastedActual = btn.getAttribute('data-roasted-actual') || "";
+    var notes = btn.getAttribute('data-notes') || "";
+    openEditLineModal(lineId, lineNum, greenId, roastedId, qtyKg, sackWt, roastedActual, notes);
+}
+
+function openEditLineModal(lineId, lineNum, greenItemId, roastedItemId, qtyKg, sackWt, roastedActual, notes) {
+    var modal = document.getElementById('editLineModal');
+    var form = document.getElementById('editLineForm');
+    var title = document.getElementById('editModalTitle');
+    var gSel = document.getElementById('modalGreenItemId');
+    var rSel = document.getElementById('modalRoastedItemId');
+    var qInput = document.getElementById('modalQtyKg');
+    var sInput = document.getElementById('modalSackWt');
+    var actInput = document.getElementById('modalRoastedQtyActual');
+    var nInput = document.getElementById('modalNotes');
+
+    if (!modal || !form) return;
+
+    form.action = "/coffee/roasting/{{ order.id }}/update-line/" + lineId;
+    if (title) title.innerText = "تعديل الصنف والكمية (السطر " + lineNum + ")";
+
+    if (gSel) gSel.value = greenItemId;
+    if (rSel) rSel.value = (roastedItemId !== null && roastedItemId !== undefined) ? roastedItemId : "";
+    if (qInput) qInput.value = qtyKg;
+    if (sInput) sInput.value = sackWt || 60;
+    if (actInput) actInput.value = roastedActual || "";
+    if (nInput) nInput.value = notes || "";
+
+    calcModalSacks();
+    calcModalLoss();
+    modal.style.display = 'flex';
+}
+
+function closeEditLineModal() {
+    var modal = document.getElementById('editLineModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function calcModalSacks() {
+    var qInput = document.getElementById('modalQtyKg');
+    var sInput = document.getElementById('modalSackWt');
+    var disp = document.getElementById('modalQtySacksDisp');
+    if (!qInput || !sInput || !disp) return;
+
+    var q = parseFloat(qInput.value) || 0;
+    var s = parseFloat(sInput.value) || 60;
+    disp.value = (s > 0) ? (q / s).toFixed(2) + " خيشة" : "0.00";
+}
+
+function calcModalLoss() {
+    var qInput = document.getElementById('modalQtyKg');
+    var actInput = document.getElementById('modalRoastedQtyActual');
+    var badge = document.getElementById('modalLossBadge');
+    if (!qInput || !actInput || !badge) return;
+
+    var greenKg = parseFloat(qInput.value) || 0;
+    var actVal = actInput.value.trim();
+
+    if (actVal === "") {
+        badge.style.background = '#e2e8f0';
+        badge.style.color = '#475569';
+        badge.innerText = 'الفاقد: —';
+        return;
+    }
+
+    var actKg = parseFloat(actVal);
+    if (isNaN(actKg) || actKg < 0) {
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#b91c1c';
+        badge.innerText = '⚠️ قيمة غير صحيحة';
+        return;
+    }
+
+    if (actKg > greenKg) {
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#b91c1c';
+        badge.innerText = '⚠️ المحمص أكبر من الأخضر!';
+        return;
+    }
+
+    if (greenKg <= 0) {
+        badge.style.background = '#e2e8f0';
+        badge.style.color = '#475569';
+        badge.innerText = 'الفاقد: —';
+        return;
+    }
+
+    var lossKg = greenKg - actKg;
+    var lossPct = (lossKg / greenKg) * 100;
+    var colorBg = '#dcfce7';
+    var colorText = '#15803d';
+    var tag = '✅ مثالي';
+
+    if (lossPct > 20) {
+        colorBg = '#fee2e2';
+        colorText = '#b91c1c';
+        tag = '⚠️ مرتفع';
+    } else if (lossPct < 17) {
+        colorBg = '#fef3c7';
+        colorText = '#b45309';
+        tag = 'ℹ️ منخفض';
+    }
+
+    badge.style.background = colorBg;
+    badge.style.color = colorText;
+    badge.innerHTML = 'الفاقد: ' + lossKg.toFixed(2) + ' كجم (' + lossPct.toFixed(1) + '%) ' + tag;
+}
+
+function onModalGreenChanged() {
+    var gSel = document.getElementById('modalGreenItemId');
+    var rSel = document.getElementById('modalRoastedItemId');
+    var sInput = document.getElementById('modalSackWt');
+    if (!gSel) return;
+    var opt = gSel.options[gSel.selectedIndex];
+    if (opt) {
+        var base = opt.getAttribute('data-base');
+        var defSack = opt.getAttribute('data-sack');
+        if (defSack && sInput) {
+            sInput.value = defSack;
+        }
+        if (base && rSel) {
+            for (var i = 0; i < rSel.options.length; i++) {
+                if (rSel.options[i].getAttribute('data-base') === base) {
+                    rSel.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+    }
+    calcModalSacks();
+}
+
+window.addEventListener('click', function(e) {
+    var modal = document.getElementById('editLineModal');
+    if (modal && e.target === modal) {
+        closeEditLineModal();
+    }
+});
+</script>
+{% endblock %}

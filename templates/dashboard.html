@@ -1,400 +1,1616 @@
-{% extends "base.html" %}
+{% extends "cafe_base.html" %}
 
 {% block title %}{{ t('nav_dashboard') }}{% endblock %}
 
-{% block content %}
-<div class="page-header">
-    <div class="page-title">
-        <h2>{{ t('welcome') }}، {{ user.name }} 👋</h2>
-        <p>
-            {{ t('logged_as') }}: <strong>{{ role_name(user) }}</strong>
-            {% if user.location %} | {{ t('location') }}: <strong>{{ loc_name(user.location) }}</strong>{% endif %}
-        </p>
-    </div>
-    <div class="page-actions">
-        <a href="{{ url_for('purchase_new') }}" class="btn btn-primary">
-            ➕ {{ t('new_purchase') }}
-        </a>
-        {% if user.role in ['admin', 'warehouse', 'accountant'] %}
-        <a href="{{ url_for('transfer_new') }}" class="btn btn-secondary">
-            🚚 {{ t('new_transfer') }}
-        </a>
-        {% endif %}
-        <a href="{{ url_for('count_new') }}" class="btn btn-secondary">
-            📝 {{ t('start_count') }}
-        </a>
-        <a href="{{ url_for('reports_stock') }}" class="btn btn-success">
-            📈 {{ t('stock_report_btn') }}
-        </a>
-    </div>
-</div>
+{% block cafe_extra_css %}
+<style>
+/* ==============================================================
+   لوحة التحكم الحديثة — تصميم Apple Fluid & Cyber SaaS
+   دعم ثنائي فائق الوضوح للثيمين (Light Mode الافتراضي + Dark Mode)
+   تباين لوني كامل (WCAG AAA) وخطوط عربية مقروءة بوضوح فائق
+   ============================================================== */
 
-<!-- تنبيه الشحنات الواردة لموظف الفرع بانتظار تأكيد الاستلام -->
-{% if user.role == 'branch_staff' %}
-    {% if incoming_transfers %}
-    <div class="card" style="margin-bottom: 24px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 2px solid #3b82f6; border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-md);">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 14px;">
-            <div style="display: flex; align-items: center; gap: 14px;">
-                <div style="font-size: 32px; background: white; width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm);">
-                    🚚
+/* ── 0. نظام متغيرات الألوان المتكيف (Light Mode الافتراضي) ── */
+.saas-dashboard-wrapper {
+    /* ── خلفية لون بسيطة وراقية جداً للوحة التحكم لتمييزها وإبراز البطاقات البيضاء ── */
+    background: #f7f6f3;
+    border: 1px solid #ebe7df;
+    border-radius: 22px;
+    padding: 20px 22px 36px 22px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+
+    --saas-bg: #f7f6f3;
+    --saas-card-bg: #ffffff;
+    --saas-card-border: #e2e8f0;
+    --saas-card-hover-border: #8b5cf6;
+    --saas-card-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    
+    /* النصوص — وضوح فائق بالثيم الفاتح */
+    --saas-text-main: #0f172a;        /* كحلي داكن شديد الوضوح */
+    --saas-text-muted: #334155;       /* نصوص مساعدة مقروءة بتباين 8:1 */
+    --saas-text-subtle: #64748b;      /* تواريخ وتفاصيل هادئة */
+    
+    /* الجداول */
+    --saas-table-bg: #ffffff;
+    --saas-table-th-bg: #f8fafc;
+    --saas-table-th-color: #0f172a;
+    --saas-table-th-border: #cbd5e1;
+    --saas-table-td-color: #0f172a;
+    --saas-table-td-border: #e2e8f0;
+    --saas-table-row-hover: #f1f5f9;
+    --saas-table-code-bg: #f1f5f9;
+    --saas-table-code-color: #1e293b;
+    --saas-table-code-border: #cbd5e1;
+    --saas-table-link: #2563eb;
+    --saas-currency-color: #047857;   /* أخضر زمردي داكن عالي التباين */
+    
+    /* مربعات الإحصاءات السريعة (Sub-stats) */
+    --saas-substat-bg: #ffffff;
+    --saas-substat-border: #cbd5e1;
+    --saas-substat-val: #0f172a;
+    --saas-substat-label: #334155;
+    
+    /* شريط التبويبات */
+    --saas-tabs-bg: #e2e8f0;
+    --saas-tabs-border: #cbd5e1;
+    --saas-tab-btn-color: #334155;
+    --saas-tab-btn-hover-bg: rgba(255, 255, 255, 0.7);
+    --saas-tab-btn-active-bg: #ffffff;
+    --saas-tab-btn-active-color: #6d28d9;
+    --saas-tab-badge-bg: #cbd5e1;
+    --saas-tab-badge-color: #0f172a;
+    
+    /* حقول البحث والتمدد */
+    --saas-input-bg: #ffffff;
+    --saas-input-color: #0f172a;
+    --saas-input-border: #cbd5e1;
+    --saas-expand-bg: #f8fafc;
+    --saas-expand-border: #8b5cf6;
+
+    /* تدرجات أرجوانية وزرقاء */
+    --saas-purple: #7c3aed;
+    --saas-purple-glow: rgba(124, 58, 237, 0.25);
+    --saas-blue: #2563eb;
+    --saas-emerald: #059669;
+
+    font-family: 'Readex Pro', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--saas-text-main);
+    padding-bottom: 36px;
+    font-feature-settings: "tnum";
+    line-height: 1.55;
+}
+
+/* ── 0b. تفعيل الثيم الداكن التلقائي (Dark Mode) ── */
+[data-theme="dark"] .saas-dashboard-wrapper,
+html[data-theme="dark"] .saas-dashboard-wrapper,
+body[data-theme="dark"] .saas-dashboard-wrapper {
+    background: #0c1017;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+
+    --saas-bg: #0c1017;
+    --saas-card-bg: #111827;
+    --saas-card-border: rgba(255, 255, 255, 0.08);
+    --saas-card-hover-border: rgba(139, 92, 246, 0.45);
+    --saas-card-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+
+    --saas-text-main: #f8fafc;
+    --saas-text-muted: #94a3b8;
+    --saas-text-subtle: #64748b;
+
+    --saas-table-bg: #111827;
+    --saas-table-th-bg: #1e293b;
+    --saas-table-th-color: #cbd5e1;
+    --saas-table-th-border: rgba(255, 255, 255, 0.1);
+    --saas-table-td-color: #f8fafc;
+    --saas-table-td-border: rgba(255, 255, 255, 0.06);
+    --saas-table-row-hover: rgba(139, 92, 246, 0.08);
+    --saas-table-code-bg: rgba(255, 255, 255, 0.08);
+    --saas-table-code-color: #f1f5f9;
+    --saas-table-code-border: rgba(255, 255, 255, 0.15);
+    --saas-table-link: #60a5fa;
+    --saas-currency-color: #34d399;
+
+    --saas-substat-bg: #111827;
+    --saas-substat-border: rgba(255, 255, 255, 0.08);
+    --saas-substat-val: #ffffff;
+    --saas-substat-label: #94a3b8;
+
+    --saas-tabs-bg: #1e293b;
+    --saas-tabs-border: rgba(255, 255, 255, 0.08);
+    --saas-tab-btn-color: #94a3b8;
+    --saas-tab-btn-hover-bg: rgba(255, 255, 255, 0.08);
+    --saas-tab-btn-active-bg: #334155;
+    --saas-tab-btn-active-color: #c4b5fd;
+    --saas-tab-badge-bg: #334155;
+    --saas-tab-badge-color: #f8fafc;
+
+    --saas-input-bg: rgba(15, 23, 42, 0.85);
+    --saas-input-color: #f1f5f9;
+    --saas-input-border: rgba(255, 255, 255, 0.15);
+    --saas-expand-bg: rgba(15, 23, 42, 0.95);
+    --saas-expand-border: #8b5cf6;
+}
+
+/* 1. الشريط القيادي العلوي (Executive Command Topbar) — ثابت بهيبة داكنة فخمة */
+.saas-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 22px;
+    padding: 16px 22px;
+    background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+    gap: 16px;
+    flex-wrap: wrap;
+    color: #ffffff;
+}
+
+.saas-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.saas-topbar-center {
+    display: flex;
+    align-items: center;
+}
+
+.saas-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.saas-brand-icon {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 0 0 10px rgba(124, 58, 237, 0.25) !important;
+    overflow: hidden !important;
+    position: relative !important;
+    padding: 3px !important;
+    flex-shrink: 0 !important;
+}
+
+.saas-brand-icon img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    display: block !important;
+}
+
+.saas-hero-welcome h1 {
+    font-size: 21px;
+    margin: 0 0 4px 0;
+    font-weight: 700;
+    color: #ffffff !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.saas-hero-welcome p {
+    font-size: 13px !important;
+    color: #cbd5e1 !important;
+    font-weight: 500;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/* حبة اتصال فوديكس الحية */
+.foodics-conn-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(139, 92, 246, 0.2);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    border-radius: 9999px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #e0e7ff;
+    transition: all 0.2s ease;
+}
+
+.foodics-conn-pill:hover {
+    background: rgba(139, 92, 246, 0.3);
+    border-color: rgba(139, 92, 246, 0.6);
+}
+
+.pulse-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    position: relative;
+}
+
+.pulse-dot.online {
+    background: #10b981;
+    box-shadow: 0 0 10px #10b981;
+}
+
+.pulse-dot.online::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border-radius: 50%;
+    border: 1px solid #10b981;
+    animation: saas-pulse 2s infinite;
+}
+
+.pulse-dot.offline {
+    background: #ef4444;
+    box-shadow: 0 0 8px #ef4444;
+}
+
+@keyframes saas-pulse {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* أزرار الإجراءات السريعة بالشريط العلوي */
+.saas-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.saas-btn-glow-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: #ffffff !important;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 4px 16px rgba(124, 58, 237, 0.35);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.saas-btn-glow-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 22px rgba(124, 58, 237, 0.5);
+    color: #ffffff !important;
+}
+
+.saas-btn-glow-primary:active {
+    transform: scale(0.97);
+}
+
+.saas-btn-glass {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff !important;
+    padding: 8px 15px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(8px);
+    transition: all 0.2s;
+}
+
+.saas-btn-glass:hover {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-1px);
+    color: #ffffff !important;
+}
+
+.saas-btn-glass:active {
+    transform: scale(0.97);
+}
+
+/* زر جرس الإشعارات والأفاتار */
+.saas-icon-btn {
+    position: relative;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff !important;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.saas-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+.saas-badge-dot {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 999px;
+    border: 2px solid #0f172a;
+}
+
+.saas-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7c3aed, #ec4899);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #ffffff;
+    font-size: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+/* 2. بطاقات مؤشرات الأداء الرئيسية (Two Hero Cards) */
+.saas-hero-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 992px) {
+    .saas-hero-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.saas-hero-card {
+    background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    padding: 24px 26px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 220px;
+    position: relative;
+    overflow: hidden;
+    color: #ffffff;
+}
+
+.saas-hero-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.saas-hero-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0 0 4px 0;
+}
+
+.saas-hero-card-subtitle {
+    font-size: 12.5px;
+    color: #cbd5e1;
+    margin: 0;
+    font-weight: 500;
+}
+
+.saas-pill-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.saas-pill-badge.green {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.saas-pill-badge.purple {
+    background: rgba(139, 92, 246, 0.2);
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+.saas-hero-card-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 10px 0;
+    gap: 16px;
+}
+
+.saas-big-number {
+    font-size: 32px;
+    font-weight: 800;
+    color: #ffffff;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.5px;
+}
+
+.saas-big-number small {
+    font-size: 15px;
+    font-weight: 600;
+    color: #cbd5e1;
+    margin-right: 4px;
+}
+
+.saas-hero-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 12.5px;
+    color: #cbd5e1;
+}
+
+.saas-card-footer-link {
+    color: #93c5fd;
+    text-decoration: none;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.18s;
+}
+
+.saas-card-footer-link:hover {
+    color: #bfdbfe;
+    text-decoration: underline;
+}
+
+/* 3. شريط إحصائيات العمليات السريعة (Sub-stats Strip) — عالي التباين */
+.saas-substats-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+    .saas-substats-strip {
+        grid-template-columns: 1fr;
+    }
+}
+
+.saas-substat-box {
+    background: var(--saas-substat-bg) !important;
+    border: 1.5px solid var(--saas-substat-border) !important;
+    border-radius: 14px !important;
+    padding: 14px 18px !important;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: var(--saas-card-shadow);
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+
+.saas-substat-box:hover {
+    transform: translateY(-2px);
+    border-color: #8b5cf6 !important;
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.15);
+}
+
+.saas-substat-box:active {
+    transform: scale(0.98);
+}
+
+.saas-substat-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.saas-substat-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.saas-substat-label {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: var(--saas-substat-label) !important;
+    line-height: 1.4;
+}
+
+.saas-substat-val {
+    font-size: 22px !important;
+    font-weight: 800 !important;
+    color: var(--saas-substat-val) !important;
+    font-variant-numeric: tabular-nums;
+}
+
+.saas-substat-arrow {
+    margin-right: auto;
+    color: var(--saas-text-subtle);
+    font-size: 15px;
+    font-weight: 700;
+    transition: transform 0.2s, color 0.2s;
+}
+
+.saas-substat-box:hover .saas-substat-arrow {
+    transform: translateX(-4px);
+    color: #7c3aed;
+}
+
+/* 4. شريط التبويبات التفاعلي (Segmented Tabs Bar) */
+.saas-tabs-bar {
+    display: flex;
+    gap: 8px;
+    padding: 6px;
+    background: var(--saas-tabs-bg);
+    border: 1.5px solid var(--saas-tabs-border);
+    border-radius: 14px;
+    margin-bottom: 22px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+.saas-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: var(--saas-tab-btn-color);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+}
+
+.saas-tab-btn:hover {
+    color: var(--saas-text-main);
+    background: var(--saas-tab-btn-hover-bg);
+}
+
+.saas-tab-btn.active {
+    background: var(--saas-tab-btn-active-bg);
+    color: var(--saas-tab-btn-active-color);
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.saas-tab-btn:active {
+    transform: scale(0.98);
+}
+
+.saas-tab-badge {
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 800;
+    background: var(--saas-tab-badge-bg);
+    color: var(--saas-tab-badge-color);
+}
+
+.saas-tab-pane {
+    display: none;
+}
+
+.saas-tab-pane.active {
+    display: block;
+    animation: saas-fade-in 0.22s ease-out;
+}
+
+@keyframes saas-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 5. الجداول وبطاقات البيانات (Data Tables & Cards) — فائق الوضوح */
+.saas-table-card {
+    background: var(--saas-card-bg) !important;
+    border: 1.5px solid var(--saas-card-border) !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    box-shadow: var(--saas-card-shadow) !important;
+}
+
+.saas-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 22px;
+    border-bottom: 1.5px solid var(--saas-table-th-border);
+    background: var(--saas-table-th-bg);
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.saas-table-header h4 {
+    margin: 0 0 3px 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--saas-text-main);
+}
+
+.saas-table-header span {
+    font-size: 12.5px;
+    color: var(--saas-text-muted);
+}
+
+.saas-table-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.saas-table-search-input {
+    background: var(--saas-input-bg) !important;
+    border: 1.5px solid var(--saas-input-border) !important;
+    color: var(--saas-input-color) !important;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-family: inherit;
+    min-width: 220px;
+    transition: all 0.2s ease;
+}
+
+.saas-table-search-input:focus {
+    outline: none;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+/* جدول الحركات المخزنية والبيانات */
+.saas-table {
+    width: 100% !important;
+    table-layout: auto !important;
+    border-collapse: collapse !important;
+    font-size: 13px !important;
+    text-align: right !important;
+    background: var(--saas-table-bg) !important;
+}
+
+.saas-table th {
+    background: var(--saas-table-th-bg) !important;
+    color: var(--saas-table-th-color) !important;
+    font-weight: 700 !important;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    border-bottom: 2px solid var(--saas-table-th-border) !important;
+    letter-spacing: -0.2px;
+    white-space: nowrap;
+}
+
+.saas-table td {
+    padding: 8px 12px !important;
+    border-bottom: 1px solid var(--saas-table-td-border) !important;
+    color: var(--saas-table-td-color) !important;
+    background: transparent !important;
+    vertical-align: middle !important;
+    font-size: 13px !important;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+.saas-table tr:hover td {
+    background: var(--saas-table-row-hover) !important;
+}
+
+.saas-table tr.clickable-row {
+    cursor: pointer;
+}
+
+/* النصوص والأكواد داخل خلايا الجدول */
+.saas-table-main-text {
+    color: var(--saas-table-td-color) !important;
+    font-weight: 700 !important;
+    font-size: 13.5px !important;
+}
+
+.saas-table-code {
+    background: var(--saas-table-code-bg) !important;
+    color: var(--saas-table-code-color) !important;
+    border: 1px solid var(--saas-table-code-border) !important;
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: 600;
+}
+
+.saas-table-link {
+    color: var(--saas-table-link) !important;
+    font-weight: 700 !important;
+    text-decoration: none;
+    font-size: 13.5px;
+}
+
+.saas-table-link:hover {
+    text-decoration: underline;
+}
+
+.saas-currency-val {
+    color: var(--saas-currency-color) !important;
+    font-weight: 800 !important;
+    font-size: 13.5px !important;
+    font-variant-numeric: tabular-nums !important;
+    direction: ltr !important;
+    unicode-bidi: isolate !important;
+    display: inline-block;
+    text-align: right;
+}
+
+/* سطور التفاصيل المنسدلة */
+.saas-expand-row {
+    display: none;
+    background: var(--saas-expand-bg) !important;
+}
+
+.saas-expand-row.expanded {
+    display: table-row;
+}
+
+.saas-expand-content {
+    padding: 16px 24px;
+    border-right: 3px solid var(--saas-expand-border);
+    color: var(--saas-text-main);
+}
+
+/* وسوم الحالة الملونة (High Contrast Badges) */
+.saas-pill-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.saas-pill-tag.submitted, .saas-pill-tag.pending, .saas-pill-tag.needs_review {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.saas-pill-tag.approved, .saas-pill-tag.completed, .saas-pill-tag.posted {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+
+.saas-pill-tag.in_transit {
+    background: #dbeafe;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.saas-pill-tag.draft {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+}
+
+.saas-pill-tag.danger, .saas-pill-tag.rejected {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+/* وسوم الحالة بالثيم الداكن */
+[data-theme="dark"] .saas-pill-tag.submitted,
+[data-theme="dark"] .saas-pill-tag.pending {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+[data-theme="dark"] .saas-pill-tag.approved,
+[data-theme="dark"] .saas-pill-tag.completed,
+[data-theme="dark"] .saas-pill-tag.posted {
+    background: rgba(16, 185, 129, 0.18);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+[data-theme="dark"] .saas-pill-tag.in_transit {
+    background: rgba(59, 130, 246, 0.18);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.35);
+}
+
+[data-theme="dark"] .saas-pill-tag.draft {
+    background: rgba(148, 163, 184, 0.18);
+    color: #cbd5e1;
+    border-color: rgba(148, 163, 184, 0.3);
+}
+
+[data-theme="dark"] .saas-pill-tag.danger {
+    background: rgba(239, 68, 68, 0.18);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.35);
+}
+
+/* بطاقة فرع موظف الفرع */
+.saas-branch-staff-card {
+    background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    padding: 24px;
+    margin-bottom: 24px;
+    color: #ffffff;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+}
+</style>
+{% endblock %}
+
+{% block cafe_content %}
+<div class="saas-dashboard-wrapper">
+
+    <!-- 1. شريط التحكم والعمليات الموحد (Executive Command Header) -->
+    <div class="saas-topbar">
+        <div class="saas-topbar-right">
+            <div class="saas-brand-icon" style="margin-left: 4px; background: #ffffff; padding: 2px; border: 1px solid rgba(255,255,255,0.2); overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="نوفمبر كفي" style="width: 100%; height: 100%; object-fit: contain;">
+            </div>
+            <div class="saas-hero-welcome" style="margin-bottom: 0;">
+                <h1 style="font-size: 20px; margin: 0 0 3px 0; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+                    <span>{{ t('welcome') }}، {{ user.name }} 👋</span>
+                </h1>
+                <p style="font-size: 12px; color: var(--saas-text-muted); margin: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <span>{{ t('nav_dashboard') }}</span>
+                    <span>&bull;</span>
+                    <span>{{ t('logged_as') }}: <strong style="color: #cbd5e1;">{{ role_name(user) }}</strong></span>
+                    <span>&bull;</span>
+                    <span>{{ loc_name(active_location) if active_location else (loc_name(user.location) if user.location else 'الإدارة المركزية') }}</span>
+                    <span>&bull;</span>
+                    <span>{{ arabic_today_str if lang == 'ar' else now.strftime('%A, %d %B %Y') }}</span>
+                </p>
+            </div>
+        </div>
+
+        <div class="saas-topbar-center">
+            <!-- حبة اتصال Foodics API الحية -->
+            <div class="foodics-conn-pill" title="حالة الربط البرمجي مع فوديكس">
+                <span class="pulse-dot {% if foodics_connected %}online{% else %}offline{% endif %}"></span>
+                <span>Foodics API v5 &bull; {% if foodics_connected %}متصل{% else %}غير متصل{% endif %}</span>
+            </div>
+        </div>
+
+        <div class="saas-topbar-left">
+            <!-- أزرار الإجراءات السريعة -->
+            <div class="saas-hero-actions">
+                <a href="{{ url_for('purchase_new') }}" class="saas-btn-glow-primary" title="إنشاء سند استلام مشتريات جديد">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span>سند استلام جديد</span>
+                </a>
+                {% if user.role in ['admin', 'warehouse', 'accountant'] %}
+                <a href="{{ url_for('transfer_new') }}" class="saas-btn-glass" title="إصدار سند صرف أو تحويل مواد">
+                    🚚 سند صرف
+                </a>
+                {% endif %}
+                <a href="{{ url_for('reports_stock') }}" class="saas-btn-glass" title="عرض كشف أرصدة المخزون">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>تقرير المخزون</span>
+                </a>
+            </div>
+
+            <span style="color: var(--saas-card-border); font-size: 14px;">|</span>
+
+            <!-- زر التنبيهات -->
+            {% set new_items_notifs = unread_notifications | selectattr("type", "equalto", "new_inventory_item") | list %}
+            {% set total_alerts = (new_items_notifs|length) + (low_stock_count or 0) %}
+            <a href="javascript:void(0)" onclick="switchSaasTab('tabAlerts', document.getElementById('btnTabAlerts'))" class="saas-icon-btn" title="التنبيهات والمواد">
+                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                {% if total_alerts > 0 %}
+                <span class="saas-badge-dot">{{ total_alerts }}</span>
+                {% endif %}
+            </a>
+
+            <!-- الأفاتار الدائري للمستخدم -->
+            <div class="saas-avatar" title="{{ user.name }} ({{ role_name(user) }})">
+                <span>{{ (user.name or 'م')[:1] }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. البطاقتان الرئيسيتان المطابقتان للتصميم التخيلي (Hero Cards) -->
+    <div class="saas-hero-grid">
+
+        {% if user.role == 'branch_staff' %}
+        <!-- بطاقة موظف الفرع: الشحنات والمواد الواردة للفرع بانتظار التأكيد -->
+        <div class="saas-card" style="border-right: 4px solid #3b82f6;">
+            <div class="saas-card-header">
+                <div class="saas-card-title-group">
+                    <h3>🚚 المواد والشحنات الواردة للفرع</h3>
+                    <p>التحويلات المرسلة من المستودع بانتظار فحص واستلام الفرع</p>
                 </div>
-                <div>
-                    <h3 style="margin: 0; font-size: 18px; font-weight: 800; color: #1e3a8a;">
-                        {{ 'شحنات واردة من المستودع بانتظار تأكيد الاستلام' if lang == 'ar' else 'Incoming Shipments Awaiting Receipt Confirmation' }} ({{ incoming_transfers|length }})
-                    </h3>
-                    <p style="margin: 4px 0 0 0; font-size: 13px; color: #1d4ed8;">
-                        {{ 'وصلت شحنات مرسلة إلى فرعك وتحتاج مطابقة الكميات وتأكيد الاستلام لإضافتها فوراً لرصيد الفرع.' if lang == 'ar' else 'Shipments have arrived at your branch awaiting quantity verification and confirmation.' }}
-                    </p>
+                <span class="saas-pill-badge" style="background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.4);">
+                    📍 {{ active_location.name_ar if active_location else 'فرعك النشط' }}
+                </span>
+            </div>
+
+            <div class="foodics-metric-content" style="align-items: center; justify-content: space-between;">
+                <div class="circular-gauge-box" style="background: rgba(59, 130, 246, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 90px; height: 90px; font-size: 38px;">
+                    📦
+                </div>
+                <div class="foodics-metric-stats" style="flex: 1; padding-right: 16px;">
+                    <div class="stat-number" style="color: var(--saas-blue);">{{ branch_incoming_count }} <small style="font-size: 14px; font-weight: normal; color: var(--saas-text-muted);">شحنة قيد النقل</small></div>
+                    <div class="stat-sub">مواد بانتظار مراجعة الكميات وتأكيد الاستلام</div>
+                    <div class="foodics-tags-row">
+                        <span class="foodics-tag" style="background: rgba(16, 185, 129, 0.15); color: var(--saas-emerald);">📥 استلام فوري</span>
+                        <span class="foodics-tag">🏢 مطابق للفرع</span>
+                    </div>
+                    <a href="{{ url_for('transfers_list') }}" class="saas-card-footer-link" style="color: var(--saas-blue);">
+                        فتح قائمة الشحنات الواردة وتأكيد الاستلام &larr;
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <!-- بطاقة 1: الأصناف المتصلة بفوديكس مع الـ Circular Progress Gauge -->
+        <div class="saas-card">
+            <div class="saas-card-header">
+                <div class="saas-card-title-group">
+                    <h3>الأصناف المتصلة بفوديكس</h3>
+                    <p>ربط الكتالوج وتزامن المواد مع الكاشير</p>
+                </div>
+                <span class="saas-pill-badge">
+                    ⚡ مزامنة نشطة
+                </span>
+            </div>
+
+            <div class="foodics-metric-content">
+                <!-- الـ Circular Progress SVG -->
+                <div class="circular-gauge-box">
+                    {% set pct = foodics_pct or 0 %}
+                    {% set dash_offset = 283 - (283 * pct / 100) %}
+                    <svg width="104" height="104" viewBox="0 0 104 104">
+                        <defs>
+                            <linearGradient id="foodicsRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#8b5cf6" />
+                                <stop offset="100%" stop-color="#ec4899" />
+                            </linearGradient>
+                        </defs>
+                        <!-- مسار الخلفية الداكن -->
+                        <circle cx="52" cy="52" r="45" fill="none" stroke="rgba(255, 255, 255, 0.08)" stroke-width="9" />
+                        <!-- مسار التقدم المتدرج -->
+                        <circle cx="52" cy="52" r="45" fill="none" stroke="url(#foodicsRingGrad)" stroke-width="9"
+                                stroke-dasharray="283"
+                                stroke-dashoffset="{{ dash_offset }}"
+                                stroke-linecap="round"
+                                style="transition: stroke-dashoffset 1s ease-in-out;" />
+                    </svg>
+                    <div class="circular-gauge-center">
+                        <span class="circular-gauge-value">{{ pct }}%</span>
+                        <span class="circular-gauge-label">مربوط</span>
+                    </div>
+                </div>
+
+                <div class="foodics-metric-stats">
+                    <div class="stat-number">{{ foodics_mapped_count }} <small style="font-size: 14px; font-weight: normal; color: var(--saas-text-muted);">من {{ foodics_total_count }}</small></div>
+                    <div class="stat-sub">صنف ومادة مطابقة برمجياً</div>
+                    
+                    <div class="foodics-tags-row">
+                        <span class="foodics-tag">🏷️ مطابقة SKU</span>
+                        <span class="foodics-tag">🔄 API v5</span>
+                        <span class="foodics-tag">🛡️ قراءة فقط</span>
+                    </div>
+
+                    <a href="{{ url_for('foodics_hub') }}" class="saas-card-footer-link">
+                        فتح مركز تحكم فوديكس &larr;
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- بطاقة 2: قيمة المخزون الحالية مع الرسم البياني الموجي Wave Sparkline -->
+        <div class="saas-card">
+            <div class="saas-card-header">
+                <div class="saas-card-title-group">
+                    <h3>{% if user.role != 'branch_staff' %}إجمالي قيمة المخزون الحالية{% else %}إجمالي رصيد الفرع الفعلي{% endif %}</h3>
+                    <p>{% if user.role != 'branch_staff' %}التقييم المالي التراكمي لجميع المستودعات والفروع{% else %}الرصيد المتاح حالياً بفرع {{ loc_name(user.location) }}{% endif %}</p>
+                </div>
+                {% if user.role != 'branch_staff' %}
+                <span class="saas-pill-badge green">
+                    ● رصيد دفتري مباشر
+                </span>
+                {% else %}
+                <span class="saas-pill-badge">
+                    ● رصيد فرع
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="stock-val-content">
+                <div class="stock-val-top">
+                    <div>
+                        <div class="stock-val-number">
+                            {% if user.role != 'branch_staff' %}
+                            {{ "{:,.2f}".format(total_stock_value or 0) }} <small>{{ currency or 'ر.س' }}</small>
+                            {% else %}
+                            {{ "{:,.1f}".format(branch_stock_units or 0) }} <small>وحدة</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="stock-val-badge">
+                        <span>▲ 4.8% هذا الشهر</span>
+                    </div>
+                </div>
+
+                <!-- الرسم البياني الموجي (Curved Wave Sparkline) -->
+                <div class="sparkline-container">
+                    <svg viewBox="0 0 360 70" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="waveStroke" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#06b6d4" />
+                                <stop offset="50%" stop-color="#8b5cf6" />
+                                <stop offset="100%" stop-color="#ec4899" />
+                            </linearGradient>
+                            <linearGradient id="waveFill" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stop-color="rgba(139, 92, 246, 0.28)" />
+                                <stop offset="100%" stop-color="rgba(139, 92, 246, 0.0)" />
+                            </linearGradient>
+                        </defs>
+                        <!-- تعبئة تحت المنحنى -->
+                        <path d="M 0,55 C 50,58 80,42 130,46 C 180,50 210,25 260,32 C 310,38 335,12 360,14 L 360,70 L 0,70 Z" fill="url(#waveFill)" />
+                        <!-- خط الموجة المنحني -->
+                        <path d="M 0,55 C 50,58 80,42 130,46 C 180,50 210,25 260,32 C 310,38 335,12 360,14" fill="none" stroke="url(#waveStroke)" stroke-width="3" stroke-linecap="round" />
+                        <!-- النقطة المتوهجة في نهاية المنحنى -->
+                        <circle cx="360" cy="14" r="4.5" fill="#ec4899" />
+                        <circle cx="360" cy="14" r="9" fill="rgba(236, 72, 153, 0.35)" />
+                    </svg>
+                </div>
+
+                <div class="stock-meta-row">
+                    <span>
+                        {% if low_stock_count > 0 %}
+                        ⚠️ <strong style="color: #f87171;">{{ low_stock_count }}</strong> صنف قارب على النفاد
+                        {% else %}
+                        ✅ كافة الأرصدة فوق حد الأمان
+                        {% endif %}
+                    </span>
+                    <a href="{{ url_for('reports_stock') }}" class="saas-card-footer-link">
+                        كشف المخزون المفصل &larr;
+                    </a>
                 </div>
             </div>
         </div>
 
-        <div class="table-responsive" style="background: white; border-radius: var(--radius-md); overflow: hidden; border: 1px solid #bfdbfe;">
-            <table class="data-table" style="margin: 0;">
-                <thead>
-                    <tr style="background: #f8fafc;">
-                        <th># سند الصرف</th>
-                        <th>المصدر (المستودع)</th>
-                        <th>تاريخ الإرسال</th>
-                        <th>عدد الأصناف</th>
-                        <th>الحالة</th>
-                        <th>الإجراء المطلوب</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for tr in incoming_transfers %}
-                    <tr>
-                        <td><strong>#{{ tr.id }}</strong></td>
-                        <td><strong>{{ loc_name(tr.from_location) }}</strong></td>
-                        <td style="color: var(--gray-600); font-size: 13px;">{{ tr.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td><span class="badge badge-draft">{{ tr.lines|length }} أصناف</span></td>
-                        <td><span class="badge badge-in_transit">في الطريق 🚚</span></td>
-                        <td>
-                            <a href="{{ url_for('transfer_receive', transfer_id=tr.id) }}" class="btn btn-primary btn-sm" style="font-weight: 800; padding: 6px 16px; background: #2563eb; font-size: 13px;">
-                                📥 تأكيد استلام المواد ومطابقة الكميات &larr;
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
     </div>
-    {% else %}
-    <div class="card" style="margin-bottom: 24px; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 14px 20px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 20px;">✅</span>
-            <span style="font-size: 14px; font-weight: 700; color: #166534;">
-                {{ 'لا توجد شحنات واردة معلقة بانتظار الاستلام لفرعك حالياً، جميع الشحنات مستلمة بالكامل.' if lang == 'ar' else 'No incoming shipments awaiting receipt at your branch.' }}
-            </span>
-        </div>
-        <a href="{{ url_for('transfers_list') }}" class="btn btn-secondary btn-sm">سجل التحويلات السابق</a>
-    </div>
-    {% endif %}
-{% endif %}
 
-<!-- تنبيه مواد المخزون الجديدة المضافة من فوديكس -->
-{% set new_items_notifs = unread_notifications | selectattr("type", "equalto", "new_inventory_item") | list %}
-{% if new_items_notifs %}
-<div class="card" style="margin-bottom: 24px; background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 2px solid #10b981; border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-md);">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 12px;">
-        <div style="display: flex; align-items: center; gap: 14px;">
-            <div style="font-size: 32px; background: white; width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm); border: 1px solid #a7f3d0;">
+    <!-- 4. شريط إحصائيات العمليات السريع (Interactive Sub-stats strip) -->
+    <div class="saas-substats-strip">
+        <div class="saas-substat-box" onclick="switchSaasTab('tabPurchases', document.getElementById('btnTabPurchases'))" title="انقر للفرز الفوري لسندات الاستلام">
+            <div class="saas-substat-icon" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">
                 📦
             </div>
-            <div>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <h3 style="margin: 0; font-size: 18px; font-weight: 800; color: #065f46;">
-                        {{ 'تمت إضافة مواد جديدة للمخزون من فوديكس' if lang == 'ar' else 'New Inventory Items Added from Foodics' }}
-                    </h3>
-                    <span style="background: #10b981; color: white; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 800;">
-                        {{ new_items_notifs|length }} {{ 'أصناف جديدة' if lang == 'ar' else 'New items' }}
-                    </span>
-                </div>
-                <p style="margin: 4px 0 0 0; font-size: 13px; color: #047857;">
-                    {{ 'تم استلام وتحديث المواد التالية تلقائياً من فوديكس وهي جاهزة الآن لعمليات التوريد والتحويل والجرد:' if lang == 'ar' else 'The following items were received from Foodics and are ready for purchases, transfers, and counts:' }}
-                </p>
+            <div class="saas-substat-info">
+                <span class="saas-substat-label">سندات استلام بانتظار الإجراء</span>
+                <span class="saas-substat-val">{{ pending_purchases or 0 }}</span>
             </div>
+            <span class="saas-substat-arrow">←</span>
         </div>
-        <div style="display: flex; gap: 8px; align-items: center;">
-            <button type="button" onclick="markAllNotificationsRead(); this.closest('.card').remove();" class="btn btn-secondary btn-sm" style="background: white; border: 1px solid #10b981; color: #065f46;">
-                ✓ {{ 'تم الاطلاع (إخفاء التنبيه)' if lang == 'ar' else 'Mark as read' }}
-            </button>
-            <a href="{{ url_for('foodics_hub') }}" class="btn btn-primary btn-sm" style="background: #059669; border-color: #059669;">
-                ⚡ {{ 'مركز فوديكس' if lang == 'ar' else 'Foodics Hub' }}
-            </a>
+
+        <div class="saas-substat-box" onclick="switchSaasTab('tabTransfers', document.getElementById('btnTabTransfers'))" title="انقر للفرز الفوري لسندات الصرف والتحويل">
+            <div class="saas-substat-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">
+                🚚
+            </div>
+            <div class="saas-substat-info">
+                <span class="saas-substat-label">سندات تحويل وصرف قيد المراجعة</span>
+                <span class="saas-substat-val">{{ pending_transfers or 0 }}</span>
+            </div>
+            <span class="saas-substat-arrow">←</span>
+        </div>
+
+        <div class="saas-substat-box" onclick="window.location.href='{{ url_for('reports_variance') }}'" title="انقر لفتح شاشة جلسات الجرد الفعلي">
+            <div class="saas-substat-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">
+                📝
+            </div>
+            <div class="saas-substat-info">
+                <span class="saas-substat-label">جلسات جرد نشطة مفتوحة</span>
+                <span class="saas-substat-val">{{ open_counts or 0 }}</span>
+            </div>
+            <span class="saas-substat-arrow">←</span>
         </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 14px;">
-        {% for notif in new_items_notifs %}
-        <div style="background: white; border-radius: var(--radius-md); padding: 12px 16px; border: 1px solid #d1fae5; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
-                    <strong style="color: #1e293b; font-size: 14px;">{{ notif.title }}</strong>
-                    <span style="font-size: 11px; color: #64748b;">{{ notif.get_time_ago(lang) }}</span>
-                </div>
-                <p style="font-size: 12px; color: #334155; line-height: 1.4; margin-bottom: 8px;">
-                    {{ notif.message }}
-                </p>
-                <div style="margin-bottom: 8px;">
-                    {% if notif.has_supplier %}
-                    <span style="background: #ecfdf5; color: #047857; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; border: 1px solid #a7f3d0; display: inline-flex; align-items: center; gap: 4px;">
-                        🤝 مربوط بالمورد: {{ notif.supplier_name }} ✅
-                    </span>
-                    {% else %}
-                    <span style="background: #fef2f2; color: #b91c1c; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; border: 1px solid #fecaca; display: inline-flex; align-items: center; gap: 4px;">
-                        ⚠️ غير مربوط بأي مورد حالياً
-                    </span>
-                    {% endif %}
-                </div>
-            </div>
-            {% if notif.item_sku %}
-            <div style="margin-top: 8px; margin-bottom: 6px;">
-                <button type="button" onclick="openResolveModal('{{ notif.item_sku }}', {{ notif.id }})" class="btn btn-sm btn-primary" style="width: 100%; font-size: 11px; padding: 5px 8px; font-weight: 800; background: #059669; border-color: #059669; display: flex; align-items: center; justify-content: center; gap: 4px;">
-                    ⚙️ معالجة وربط المورد / تعديل
-                </button>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #e2e8f0; padding-top: 6px; font-size: 11px;">
-                <span style="color: #64748b;">SKU: <code style="font-weight: 700; color: #0f172a;">{{ notif.item_sku }}</code></span>
-                <button type="button" onclick="markNotifRead({{ notif.id }}); this.closest('div[style*=background]').remove();" style="background: none; border: none; color: #059669; cursor: pointer; font-weight: 700;">
-                    ✓ تم
-                </button>
-            </div>
-            {% endif %}
-        </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
+    <!-- 5. شريط التبويبات التفاعلية (Tabs Bar) -->
+    <div class="saas-tabs-bar" role="tablist">
+        <button type="button" class="saas-tab-btn active" id="btnTabPurchases" onclick="switchSaasTab('tabPurchases', this)">
+            <span>📦 سندات الاستلام (المشتريات)</span>
+            <span class="saas-tab-badge">{{ recent_purchases|length }}</span>
+        </button>
 
-<!-- بطاقات الإحصائيات (KPIs) -->
-<div class="kpi-grid">
-    <div class="kpi-card">
-        <div class="kpi-content">
-            <h4>{{ t('total_defined_items') }}</h4>
-            <div class="kpi-value">{{ total_items }}</div>
-            <div class="kpi-desc">{{ t('item_count_hint') }}</div>
+        <button type="button" class="saas-tab-btn" id="btnTabTransfers" onclick="switchSaasTab('tabTransfers', this)">
+            <span>🚚 سندات التحويل والصرف</span>
+            <span class="saas-tab-badge">{{ recent_transfers|length }}</span>
+        </button>
+
+        {% if user.role != 'branch_staff' %}
+        <button type="button" class="saas-tab-btn" id="btnTabAlerts" onclick="switchSaasTab('tabAlerts', this)">
+            <span>⚠️ تنبيهات المخزون ومواد فوديكس</span>
+            <span class="saas-tab-badge" style="{% if total_alerts > 0 %}background: #ef4444; color: #fff;{% endif %}">{{ total_alerts }}</span>
+        </button>
+        {% endif %}
+
+        {% if user.role != 'branch_staff' %}
+        <button type="button" class="saas-tab-btn" id="btnTabMovements" onclick="switchSaasTab('tabMovements', this)">
+            <span>📋 دفتر الأستاذ وحركات المخزون</span>
+            <span class="saas-tab-badge">{{ recent_movements|length }}</span>
+        </button>
+        {% endif %}
+
+        {% if user.role == 'branch_staff' and incoming_transfers %}
+        <button type="button" class="saas-tab-btn" id="btnTabIncoming" onclick="switchSaasTab('tabIncoming', this)" style="border-color: rgba(59, 130, 246, 0.4); color: #93c5fd;">
+            <span>📥 شحنات واردة بانتظار التأكيد</span>
+            <span class="saas-tab-badge" style="background: #2563eb; color: #fff;">{{ incoming_transfers|length }}</span>
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- محتوى التبويبات (Tab Panes) -->
+
+    <!-- تبويب 1: سندات الاستلام -->
+    <div id="tabPurchases" class="saas-tab-pane active" role="tabpanel">
+        <div class="saas-table-card">
+            <div class="saas-table-header">
+                <div>
+                    <h4>أحدث سندات استلام المشتريات من الموردين</h4>
+                    <span style="font-size: 11.5px; color: var(--saas-text-muted);">انقر فوق أي سطر لمعاينة التفاصيل المباشرة</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <div class="saas-table-search-wrap">
+                        <input type="text" class="saas-table-search-input" placeholder="🔍 بحث سريع بالسند أو المورد..." oninput="filterActiveTable(this.value)">
+                    </div>
+                    <a href="{{ url_for('purchases_list') }}" class="saas-btn-glass" style="font-size: 11.5px; padding: 6px 12px;">
+                        عرض كافة السندات &larr;
+                    </a>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="saas-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 35px; text-align: center;"></th>
+                            <th># السند</th>
+                            <th>{{ t('supplier') }}</th>
+                            <th>{{ t('invoice_number') }}</th>
+                            {% if user.role != 'branch_staff' %}
+                            <th>{{ t('total') }}</th>
+                            {% endif %}
+                            <th>{{ t('status') }}</th>
+                            <th style="text-align: center;">{{ t('actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in recent_purchases %}
+                        <tr class="clickable-row" onclick="toggleExpandRow('p-row-{{ p.id }}', event)">
+                            <td style="text-align: center; color: var(--saas-text-muted); font-size: 11px;">
+                                <span id="p-arrow-{{ p.id }}">▶</span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="saas-table-link" onclick="event.stopPropagation()">
+                                    #{{ p.id }}
+                                </a>
+                            </td>
+                            <td><strong class="saas-table-main-text">{{ p.supplier_name }}</strong></td>
+                            <td>
+                                {% if p.invoice_number %}
+                                <code class="saas-table-code">{{ p.invoice_number }}</code>
+                                {% else %}
+                                <span style="color: var(--saas-text-muted);">-</span>
+                                {% endif %}
+                            </td>
+                            {% if user.role != 'branch_staff' %}
+                            <td class="saas-currency-val">{{ "{:,.2f}".format(p.total_amount) }} {{ currency }}</td>
+                            {% endif %}
+                            <td>
+                                <span class="saas-pill-tag {{ p.status }}">{{ status_name(p) }}</span>
+                            </td>
+                            <td style="text-align: center;">
+                                <a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="saas-btn-glass" style="padding: 4px 10px; font-size: 11px;" onclick="event.stopPropagation()">
+                                    {{ t('details') }}
+                                </a>
+                            </td>
+                        </tr>
+                        <!-- سطر التفاصيل المدمج -->
+                        <tr id="p-row-{{ p.id }}" class="saas-expand-row">
+                            <td colspan="{% if user.role != 'branch_staff' %}7{% else %}6{% endif %}">
+                                <div class="saas-expand-content">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div style="font-size: 13px;">
+                                            <strong class="saas-table-main-text">بيانات سند الاستلام #{{ p.id }}</strong>
+                                            &bull; تاريخ الإنشاء: {{ p.created_at.strftime('%Y-%m-%d %H:%M') if p.created_at else '-' }}
+                                            {% if p.receiver_name %} &bull; المستلم: <strong class="saas-table-main-text">{{ p.receiver_name }}</strong>{% endif %}
+                                        </div>
+                                        <a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="saas-btn-glow-primary" style="padding: 4px 12px; font-size: 11px;">
+                                            فتح وتعديل السند &larr;
+                                        </a>
+                                    </div>
+                                    <div style="color: var(--saas-text-muted); font-size: 12px;">
+                                        الموقع المستلِم: <strong class="saas-table-main-text">{{ loc_name(p.location) }}</strong>
+                                        {% if p.notes %} | ملاحظات: <em>{{ p.notes }}</em>{% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="{% if user.role != 'branch_staff' %}7{% else %}6{% endif %}" style="text-align: center; color: var(--saas-text-muted); padding: 32px;">
+                                {{ 'لا توجد سندات استلام مسجلة بعد' if lang == 'ar' else 'No receipt vouchers recorded yet' }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
-        <div class="kpi-icon icon-purple">📦</div>
+    </div>
+
+    <!-- تبويب 2: سندات التحويل والصرف -->
+    <div id="tabTransfers" class="saas-tab-pane" role="tabpanel">
+        <div class="saas-table-card">
+            <div class="saas-table-header">
+                <div>
+                    <h4>أحدث سندات صرف المواد والتحويل بين المستودعات والفروع</h4>
+                    <span style="font-size: 11.5px; color: var(--saas-text-muted);">اضغط على السطر لعرض مسار وتفاصيل النقل</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <div class="saas-table-search-wrap">
+                        <input type="text" class="saas-table-search-input" placeholder="🔍 بحث سريع بالسند أو الفرع..." oninput="filterActiveTable(this.value)">
+                    </div>
+                    <a href="{{ url_for('transfers_list') }}" class="saas-btn-glass" style="font-size: 11.5px; padding: 6px 12px;">
+                        عرض كافة السندات &larr;
+                    </a>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="saas-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 35px; text-align: center;"></th>
+                            <th># السند</th>
+                            <th>{{ t('from_location') }}</th>
+                            <th>{{ t('to_location') }}</th>
+                            <th>{{ t('status') }}</th>
+                            <th style="text-align: center;">{{ t('actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tr in recent_transfers %}
+                        <tr class="clickable-row" onclick="toggleExpandRow('tr-row-{{ tr.id }}', event)">
+                            <td style="text-align: center; color: var(--saas-text-muted); font-size: 11px;">
+                                <span id="tr-arrow-{{ tr.id }}">▶</span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('transfer_edit', transfer_id=tr.id) }}" class="saas-table-link" onclick="event.stopPropagation()">
+                                    #{{ tr.id }}
+                                </a>
+                            </td>
+                            <td><strong class="saas-table-main-text">{{ loc_name(tr.from_location) }}</strong></td>
+                            <td><strong class="saas-table-main-text">{{ loc_name(tr.to_location) }}</strong></td>
+                            <td>
+                                <span class="saas-pill-tag {{ tr.status }}">{{ status_name(tr) }}</span>
+                            </td>
+                            <td style="text-align: center;">
+                                {% if tr.status == 'in_transit' and (user.role in ['admin', 'branch_staff', 'accountant']) %}
+                                <a href="{{ url_for('transfer_receive', transfer_id=tr.id) }}" class="saas-btn-glow-primary" style="padding: 4px 10px; font-size: 11px;" onclick="event.stopPropagation()">
+                                    {{ t('receive_materials') }}
+                                </a>
+                                {% else %}
+                                <a href="{{ url_for('transfer_edit', transfer_id=tr.id) }}" class="saas-btn-glass" style="padding: 4px 10px; font-size: 11px;" onclick="event.stopPropagation()">
+                                    {{ t('details') }}
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr id="tr-row-{{ tr.id }}" class="saas-expand-row">
+                            <td colspan="6">
+                                <div class="saas-expand-content">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div style="font-size: 13px;">
+                                            <strong class="saas-table-main-text">سند تحويل مواد #{{ tr.id }}</strong>
+                                            &bull; تاريخ الإرسال: {{ tr.created_at.strftime('%Y-%m-%d %H:%M') if tr.created_at else '-' }}
+                                            &bull; عدد البنود: <strong class="saas-table-main-text">{{ tr.lines|length if tr.lines else 0 }} صنف</strong>
+                                        </div>
+                                        <div style="display: flex; gap: 8px;">
+                                            {% if tr.status == 'in_transit' and (user.role in ['admin', 'branch_staff', 'accountant']) %}
+                                            <a href="{{ url_for('transfer_receive', transfer_id=tr.id) }}" class="saas-btn-glow-primary" style="padding: 4px 12px; font-size: 11px;">
+                                                📥 استلام ومطابقة البضاعة
+                                            </a>
+                                            {% endif %}
+                                            <a href="{{ url_for('transfer_edit', transfer_id=tr.id) }}" class="saas-btn-glass" style="padding: 4px 12px; font-size: 11px;">
+                                                عرض السند الكامل &larr;
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div style="color: var(--saas-text-muted); font-size: 12px;">
+                                        مسار التحويل: من <strong class="saas-table-main-text">{{ loc_name(tr.from_location) }}</strong> إلى <strong class="saas-table-main-text">{{ loc_name(tr.to_location) }}</strong>
+                                        {% if tr.notes %} | ملاحظات: <em>{{ tr.notes }}</em>{% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--saas-text-muted); padding: 32px;">
+                                {{ 'لا توجد عمليات تحويل حديثة' if lang == 'ar' else 'No recent transfer operations' }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     {% if user.role != 'branch_staff' %}
-    <div class="kpi-card">
-        <div class="kpi-content">
-            <h4>{{ t('total_stock_value') }}</h4>
-            <div class="kpi-value">{{ "{:,.2f}".format(total_stock_value or 0) }} <span style="font-size: 14px; font-weight: normal;">{{ currency }}</span></div>
-            <div class="kpi-desc">{{ t('stock_value_hint') }}</div>
+    <!-- تبويب 3: تنبيهات المخزون وفوديكس -->
+    <div id="tabAlerts" class="saas-tab-pane" role="tabpanel">
+        {% if new_items_notifs %}
+        <div class="saas-card" style="margin-bottom: 20px; border-color: rgba(16, 185, 129, 0.3);">
+            <div class="saas-card-header">
+                <div>
+                    <h3 style="color: var(--saas-emerald);">📦 مواد جديدة تمت إضافتها من فوديكس ({{ new_items_notifs|length }})</h3>
+                    <p>أصناف وردت تلقائياً من المزامنة وتحتاج إلى ربط أو مراجعة</p>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" onclick="markAllNotificationsRead(); this.closest('.saas-card').remove();" class="saas-btn-glass" style="font-size: 11px; padding: 5px 10px;">
+                        ✓ تم الاطلاع للكل
+                    </button>
+                    <a href="{{ url_for('foodics_hub') }}" class="saas-btn-glow-primary" style="font-size: 11px; padding: 5px 12px;">
+                        مركز فوديكس &larr;
+                    </a>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
+                {% for notif in new_items_notifs %}
+                <div class="saas-sub-card" style="padding: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <strong class="saas-table-main-text" style="font-size: 13px;">{{ notif.title }}</strong>
+                        <span style="font-size: 11px; color: var(--saas-text-muted);">{{ notif.get_time_ago(lang) }}</span>
+                    </div>
+                    <p style="font-size: 12px; color: var(--saas-text-muted); margin-bottom: 8px;">{{ notif.message }}</p>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="saas-pill-tag {% if notif.has_supplier %}approved{% else %}danger{% endif %}" style="font-size: 10.5px;">
+                            {{ '🤝 مربوط بمورد' if notif.has_supplier else '⚠️ غير مربوط بمورد' }}
+                        </span>
+                        {% if notif.item_sku %}
+                        <button type="button" onclick="openResolveModal('{{ notif.item_sku }}', {{ notif.id }})" class="saas-btn-glow-primary" style="padding: 2px 8px; font-size: 10.5px;">
+                            معالجة
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
         </div>
-        <div class="kpi-icon icon-green">💰</div>
-    </div>
-    {% else %}
-    <div class="kpi-card">
-        <div class="kpi-content">
-            <h4>{{ 'إجمالي رصيد الفرع المتوفر' if lang == 'ar' else 'Branch In-Stock Units' }}</h4>
-            <div class="kpi-value" style="color: #2563eb;">{{ "{:,.1f}".format(branch_stock_units or 0) }} <span style="font-size: 14px; font-weight: normal;">وحدة</span></div>
-            <div class="kpi-desc">الرصيد الفعلي في {{ loc_name(user.location) }}</div>
+        {% endif %}
+
+        <!-- بطاقة النواقص -->
+        <div class="saas-card">
+            <div class="saas-card-header">
+                <div>
+                    <h3>⚠️ تنبيهات انخفاض رصيد الأصناف بالمخزون</h3>
+                    <p>أصناف تحت حد الطلب الأدنى تتطلب إصدار أمر شراء أو تحويل فوري</p>
+                </div>
+                <span class="saas-pill-tag {% if low_stock_count > 0 %}danger{% else %}approved{% endif %}">
+                    {{ low_stock_count }} صنف تحت حد الطلب
+                </span>
+            </div>
+            <p style="font-size: 13px; color: var(--saas-text-muted); margin-bottom: 16px;">
+                تضمن هذه القائمة حماية سلسلة الإمداد ومنع انقطاع المواد التشغيلية في الفروع أو المستودعات.
+            </p>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <a href="{{ url_for('purchase_new') }}" class="saas-btn-glow-primary">
+                    ➕ إصدار أمر شراء لتغطية النواقص
+                </a>
+                <a href="{{ url_for('reports_stock', low_stock='1') }}" class="saas-btn-glass">
+                    🔍 كشف النواقص الكامل &larr;
+                </a>
+            </div>
         </div>
-        <div class="kpi-icon icon-blue">🏢</div>
     </div>
     {% endif %}
 
-    <div class="kpi-card">
-        <div class="kpi-content">
-            <h4>{{ t('pending_purchases') }}</h4>
-            <div class="kpi-value">{{ pending_purchases }}</div>
-            <div class="kpi-desc">
-                {% if pending_purchases > 0 %}
-                <a href="{{ url_for('accountant_review') }}" style="color: var(--warning); text-decoration: none; font-weight: 600;">
-                    {{ t('review_now') }} &larr;
-                </a>
-                {% else %}
-                -
-                {% endif %}
+    {% if user.role != 'branch_staff' %}
+    <!-- تبويب 4: دفتر الأستاذ وحركات المخزون -->
+    <div id="tabMovements" class="saas-tab-pane" role="tabpanel">
+        <div class="saas-table-card">
+            <div class="saas-table-header">
+                <div>
+                    <h4>📋 دفتر الأستاذ العام وحركات المخزون المسجلة</h4>
+                    <span style="font-size: 11.5px; color: var(--saas-text-muted);">سجل زمني حي لجميع الإدخالات والإخراجات المخزنية</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <div class="saas-table-search-wrap">
+                        <input type="text" class="saas-table-search-input" placeholder="🔍 بحث سريع بالحركة أو الصنف..." oninput="filterActiveTable(this.value)">
+                    </div>
+                    <a href="{{ url_for('reports_movements') }}" class="saas-btn-glass" style="font-size: 11.5px; padding: 6px 12px;">
+                        كشف الحركات الكامل &larr;
+                    </a>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="saas-table">
+                    <thead>
+                        <tr>
+                            <th>{{ t('date') }}</th>
+                            <th>{{ t('location') }}</th>
+                            <th>نوع الحركة</th>
+                            <th>{{ t('items') }}</th>
+                            <th>الكمية المتغيرة</th>
+                            <th>الرصيد بعدها</th>
+                            <th>{{ t('notes') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in recent_movements %}
+                        <tr>
+                            <td style="color: var(--saas-text-muted); font-size: 12px;">{{ m.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td><strong>{{ loc_name(m.location) }}</strong></td>
+                            <td>
+                                <span class="saas-pill-tag pending">{{ status_name(m) }}</span>
+                            </td>
+                            <td>
+                                <strong class="saas-table-link">[{{ m.item.sku }}]</strong> <span class="saas-table-main-text">{{ item_name(m.item) }}</span>
+                            </td>
+                            <td style="direction: ltr; text-align: right; font-weight: 700; color: {% if m.quantity_change > 0 %}#34d399{% else %}#f87171{% endif %};">
+                                {% if m.quantity_change > 0 %}+{% endif %}{{ m.quantity_change }} {{ m.item.storage_unit }}
+                            </td>
+                            <td><strong>{{ m.balance_after }}</strong> {{ m.item.storage_unit }}</td>
+                            <td style="color: var(--saas-text-muted); font-size: 12px;">{{ m.notes or '-' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--saas-text-muted); padding: 32px;">
+                                {{ 'لا توجد حركات مخزنية مسجلة بعد' if lang == 'ar' else 'No stock movements recorded yet' }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
-        <div class="kpi-icon icon-amber">⏳</div>
     </div>
+    {% endif %}
 
-    <div class="kpi-card">
-        <div class="kpi-content">
-            <h4>{% if user.role == 'branch_staff' %}{{ 'شحنات بانتظار الاستلام' if lang == 'ar' else 'Incoming Awaiting Receipt' }}{% else %}{{ t('pending_transfers') }}{% endif %}</h4>
-            <div class="kpi-value" style="color: {% if pending_transfers > 0 %}#2563eb{% else %}var(--gray-900){% endif %};">{{ pending_transfers }}</div>
-            <div class="kpi-desc">
-                <a href="{{ url_for('transfers_list') }}" style="color: var(--secondary); text-decoration: none;">
-                    {{ t('nav_transfers') }} &larr;
-                </a>
+    {% if user.role == 'branch_staff' and incoming_transfers %}
+    <!-- تبويب 5: شحنات واردة بانتظار التأكيد لموظف الفرع -->
+    <div id="tabIncoming" class="saas-tab-pane" role="tabpanel">
+        <div class="saas-table-card" style="border-color: rgba(59, 130, 246, 0.35);">
+            <div class="saas-table-header" style="background: rgba(59, 130, 246, 0.08);">
+                <div>
+                    <h4 style="color: #93c5fd;">🚚 شحنات واردة من المستودع بانتظار تأكيد الاستلام ({{ incoming_transfers|length }})</h4>
+                    <span style="font-size: 11.5px; color: var(--saas-text-muted);">وصلت شحنات مرسلة إلى فرعك وتحتاج إلى مطابقة الكميات وإضافتها للرصيد</span>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="saas-table">
+                    <thead>
+                        <tr>
+                            <th># سند الصرف</th>
+                            <th>المصدر (المستودع)</th>
+                            <th>تاريخ الإرسال</th>
+                            <th>عدد الأصناف</th>
+                            <th>الحالة</th>
+                            <th>الإجراء المطلوب</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tr in incoming_transfers %}
+                        <tr>
+                            <td><strong>#{{ tr.id }}</strong></td>
+                            <td><strong class="saas-table-main-text">{{ loc_name(tr.from_location) }}</strong></td>
+                            <td style="color: var(--saas-text-muted); font-size: 12px;">{{ tr.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td><span class="saas-pill-tag draft">{{ tr.lines|length }} أصناف</span></td>
+                            <td><span class="saas-pill-tag in_transit">في الطريق 🚚</span></td>
+                            <td>
+                                <a href="{{ url_for('transfer_receive', transfer_id=tr.id) }}" class="saas-btn-glow-primary" style="font-size: 11.5px; padding: 5px 12px;">
+                                    📥 تأكيد استلام ومطابقة الكميات &larr;
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
-        <div class="kpi-icon icon-blue">🚚</div>
     </div>
+    {% endif %}
 
-    <div class="kpi-card">
-        <div class="kpi-content">
-            <h4>{{ 'تنبيهات نواقص المخزون' if lang == 'ar' else 'Low Stock Alerts' }}</h4>
-            <div class="kpi-value" style="color: {% if low_stock_count > 0 %}var(--danger){% else %}var(--gray-900){% endif %};">
-                {{ low_stock_count }}
-            </div>
-            <div class="kpi-desc">
-                <a href="{{ url_for('reports_stock', low_stock='1') }}" style="color: var(--danger); text-decoration: none;">
-                    {{ 'عرض الأصناف المنخفضة' if lang == 'ar' else 'View Low Stock Items' }} &larr;
-                </a>
-            </div>
-        </div>
-        <div class="kpi-icon icon-rose">⚠️</div>
-    </div>
 </div>
 
-<!-- الجداول السريعة -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 24px;">
-    <!-- أحدث سندات استلام المشتريات -->
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title">📦 {{ 'أحدث سندات الاستلام' if lang == 'ar' else 'Recent Receipt Vouchers' }}</div>
-            <a href="{{ url_for('purchases_list') }}" class="btn btn-secondary btn-sm">{{ 'عرض الكل' if lang == 'ar' else 'View All' }}</a>
-        </div>
-        <div class="table-responsive">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>{{ t('supplier') }}</th>
-                        <th>{{ t('invoice_number') }}</th>
-                        {% if user.role != 'branch_staff' %}
-                        <th>{{ t('total') }}</th>
-                        {% endif %}
-                        <th>{{ t('status') }}</th>
-                        <th>{{ t('actions') }}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for p in recent_purchases %}
-                    <tr>
-                        <td><strong>#{{ p.id }}</strong></td>
-                        <td>{{ p.supplier_name }}</td>
-                        <td>{{ p.invoice_number or '-' }}</td>
-                        {% if user.role != 'branch_staff' %}
-                        <td>{{ "{:,.2f}".format(p.total_amount) }} {{ currency }}</td>
-                        {% endif %}
-                        <td>
-                            <span class="badge badge-{{ p.status }}">{{ status_name(p) }}</span>
-                        </td>
-                        <td>
-                            <a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="btn btn-secondary btn-sm">
-                                {{ t('details') }}
-                            </a>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="{% if user.role != 'branch_staff' %}6{% else %}5{% endif %}" style="text-align: center; color: var(--gray-400); padding: 24px;">
-                            {{ 'لا توجد سندات استلام مسجلة بعد' if lang == 'ar' else 'No receipt vouchers recorded yet' }}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+<script>
+// تبديل تبويبات لوحة التحكم الحديثة
+function switchSaasTab(tabId, btn) {
+    document.querySelectorAll('.saas-tab-pane').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.saas-tab-btn').forEach(el => el.classList.remove('active'));
+    
+    const targetPane = document.getElementById(tabId);
+    if (targetPane) targetPane.classList.add('active');
+    if (btn) btn.classList.add('active');
+}
 
-    <!-- أحدث سندات صرف المواد -->
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title">🚚 {{ 'أحدث سندات صرف المواد من المستودع' if lang == 'ar' else 'Recent Disbursement Vouchers' }}</div>
-            <a href="{{ url_for('transfers_list') }}" class="btn btn-secondary btn-sm">{{ 'عرض الكل' if lang == 'ar' else 'View All' }}</a>
-        </div>
-        <div class="table-responsive">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>{{ t('from_location') }}</th>
-                        <th>{{ t('to_location') }}</th>
-                        <th>{{ t('status') }}</th>
-                        <th>{{ t('actions') }}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for tr in recent_transfers %}
-                    <tr>
-                        <td><strong>#{{ tr.id }}</strong></td>
-                        <td>{{ loc_name(tr.from_location) }}</td>
-                        <td>{{ loc_name(tr.to_location) }}</td>
-                        <td>
-                            <span class="badge badge-{{ tr.status }}">{{ status_name(tr) }}</span>
-                        </td>
-                        <td>
-                            {% if tr.status == 'in_transit' and (user.role in ['admin', 'branch_staff', 'accountant']) %}
-                            <a href="{{ url_for('transfer_receive', transfer_id=tr.id) }}" class="btn btn-primary btn-sm">
-                                {{ t('receive_materials') }}
-                            </a>
-                            {% else %}
-                            <a href="{{ url_for('transfer_edit', transfer_id=tr.id) }}" class="btn btn-secondary btn-sm">
-                                {{ t('details') }}
-                            </a>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" style="text-align: center; color: var(--gray-400); padding: 24px;">
-                            {{ 'لا توجد عمليات تحويل حديثة' if lang == 'ar' else 'No recent transfer operations' }}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-{% if user.role != 'branch_staff' %}
-<!-- سجل الحركات المخزنية الأخيرة -->
-<div class="card" style="margin-top: 24px;">
-    <div class="card-header">
-        <div class="card-title">📋 {{ 'آخر الحركات المخزنية المسجلة (دفتر الأستاذ)' if lang == 'ar' else 'Recent Stock Ledger Movements' }}</div>
-        <a href="{{ url_for('reports_movements') }}" class="btn btn-secondary btn-sm">{{ 'كشف الحركات الكامل' if lang == 'ar' else 'Full Movements Report' }}</a>
-    </div>
-    <div class="table-responsive">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>{{ t('date') }}</th>
-                    <th>{{ t('location') }}</th>
-                    <th>{{ 'نوع الحركة' if lang == 'ar' else 'Movement Type' }}</th>
-                    <th>{{ t('items') }}</th>
-                    <th>{{ 'الكمية المتغيرة' if lang == 'ar' else 'Qty Changed' }}</th>
-                    <th>{{ 'الرصيد بعدها' if lang == 'ar' else 'Balance After' }}</th>
-                    <th>{{ t('notes') }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for m in recent_movements %}
-                <tr>
-                    <td style="color: var(--gray-500); font-size: 13px;">{{ m.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                    <td><strong>{{ loc_name(m.location) }}</strong></td>
-                    <td>
-                        <span class="badge badge-info">{{ status_name(m) }}</span>
-                    </td>
-                    <td>
-                        <strong>[{{ m.item.sku }}]</strong> {{ item_name(m.item) }}
-                    </td>
-                    <td style="direction: ltr; text-align: right; font-weight: 700; color: {% if m.quantity_change > 0 %}#15803d{% else %}#b91c1c{% endif %};">
-                        {% if m.quantity_change > 0 %}+{% endif %}{{ m.quantity_change }} {{ m.item.storage_unit }}
-                    </td>
-                    <td><strong>{{ m.balance_after }}</strong> {{ m.item.storage_unit }}</td>
-                    <td style="color: var(--gray-600); font-size: 13px;">{{ m.notes or '-' }}</td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="7" style="text-align: center; color: var(--gray-400); padding: 24px;">
-                        {{ 'لا توجد حركات مخزنية مسجلة بعد' if lang == 'ar' else 'No stock movements recorded yet' }}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-{% endif %}
+// توسيع وطي تفاصيل السطور في الجداول (Expandable Rows)
+function toggleExpandRow(rowId, event) {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    
+    const isExpanded = row.classList.contains('expanded');
+    row.classList.toggle('expanded');
+    
+    const prefix = rowId.split('-')[0];
+    const id = rowId.split('-')[2];
+    const arrow = document.getElementById(`${prefix}-arrow-${id}`);
+    if (arrow) {
+        arrow.innerText = isExpanded ? '▶' : '▼';
+    }
+}
+// تصفية سريعة لحظية لأسطر الجدول النشط
+function filterActiveTable(query) {
+    const q = (query || '').trim().toLowerCase();
+    const activePane = document.querySelector('.saas-tab-pane.active');
+    if (!activePane) return;
+    const rows = activePane.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        if (row.classList.contains('saas-expand-row')) return;
+        const text = row.innerText.toLowerCase();
+        if (!q || text.includes(q)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+            const nextRow = row.nextElementSibling;
+            if (nextRow && nextRow.classList.contains('saas-expand-row')) {
+                nextRow.style.display = 'none';
+            }
+        }
+    });
+}
+</script>
 {% endblock %}

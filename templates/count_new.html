@@ -1,8 +1,8 @@
-{% extends "base.html" %}
+{% extends "cafe_base.html" %}
 
 {% block title %}بدء جلسة جرد مخزني{% endblock %}
 
-{% block content %}
+{% block cafe_content %}
 <div class="page-header">
     <div class="page-title">
         <h2>📝 بدء جلسة جرد مخزني دوري</h2>
@@ -19,7 +19,18 @@
     <form method="POST">
         <div class="form-group">
             <label for="location_id">الموقع / الفرع المراد جرده *</label>
-            {% if user.role == 'branch_staff' and user.location %}
+            {% if user.role == 'branch_staff' and user.is_multi_branch %}
+            <select id="location_id" name="location_id" class="form-control" style="font-weight: 700; border-color: #3b82f6; background-color: #eff6ff;" required>
+                {% for loc in locations %}
+                <option value="{{ loc.id }}" {% if (active_location and active_location.id == loc.id) or (user.location_id == loc.id) %}selected{% endif %}>
+                    🏢 {{ loc_name(loc) }} ({{ loc_type(loc) }})
+                </option>
+                {% endfor %}
+            </select>
+            <small style="color: #2563eb; font-size: 12px; margin-top: 4px; display: block; font-weight: 600;">
+                🌐 بصفتك موظفاً متنقلاً بين الفروع، يمكنك اختيار أي من فروعك المعتمدة لإجراء الجرد.
+            </small>
+            {% elif user.role == 'branch_staff' and user.location %}
             <input type="hidden" name="location_id" value="{{ user.location_id }}">
             <div style="padding: 12px 16px; background: #eff6ff; border: 2px solid #bfdbfe; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
                 <div>
@@ -36,7 +47,7 @@
             {% else %}
             <select id="location_id" name="location_id" class="form-control" required>
                 {% for loc in locations %}
-                <option value="{{ loc.id }}" {% if user.location_id == loc.id %}selected{% endif %}>
+                <option value="{{ loc.id }}" {% if (active_location and active_location.id == loc.id) or (user.location_id == loc.id) %}selected{% endif %}>
                     {{ loc.name_ar }} ({{ loc.type_label_ar }})
                 </option>
                 {% endfor %}
@@ -44,9 +55,22 @@
             {% endif %}
         </div>
 
-        <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--gray-100); display: flex; justify-content: flex-end; gap: 10px;">
+        <div style="margin-top: 16px; padding: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <label style="display: flex; align-items: center; gap: 10px; font-weight: 700; color: #1e293b; cursor: pointer; margin-bottom: 0;">
+                <input type="checkbox" name="auto_populate" value="1" checked style="width: 18px; height: 18px; cursor: pointer;">
+                <span>📥 جلب وإدراج كافة أصناف الفرع تلقائياً في الجلسة فور بدئها لتسهيل العد والتسجيل</span>
+            </label>
+            <small style="color: var(--gray-500); font-size: 12px; margin-right: 28px; display: block; margin-top: 4px;">
+                يقوم بتحميل جميع الأصناف المسجلة على هذا الفرع برصيدها الدفتري الحالي لتبدأ بالعد الفعلي مباشرة.
+            </small>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--gray-100); display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
             <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">إلغاء</a>
-            <button type="submit" class="btn btn-primary" style="padding: 12px 28px;">
+            <button type="submit" name="action" value="save_draft" class="btn btn-secondary" style="padding: 12px 22px; font-weight: 700;">
+                📝 حفظ كمسودة
+            </button>
+            <button type="submit" name="action" value="start_open" class="btn btn-primary" style="padding: 12px 28px; font-weight: 700;">
                 🚀 بدء جلسة الجرد والعد &larr;
             </button>
         </div>

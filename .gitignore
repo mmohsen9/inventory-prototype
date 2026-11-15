@@ -11,3 +11,14 @@ venv/
 backups/
 *token*.txt
 *.token
+impeccable-main/
+.impeccable/
+.archive/
+emilkowalski_skills-main/
+unlazy-main/
+.unlazy/
+andrej-karpathy-skills-main/
+graphify-out/cache/
+graphify-8/
+templates/*backup*
+

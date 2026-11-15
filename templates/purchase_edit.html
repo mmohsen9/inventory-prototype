@@ -1,17 +1,27 @@
-{% extends "base.html" %}
+{% extends "cafe_base.html" %}
 
 {% block title %}{{ t('receipt_voucher') }} #{{ purchase.id }}{% endblock %}
 
-{% block content %}
+{% block cafe_content %}
 <div class="page-header">
     <div class="page-title">
         <h2>🧾 {{ t('receipt_voucher') }} #{{ purchase.id }} - {{ purchase.supplier_name }}</h2>
         <p>{{ t('invoice_number') }}: <strong>{{ purchase.invoice_number or '-' }}</strong> | {{ t('receiving_location') }}: <strong>{{ loc_name(purchase.location) }}</strong></p>
     </div>
     <div class="page-actions">
+        {% if purchase.foodics_reference %}
+        <span class="badge" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-size: 13px; padding: 6px 12px; font-weight: 700;">
+            ⚡ مستورد تلقائياً من فوديكس
+        </span>
+        {% endif %}
         <span class="badge badge-{{ purchase.status }}" style="font-size: 14px; padding: 6px 14px;">
             {{ status_name(purchase) }}
         </span>
+        {% if user.role in ['admin', 'accountant'] or (purchase.status == 'draft' and (purchase.created_by == user.id or user.location_id == purchase.location_id)) %}
+        <button type="button" class="btn btn-danger" onclick="openDeletePurchaseModal()" style="padding: 6px 14px; font-weight: 700;">
+            🗑️ {{ t('delete') }}
+        </button>
+        {% endif %}
         <button type="button" class="btn btn-secondary" onclick="window.print()">
             🖨️ {{ t('print') }}
         </button>
@@ -45,15 +55,75 @@
     </div>
     <div class="kpi-card">
         <div class="kpi-content">
+            {% if user.role != 'branch_staff' %}
             <h4>{{ t('total') }}</h4>
             <div class="kpi-value" style="color: var(--primary);">{{ "{:,.2f}".format(purchase.total_amount) }} <span style="font-size: 14px; font-weight: normal;">{{ currency }}</span></div>
             <div class="kpi-desc">{{ t('items') }}: {{ purchase.lines|length }} | {{ t('invoice_date_label') }}: {{ purchase.invoice_date or purchase.created_at.strftime('%Y-%m-%d') }}</div>
+            {% else %}
+            <h4>{{ 'عدد الأصناف المستلمة' if lang == 'ar' else 'Received Items Count' }}</h4>
+            <div class="kpi-value" style="color: var(--primary);">{{ purchase.lines|length }} <span style="font-size: 14px; font-weight: normal;">{{ 'صنف' if lang == 'ar' else 'items' }}</span></div>
+            <div class="kpi-desc">{{ 'إجمالي الكميات' if lang == 'ar' else 'Total Quantities' }}: {{ purchase.lines|sum(attribute='quantity') }} | {{ purchase.invoice_date or purchase.created_at.strftime('%Y-%m-%d') }}</div>
+            {% endif %}
         </div>
-        <div class="kpi-icon icon-green">💰</div>
+        <div class="kpi-icon icon-green">📦</div>
     </div>
 </div>
 
-{% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+{% if user.role == 'admin' or (user.role == 'accountant' and purchase.status == 'draft') %}
+<!-- بطاقة تعديل بيانات السند والمورد والموقع (صلاحية مدير النظام) -->
+<div class="card no-print" style="margin-bottom: 20px; border: 2px solid #3b82f6; background: #f8fafc;">
+    <div class="card-header" style="background: #eff6ff; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #bfdbfe;">
+        <div class="card-title" style="color: #1e40af; font-size: 15px; font-weight: 800;">
+            🛠️ {{ 'تعديل بيانات السند والمورد والموقع (صلاحية مدير النظام)' if lang == 'ar' else 'Edit Voucher, Supplier & Location (Admin)' }}
+        </div>
+        <span class="badge" style="background: #2563eb; color: white; font-weight: 700;">مدير النظام 🔑</span>
+    </div>
+    <form method="POST" style="padding: 16px;">
+        <input type="hidden" name="action" value="edit_header">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 14px;">
+            <div class="form-group">
+                <label style="font-weight: 700; font-size: 13px; color: #1e293b; display: block; margin-bottom: 4px;">🏢 {{ t('supplier') }}:</label>
+                <select name="supplier_name" class="form-control" style="font-size: 13px; font-weight: 600;">
+                    {% for sup in suppliers %}
+                    <option value="{{ sup.name }}" {% if sup.name == purchase.supplier_name %}selected{% endif %}>{{ sup.name }} {% if sup.code %}({{ sup.code }}){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label style="font-weight: 700; font-size: 13px; color: #1e293b; display: block; margin-bottom: 4px;">📍 {{ t('receiving_location') }}:</label>
+                <select name="location_id" class="form-control" style="font-size: 13px; font-weight: 600;">
+                    {% for loc in locations %}
+                    <option value="{{ loc.id }}" {% if loc.id == purchase.location_id %}selected{% endif %}>{{ loc_name(loc) }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label style="font-weight: 700; font-size: 13px; color: #1e293b; display: block; margin-bottom: 4px;">📄 {{ t('invoice_number') }}:</label>
+                <input type="text" name="invoice_number" value="{{ purchase.invoice_number or '' }}" class="form-control" style="font-size: 13px;">
+            </div>
+
+            <div class="form-group">
+                <label style="font-weight: 700; font-size: 13px; color: #1e293b; display: block; margin-bottom: 4px;">📅 {{ t('invoice_date_label') }}:</label>
+                <input type="date" name="invoice_date" value="{{ purchase.invoice_date or purchase.created_at.strftime('%Y-%m-%d') }}" class="form-control" style="font-size: 13px;">
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 12px; flex-wrap: wrap; gap: 10px;">
+            <label style="font-size: 12px; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                <input type="checkbox" name="requeue_sync" value="1" {% if purchase.status == 'failed' %}checked{% endif %}>
+                <span>🔄 إعادة السند إلى طابور الترحيل لفوديكس فوراً بعد الحفظ</span>
+            </label>
+            <button type="submit" class="btn btn-primary btn-sm" style="padding: 8px 20px; font-weight: 800; background: #2563eb; border-color: #2563eb;">
+                💾 حفظ تعديل بيانات السند والمورد والموقع
+            </button>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+{% if purchase.status == 'draft' or user.role == 'admin' or (user.role == 'accountant' and purchase.status not in ['posted', 'queued']) %}
 <!-- نموذج إضافة صنف للسند -->
 <div class="card no-print" style="border: 2px solid var(--primary-light);">
     <div class="card-header">
@@ -74,6 +144,9 @@
         <input type="text" id="barcode-scanner-input" class="form-control" placeholder="{{ t('barcode_scanner_placeholder') }}" autocomplete="off">
     </div>
 
+    <!-- وسيط تخزين أكواد الأصناف المضافة مسبقاً لمنع تكرارها وإخفائها من البحث -->
+    <div id="existing-voucher-skus" style="display:none;" data-skus='[{% for line in purchase.lines %}{% if line.item and line.item.sku %}"{{ line.item.sku|lower }}"{% if not loop.last %},{% endif %}{% endif %}{% endfor %}]'></div>
+
     <form method="POST" id="addLineForm">
         <input type="hidden" name="action" value="add_line">
         <div class="form-grid">
@@ -92,8 +165,43 @@
             </div>
 
             <div class="form-group">
-                <label for="unit">{{ t('unit_measure') }}</label>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <label for="unit">{{ t('unit_measure') }}</label>
+                    <button type="button" onclick="openItemUnitsModalFromActiveItem()" style="background: none; border: none; color: #4f46e5; font-size: 11px; font-weight: 700; cursor: pointer; padding: 0;" title="ضبط وتعديل وحدات الصنف ومعامل التحويل">⚙️ ضبط الوحدات</button>
+                </div>
                 <input type="text" id="unit" name="unit" class="form-control" placeholder="{{ t('unit_measure_auto') }}">
+            </div>
+
+            <!-- إدخال مركب بالوحدتين (فوديكس: كرتون + كوب) -->
+            <div id="compoundQtyBox" style="display: none; background: #eef2ff; border: 1.5px dashed #6366f1; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; grid-column: 1 / -1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                    <span style="font-size: 13px; font-weight: 800; color: #3730a3; display: flex; align-items: center; gap: 6px;">
+                        📦 إدخال الكمية بالوحدتين (فوديكس):
+                        <span class="compound-factor-badge" style="background: #e0e7ff; color: #312e81; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 700;">
+                            1 <span class="storage-unit-label">كرتون</span> = <span class="factor-val">500</span> <span class="ingredient-unit-label">كوب</span>
+                        </span>
+                    </span>
+                    <button type="button" class="btn btn-sm" onclick="openItemUnitsModalFromActiveItem()" style="font-size: 11px; padding: 3px 10px; color: #4338ca; border: 1px solid #c7d2fe; background: white; border-radius: 6px; cursor: pointer; font-weight: 700;">
+                        ⚙️ تعديل معامل التحويل والوحدات
+                    </button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: flex-end;">
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">
+                            عدد الوحدات الكبرى (<span class="storage-unit-label">كرتون</span>)
+                        </label>
+                        <input type="number" step="any" min="0" id="compound_qty_storage" class="form-control" placeholder="0" style="font-weight: 700; height: 38px; font-size: 14px; background: white;">
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 4px;">
+                            عدد الوحدات الصغرى / المكون (<span class="ingredient-unit-label">كوب</span>)
+                        </label>
+                        <input type="number" step="any" min="0" id="compound_qty_ingredient" class="form-control" placeholder="0" style="font-weight: 700; height: 38px; font-size: 14px; background: white;">
+                    </div>
+                    <div style="padding-bottom: 8px; font-size: 13px; font-weight: 800; color: #1e293b; white-space: nowrap;">
+                        = إجمالي <span id="compound_calc_result" style="color: #4f46e5; font-size: 16px; font-weight: 900;">0</span> <span class="storage-unit-label">كرتون</span>
+                    </div>
+                </div>
             </div>
 
             <div class="form-group">
@@ -101,10 +209,12 @@
                 <input type="number" step="any" id="quantity" name="quantity" class="form-control" placeholder="{{ t('quantity') }}" required>
             </div>
 
+            {% if user.role != 'branch_staff' %}
             <div class="form-group">
                 <label for="unit_cost">{{ t('unit_cost') }} ({{ currency }})</label>
                 <input type="number" step="0.001" id="unit_cost" name="unit_cost" class="form-control" placeholder="{{ t('cost') }}">
             </div>
+            {% endif %}
 
             <div class="form-group">
                 <label for="notes">{{ t('notes') }}</label>
@@ -112,9 +222,11 @@
             </div>
 
             <div class="form-group" style="display: flex; flex-direction: column; justify-content: flex-end;">
+                {% if user.role != 'branch_staff' %}
                 <div style="font-size: 13px; color: var(--gray-600); margin-bottom: 8px;">
                     {{ t('line_total') }}: <strong id="line_total_preview" style="color: var(--primary); font-size: 16px;">0.00 {{ currency }}</strong>
                 </div>
+                {% endif %}
                 <button type="submit" class="btn btn-primary" style="height: 42px;">
                     ➕ {{ t('add_line_btn') }}
                 </button>
@@ -138,17 +250,21 @@
                     <th>{{ t('item_name') }}</th>
                     <th>{{ t('unit_measure') }}</th>
                     <th>{{ t('supplied_qty') }}</th>
+                    {% if user.role != 'branch_staff' %}
                     <th>{{ t('unit_cost') }}</th>
+                    {% endif %}
                     <th>{{ t('notes') }}</th>
+                    {% if user.role != 'branch_staff' %}
                     <th>{{ t('total_cost') }}</th>
-                    {% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+                    {% endif %}
+                    {% if purchase.status == 'draft' or user.role == 'admin' or (user.role == 'accountant' and purchase.status not in ['posted', 'queued']) %}
                     <th class="no-print">{{ t('actions') }}</th>
                     {% endif %}
                 </tr>
             </thead>
             <tbody>
                 {% for line in purchase.lines %}
-                <tr>
+                <tr class="voucher-line-row" data-item-sku="{{ line.item.sku|lower if line.item else '' }}">
                     <td>{{ loop.index }}</td>
                     <td><code>{{ line.item.sku if line.item else '-' }}</code></td>
                     <td>
@@ -156,7 +272,7 @@
                     </td>
                     <td><span class="badge badge-draft">{{ line.item.storage_unit if line.item else '-' }}</span></td>
                     <td style="font-weight: 700; font-size: 15px;">
-                        {% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+                        {% if purchase.status == 'draft' or user.role == 'admin' or (user.role == 'accountant' and purchase.status not in ['posted', 'queued']) %}
                         <form method="POST" style="display: flex; gap: 4px; align-items: center;">
                             <input type="hidden" name="action" value="update_line">
                             <input type="hidden" name="line_id" value="{{ line.id }}">
@@ -168,8 +284,9 @@
                         {{ line.quantity }}
                         {% endif %}
                     </td>
+                    {% if user.role != 'branch_staff' %}
                     <td style="font-weight: 700; font-size: 15px;">
-                        {% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+                        {% if purchase.status == 'draft' or user.role == 'admin' or (user.role == 'accountant' and purchase.status not in ['posted', 'queued']) %}
                         <form method="POST" style="display: flex; gap: 4px; align-items: center;">
                             <input type="hidden" name="action" value="update_line">
                             <input type="hidden" name="line_id" value="{{ line.id }}">
@@ -181,8 +298,9 @@
                         {{ "{:,.2f}".format(line.unit_cost) }} {{ currency }}
                         {% endif %}
                     </td>
+                    {% endif %}
                     <td style="font-size: 12px; color: var(--gray-600);">
-                        {% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+                        {% if purchase.status == 'draft' or user.role == 'admin' or (user.role == 'accountant' and purchase.status not in ['posted', 'queued']) %}
                         <form method="POST" style="display: flex; gap: 4px; align-items: center;">
                             <input type="hidden" name="action" value="update_line">
                             <input type="hidden" name="line_id" value="{{ line.id }}">
@@ -195,10 +313,12 @@
                         {{ line.notes or '-' }}
                         {% endif %}
                     </td>
+                    {% if user.role != 'branch_staff' %}
                     <td style="font-weight: 700; color: #1e1b4b;">
                         {{ "{:,.2f}".format(line.total_cost) }} {{ currency }}
                     </td>
-                    {% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+                    {% endif %}
+                    {% if purchase.status == 'draft' or user.role == 'admin' or (user.role == 'accountant' and purchase.status not in ['posted', 'queued']) %}
                     <td class="no-print">
                         <form method="POST" style="display:inline;">
                             <input type="hidden" name="action" value="delete_line">
@@ -212,7 +332,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="8" style="text-align: center; color: var(--gray-400); padding: 30px;">
+                    <td colspan="{% if user.role != 'branch_staff' %}8{% else %}6{% endif %}" style="text-align: center; color: var(--gray-400); padding: 30px;">
                         {{ t('no_lines_yet') }}
                     </td>
                 </tr>
@@ -222,11 +342,16 @@
                 <tr style="background: var(--gray-50); font-weight: 700; font-size: 15px;">
                     <td colspan="4" style="text-align: left;">{{ t('total') }}:</td>
                     <td>{{ purchase.lines|sum(attribute='quantity') }}</td>
+                    {% if user.role != 'branch_staff' %}
                     <td>-</td>
+                    {% endif %}
+                    <td>-</td>
+                    {% if user.role != 'branch_staff' %}
                     <td style="color: var(--primary); font-size: 17px;">
                         {{ "{:,.2f}".format(purchase.total_amount) }} {{ currency }}
                     </td>
-                    {% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+                    {% endif %}
+                    {% if purchase.status == 'draft' or user.role == 'admin' or (user.role == 'accountant' and purchase.status not in ['posted', 'queued']) %}
                     <td class="no-print"></td>
                     {% endif %}
                 </tr>
@@ -290,12 +415,18 @@
             {% endfor %}
         </div>
         {% else %}
+        {% if purchase.supplier_name and ('اكياس القهوة' in purchase.supplier_name or 'أكياس القهوة' in purchase.supplier_name) %}
+        <div style="color: #047857; font-size: 13px; margin-bottom: 16px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 10px; border-radius: var(--radius-sm);">
+            ℹ️ {{ 'سند توريد بن محمص داخلي للفروع — رفع صورة السند اختياري.' if lang == 'ar' else 'Internal branch roasted coffee receipt — Attachment is optional.' }}
+        </div>
+        {% else %}
         <div style="color: var(--warning); font-size: 13px; margin-bottom: 16px; background: var(--warning-light); padding: 10px; border-radius: var(--radius-sm);">
             ⚠️ {{ t('attachment_warning') }}
         </div>
         {% endif %}
+        {% endif %}
 
-        {% if purchase.status == 'draft' or (user.role in ['admin', 'accountant'] and purchase.status not in ['posted', 'queued']) %}
+        {% if purchase.status == 'draft' or user.role == 'admin' or (user.role == 'accountant' and purchase.status not in ['posted', 'queued']) %}
         <form method="POST" enctype="multipart/form-data" style="border-top: 1px solid var(--gray-100); padding-top: 14px;">
             <input type="hidden" name="action" value="upload_attachment">
             <div class="form-group">
@@ -317,13 +448,21 @@
         <p style="font-size: 14px; color: var(--gray-600); margin-bottom: 16px;">
             {{ t('draft_submit_hint') }}
         </p>
-        <form method="POST">
-            <input type="hidden" name="action" value="submit_for_review">
-            <button type="submit" class="btn btn-primary btn-block" style="padding: 14px; font-size: 16px;"
-                    onclick="return confirm('{{ t('submit_confirm') }}')">
-                📨 {{ t('submit_btn') }} &larr;
-            </button>
-        </form>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <form method="POST" style="flex: 1;">
+                <input type="hidden" name="action" value="save_draft">
+                <button type="submit" class="btn btn-secondary btn-block" style="padding: 12px; font-weight: 700;">
+                    📝 {{ 'حفظ كمسودة والرجوع' if lang == 'ar' else 'Save as Draft & Exit' }}
+                </button>
+            </form>
+            <form method="POST" style="flex: 1.5;">
+                <input type="hidden" name="action" value="submit_for_review">
+                <button type="submit" class="btn btn-primary btn-block" style="padding: 12px; font-weight: 700;"
+                        onclick="return confirm('{{ t('submit_confirm') }}')">
+                    📨 {{ t('submit_btn') }} &larr;
+                </button>
+            </form>
+        </div>
 
         {% elif purchase.status == 'submitted' and user.role in ['accountant', 'admin'] %}
         <div style="background: var(--warning-light); padding: 14px; border-radius: var(--radius-md); margin-bottom: 16px; font-size: 13px;">
@@ -352,6 +491,67 @@
             {% endif %}
         </div>
         {% endif %}
+
+        {% if user.role in ['admin', 'accountant'] or (purchase.status in ['submitted', 'rejected'] and purchase.created_by == user.id) %}
+        <div style="margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--gray-200);">
+            <form method="POST">
+                <input type="hidden" name="action" value="to_draft">
+                <button type="submit" class="btn btn-outline-secondary btn-block btn-sm" style="font-weight: 700; padding: 8px;"
+                        onclick="return confirm('{{ 'هل أنت متأكد من إعادة هذا السند إلى مسودة؟ سيتم التراجع عن أي حركات مخزنية واعتمادات مسجلة.' if lang == 'ar' else 'Are you sure you want to revert this voucher to draft? Any stock movements will be rolled back.' }}')">
+                    📝 {{ 'إعادة فتح السند كمسودة للتعديل' if lang == 'ar' else 'Revert Voucher to Draft for Editing' }}
+                </button>
+            </form>
+        </div>
+        {% endif %}
     </div>
 </div>
+
+<!-- نافذة تأكيد حذف سند الاستلام -->
+<div id="deletePurchaseModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.65); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:white; border-radius:16px; width:100%; max-width:460px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); overflow:hidden;">
+        <div style="background:#fef2f2; padding:18px 24px; border-bottom:1px solid #fee2e2; display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0; font-size:16px; font-weight:800; color:#991b1b; display:flex; align-items:center; gap:8px;">
+                <span>🗑️</span> <span>{{ 'تأكيد حذف سند الاستلام' if lang == 'ar' else 'Confirm Delete Receipt Voucher' }} #{{ purchase.invoice_number or purchase.id }}</span>
+            </h3>
+            <button type="button" onclick="closeDeletePurchaseModal()" style="background:none; border:none; font-size:24px; color:#f87171; cursor:pointer; line-height:1; padding:0;">&times;</button>
+        </div>
+        
+        <form method="POST" style="padding:24px;">
+            <input type="hidden" name="action" value="delete_purchase">
+            
+            <p style="font-size:14px; color:#374151; line-height:1.6; margin-bottom:16px;">
+                {{ 'هل أنت متأكد من رغبتك في حذف سند الاستلام للمورد' if lang == 'ar' else 'Are you sure you want to delete this receipt voucher for supplier' }} (<strong>{{ purchase.supplier_name }}</strong>) {{ 'برقم' if lang == 'ar' else 'with number' }} (<strong>{{ purchase.invoice_number or '#' ~ purchase.id }}</strong>)؟
+            </p>
+
+            <div style="background:#fff1f2; border:1px solid #fecdd3; border-radius:8px; padding:12px 14px; font-size:13px; color:#9f1239; margin-bottom:20px; line-height:1.5;">
+                ⚠️ <strong>{{ 'أثر الحذف:' if lang == 'ar' else 'Deletion Impact:' }}</strong>
+                <ul style="margin: 6px 0 0 16px; padding: 0;">
+                    <li>{{ 'سيتم حذف جميع بنود السند' if lang == 'ar' else 'All lines will be deleted' }} ({{ purchase.lines|length }} {{ 'صنف' if lang == 'ar' else 'items' }}).</li>
+                    <li>{{ 'سيتم عكس أي حركات مخزنية تم تسجيلها لهذا السند فوراً وإلغاء أثرها من الرصيد.' if lang == 'ar' else 'Any stock movements will be rolled back immediately.' }}</li>
+                    <li>{{ 'سيتم إلغاء أي مهام ترحيل معلقة في طابور فوديكس.' if lang == 'ar' else 'Any pending sync queue tasks will be removed.' }}</li>
+                </ul>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #f1f5f9; padding-top:16px;">
+                <button type="button" class="btn btn-secondary" onclick="closeDeletePurchaseModal()">
+                    {{ t('cancel') }}
+                </button>
+                <button type="submit" class="btn btn-danger" style="padding:10px 20px; font-weight:700;">
+                    🗑️ {{ 'نعم، حذف السند نهائياً' if lang == 'ar' else 'Yes, Delete Permanently' }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openDeletePurchaseModal() {
+    const m = document.getElementById("deletePurchaseModal");
+    if (m) m.style.display = "flex";
+}
+function closeDeletePurchaseModal() {
+    const m = document.getElementById("deletePurchaseModal");
+    if (m) m.style.display = "none";
+}
+</script>
 {% endblock %}

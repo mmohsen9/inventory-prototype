@@ -1,0 +1,1423 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}تعديل سند صرف بن محمص {{ dispatch.doc_number }}{% endblock %}
+
+{% block coffee_extra_css %}
+<style>
+    .coffee-form-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    .form-card {
+        background: #fff;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+        padding: 28px;
+        margin-bottom: 24px;
+    }
+    .form-header-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--gray-200);
+        padding-bottom: 16px;
+        margin-bottom: 22px;
+    }
+    .form-header-title h2 {
+        font-size: 19px;
+        font-weight: 800;
+        color: var(--gray-900);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .form-row-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        margin-bottom: 16px;
+    }
+    .form-group {
+        margin-bottom: 16px;
+    }
+    .form-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--gray-700);
+        margin-bottom: 6px;
+    }
+    .form-control {
+        width: 100%;
+        padding: 9px 12px;
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-sm);
+        font-family: inherit;
+        font-size: 13px;
+    }
+    .form-control:focus {
+        border-color: #b45309;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.12);
+    }
+    .sale-section {
+        background: #f0fdf4;
+        border: 1px solid #86efac;
+        border-radius: var(--radius-sm);
+        padding: 16px;
+        margin-bottom: 18px;
+    }
+    .item-add-box {
+        background: #fffbeb;
+        border: 1.5px solid #fde68a;
+        border-radius: var(--radius-md);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .item-add-title {
+        font-weight: 800;
+        color: #b45309;
+        margin-bottom: 14px;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .search-wrap {
+        position: relative;
+        margin-bottom: 14px;
+    }
+    .search-wrap input {
+        background: #fff;
+        padding-right: 36px;
+    }
+    .search-icon-inside {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #92400e;
+        pointer-events: none;
+    }
+    .search-results-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        left: 0;
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        z-index: 1000;
+        box-shadow: var(--shadow-lg);
+        max-height: 240px;
+        overflow-y: auto;
+    }
+    .search-result-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 13px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .search-result-item:hover {
+        background: #fffbeb;
+        color: #78350f;
+    }
+    .line-inputs-grid {
+        display: grid;
+        grid-template-columns: 1.8fr 1.3fr 1.1fr 1.4fr;
+        gap: 14px;
+        align-items: flex-end;
+    }
+    @media (max-width: 900px) {
+        .line-inputs-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+    @media (max-width: 600px) {
+        .line-inputs-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .barcode-box {
+        margin-bottom: 18px;
+        background: #faf5ff;
+        padding: 12px 18px;
+        border-radius: var(--radius-md);
+        border: 1px dashed #d8b4fe;
+    }
+    .barcode-box label {
+        font-size: 12px;
+        font-weight: 700;
+        color: #6b21a8;
+        display: block;
+        margin-bottom: 6px;
+    }
+</style>
+{% endblock %}
+
+{% block coffee_content %}
+<div class="coffee-form-container">
+
+    <div class="form-card">
+        <div class="form-header-title">
+            <div>
+                <h2>
+                    <span>{% if is_readonly %}👁️ عرض تفاصيل سند صرف بن محمص:{% else %}✏️ تعديل سند صرف بن محمص:{% endif %}</span>
+                    <span style="color: #b45309; font-family: monospace;">{{ dispatch.doc_number }}</span>
+                    <span class="status-pill" style="font-size: 11px; font-weight: 700; background: {% if dispatch.status == 'approved' %}#ecfdf5; color: #047857;{% else %}#fffbeb; color: #b45309;{% endif %}">
+                        {{ dispatch.status_label_ar }}
+                    </span>
+                </h2>
+                <div style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">
+                    <span>المستودع المصدر: <strong>{{ rw.name_ar }}</strong></span>
+                    {% if is_readonly %}
+                    <span style="margin-right: 8px; color: #0369a1; font-weight: 700;">(وضع المطالعة والاطلاع — السند معتمد ومقفل)</span>
+                    {% elif session.get('role') == 'admin' %}
+                    <span style="margin-right: 8px; color: #1d4ed8; font-weight: 700;">(صلاحية مدير النظام)</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <a href="{{ url_for('coffee.dispatches_list') }}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-weight: 700; font-size: 13px; border-radius: var(--radius-sm); text-decoration: none; border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700); box-shadow: var(--shadow-sm); transition: all 0.2s;">
+                    ⬅️ رجوع للخلف
+                </a>
+                <a href="{{ url_for('coffee.roasted_dispatch_print', dispatch_id=dispatch.id) }}" target="_blank" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-weight: 700; font-size: 13px; border-radius: var(--radius-sm); text-decoration: none; border: 1px solid var(--gray-300); background: #f8fafc; color: var(--gray-700);">
+                    🖨️ طباعة
+                </a>
+            </div>
+        </div>
+
+        {% if dispatch.status == 'draft' %}
+        <div style="background: #fffbeb; border: 1.5px solid #f59e0b; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 26px;">📝</span>
+                <div>
+                    <div style="font-weight: 800; font-size: 13.5px; color: #92400e;">
+                        سند صرف مسودة غير معتمد (رقم المستند: {{ dispatch.doc_number }})
+                    </div>
+                    <div style="font-size: 12px; color: #78350f; margin-top: 2px;">
+                        {% if dispatch.dispatch_type == 'branch' %}
+                        هذه المسودة مخصصة لـ <strong>{{ dispatch.branch_location.name_ar if dispatch.branch_location else 'الفرع المستلم' }}</strong>. لن يتم إنشاء مسودات جديدة لنفس الفرع لتجنب تكرار الأرقام. يمكنك استكمال الأصناف والاعتماد، أو حذف المسودة.
+                        {% else %}
+                        يمكنك استكمال تعديل الأصناف والتوقيع ثم الاعتماد، أو حذف وإلغاء هذه المسودة لتحرير الرقم.
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div>
+                <button type="button" onclick="if(confirm('⚠️ هل أنت متأكد من حذف وإلغاء هذه المسودة نهائياً؟ سيتم تحرير رقم السند {{ dispatch.doc_number }} ولن يمكن استرجاعها.')) { document.getElementById('deleteDraftFormBottom').submit(); }" style="background: #fee2e2; border: 1.5px solid #fca5a5; color: #b91c1c; padding: 8px 16px; font-weight: 700; font-size: 13px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                    🗑️ إلغاء وحذف المسودة
+                </button>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if is_readonly %}
+        <div style="background: #f0fdfa; border: 1.5px solid #99f6e4; border-radius: 8px; padding: 12px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 24px;">👁️</span>
+            <div>
+                <div style="font-weight: 800; font-size: 13px; color: #0f766e;">
+                    وضع العرض والاطلاع (السند معتمد ومقفل للمحاسبة والعمليات)
+                </div>
+                <div style="font-size: 12px; color: #115e59; margin-top: 2px;">
+                    يمكنك استعراض تفاصيل السند، أصناف البن المحمص والتعبئة، حالة ربط فوديكس وزيرو، وطباعة السند الرسمي. (تعديل وحفظ السندات المعتمدة متاح لمدير النظام حصرياً).
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- بطاقة تكامل Xero المباشرة -->
+        {% if dispatch.dispatch_type in ('sale', 'branch') %}
+        <div style="background: #f8fafc; border: 1.5px solid {% if dispatch.xero_status == 'posted' %}#86efac{% elif dispatch.xero_status == 'failed' %}#fca5a5{% else %}#cbd5e1{% endif %}; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 20px;">{% if dispatch.xero_status == 'posted' %}✅{% elif dispatch.xero_status == 'failed' %}❌{% else %}⚡{% endif %}</span>
+                <div>
+                    <div style="font-weight: 800; font-size: 13px; color: var(--gray-800);">
+                        التكامل المحاسبي مع Xero:
+                        {% if dispatch.dispatch_type == 'sale' %}
+                            (فاتورة مبيعات معتمدة 15% ضريبة)
+                        {% else %}
+                            (إشعار دائن للفرع مسدد بمخزون فودكس 631)
+                        {% endif %}
+                    </div>
+                    <div style="font-size: 12px; color: var(--gray-600); margin-top: 2px;">
+                        {% if dispatch.xero_status == 'posted' %}
+                            <span style="color: #15803d; font-weight: 700;">تم الترحيل بنجاح</span> — رقم المستند: <strong>{{ dispatch.xero_invoice_number or dispatch.xero_invoice_id }}</strong>
+                            {% if dispatch.xero_posted_at %}({{ dispatch.xero_posted_at.strftime('%Y-%m-%d %H:%M') }}){% endif %}
+                        {% elif dispatch.xero_status == 'failed' %}
+                            <span style="color: #b91c1c; font-weight: 700;">تعذر الترحيل:</span> {{ dispatch.xero_error }}
+                        {% else %}
+                            لم يتم الترحيل بعد — يمكنك مراجعة بنود السند ثم ترحيله مباشرة بنقرة واحدة.
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div>
+                {% if (dispatch.xero_status != 'posted' or session.get('role') == 'admin') and dispatch.status == 'approved' %}
+                <form method="POST" action="{{ url_for('coffee.roasted_dispatch_post_xero', dispatch_id=dispatch.id) }}" style="margin: 0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-sm" style="background: {% if dispatch.dispatch_type == 'sale' %}#15803d{% elif dispatch.dispatch_type in ('sample', 'internal_use') %}#9d174d{% else %}#1e3a8a{% endif %}; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                        ⚡ {% if dispatch.xero_status == 'failed' %}إعادة المحاولة{% else %}ترحيل لـ Xero{% endif %} ({% if dispatch.dispatch_type == 'sale' %}فاتورة مبيعات معتمدة{% elif dispatch.dispatch_type in ('sample', 'internal_use') %}إشعار دائن 345{% else %}إشعار دائن 631{% endif %})
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if dispatch.customer_signature %}
+        <div style="background: #fffbeb; border: 1.5px solid #f59e0b; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px;">
+            <span style="font-size: 26px;">🔒</span>
+            <div>
+                <div style="font-weight: 800; font-size: 14px; color: #92400e;">
+                    السند موثق رسمياً بتوقيع العميل المستلم — الكميات واسم العميل مقفلة نظامياً
+                </div>
+                <div style="font-size: 12px; color: #78350f; margin-top: 3px; line-height: 1.6;">
+                    نظراً لاعتماد هذا السند واستلام البضاعة وتوثيق التوقيع الحي للعميل، تم قفل اسم العميل وقائمة الأصناف والكميات نظامياً لمنع أي تغيير أو تلاعب. يُسمح لك فقط بتحديث الملاحظات العامة على السند.
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('coffee.roasted_dispatch_edit', dispatch_id=dispatch.id) }}" id="dispatchForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <fieldset {% if is_readonly %}disabled style="border: none; padding: 0; margin: 0;"{% else %}style="border: none; padding: 0; margin: 0;"{% endif %}>
+            <!-- معلومات السند الأساسية -->
+            <div class="form-row-2" style="grid-template-columns: 1fr 1fr 1fr;">
+                <div class="form-group">
+                    <label>رقم السند *</label>
+                    <input type="text" name="doc_number" class="form-control" value="{{ dispatch.doc_number }}" required style="font-weight: 800; font-family: monospace;" {% if dispatch.customer_signature %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>
+                    <small style="color: #64748b; font-size: 11px;">تعديل الرقم يتيح تصحيح أي تعارض في أرقام Xero</small>
+                </div>
+                <div class="form-group">
+                    <label>تاريخ السند *</label>
+                    <input type="date" name="dispatch_date" class="form-control" value="{{ dispatch.dispatch_date }}" required {% if dispatch.customer_signature %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>
+                </div>
+                <div class="form-group">
+                    <label>وقت الصرف</label>
+                    <input type="time" name="dispatch_time" class="form-control" value="{{ dispatch.dispatch_time or '' }}" {% if dispatch.customer_signature %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>نوع وغرض الصرف *</label>
+                <select name="dispatch_type" id="dispatchTypeSelect" class="form-control" onchange="onDispatchTypeChange()" required {% if dispatch.customer_signature %}disabled style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>
+                    <option value="branch" {% if dispatch.dispatch_type == 'branch' %}selected{% endif %}>🏢 صرف لفرع</option>
+                    <option value="sale" {% if dispatch.dispatch_type == 'sale' %}selected{% endif %}>💰 صرف للبيع</option>
+                    <option value="sample" {% if dispatch.dispatch_type == 'sample' %}selected{% endif %}>🧪 صرف عينات فحص وتذوق</option>
+                    <option value="internal_use" {% if dispatch.dispatch_type == 'internal_use' %}selected{% endif %}>☕ استخدام داخلي وتجارب</option>
+                    <option value="damaged" {% if dispatch.dispatch_type == 'damaged' %}selected{% endif %}>🗑️ صرف تالف / هالك</option>
+                    <option value="other" {% if dispatch.dispatch_type == 'other' %}selected{% endif %}>📌 صرف آخر</option>
+                </select>
+                {% if dispatch.customer_signature %}
+                <input type="hidden" name="dispatch_type" value="{{ dispatch.dispatch_type }}">
+                {% endif %}
+            </div>
+
+            <!-- اختيار الفرع: يظهر عند الصرف لفرع -->
+            <div class="form-group" id="branchSelectGroup" style="display: {% if dispatch.dispatch_type == 'branch' %}block{% else %}none{% endif %};">
+                <label>الفرع المستلم (فروع فوديكس المعتمدة) *</label>
+                <select name="branch_location_id" id="branchLocationId" class="form-control" {% if dispatch.customer_signature %}disabled{% endif %}>
+                    <option value="">-- اختر الفرع المستلم --</option>
+                    {% for b in branches %}
+                    <option value="{{ b.id }}" {% if dispatch.branch_location_id == b.id %}selected{% endif %}>
+                        🏢 {{ b.name_ar }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <small style="color: #0369a1; font-size: 11px; margin-top: 4px; display: block;">
+                    ⚡ سيتم تحديث سند التحويل المخزني للفرع بصنف [sk-0535] بن محمص عام وتحديث رصيد الفرع تلقائياً.
+                </small>
+            </div>
+
+            <!-- تفاصيل البيع: تظهر عند اختيار بيع -->
+            <div class="sale-section" id="saleSection" style="display: {% if dispatch.dispatch_type == 'sale' %}block{% else %}none{% endif %}; background: #f8fafc; border: 1.5px solid #bbf7d0; border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px;">
+                <div style="font-weight: 800; color: #15803d; margin-bottom: 12px; font-size: 13px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>💰 بيانات العميل والتسليم (سند صرف للبيع)</span>
+                    {% if dispatch.customer_signature %}
+                    <span style="font-size: 11px; color: #92400e; background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-weight: 700;">🔒 مقفل بالتوقيع</span>
+                    {% endif %}
+                </div>
+                <div class="form-row-3" style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #166534; display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px;">
+                            <span>اسم العميل / الجهة المشترية * {% if not dispatch.customer_signature %}<button type="button" onclick="promptAddNewCustomer()" style="background:none; border:none; color:#15803d; text-decoration:underline; font-size:11px; cursor:pointer; padding:0 4px;" title="إضافة عميل جديد">+ إضافة عميل</button>{% endif %}</span>
+                            <span id="customerMatchBadge" style="display:{% if dispatch.customer_id or dispatch.customer_phone %}inline-block{% else %}none{% endif %}; font-size:10px; background:#dcfce7; color:#15803d; padding:1px 6px; border-radius:4px; font-weight:700;">🟢 عميل مسجل مسبقاً ✓</span>
+                        </label>
+                        <input type="text" name="customer_name" id="customerName" class="form-control" list="customerNamesList" placeholder="اسم العميل أو الكافيه..." autocomplete="off" oninput="onCustomerInput('name')" value="{{ dispatch.customer_name if dispatch.dispatch_type == 'sale' else '' }}" {% if dispatch.customer_signature %}readonly style="background: #f1f5f9; cursor: not-allowed; font-weight: 700;"{% endif %}>
+                        <datalist id="customerNamesList">
+                            {% for c in customers %}
+                            <option value="{{ c.name }}" data-phone="{{ c.phone or '' }}">{{ c.name }}{% if c.phone %} ({{ c.phone }}){% endif %}</option>
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #166534; display: block; margin-bottom: 5px;">رقم جوال العميل</label>
+                        <input type="text" name="customer_phone" id="customerPhone" class="form-control" list="customerPhonesList" placeholder="05xxxxxxxx" dir="ltr" style="text-align: right;" autocomplete="off" oninput="onCustomerInput('phone')" value="{{ dispatch.resolved_customer_phone or dispatch.customer_phone or '' }}" {% if dispatch.customer_signature %}readonly style="background: #f1f5f9; cursor: not-allowed; font-weight: 700;"{% endif %}>
+                        <datalist id="customerPhonesList">
+                            {% for c in customers %}
+                            {% if c.phone %}
+                            <option value="{{ c.phone }}" data-name="{{ c.name }}">{{ c.phone }} - {{ c.name }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #166534; display: block; margin-bottom: 5px;">طريقة تسليم البضاعة *</label>
+                        <select name="delivery_method" id="deliveryMethodSelect" class="form-control" onchange="onDeliveryMethodChange()" style="font-weight: 700;" {% if dispatch.customer_signature %}disabled{% endif %}>
+                            <option value="direct" {% if dispatch.delivery_method != 'shipping' %}selected{% endif %}>👤 تسليم يدوي مباشر للعميل (توقيع العميل)</option>
+                            <option value="shipping" {% if dispatch.delivery_method == 'shipping' %}selected{% endif %}>🚚 شحن عبر شركة نقل (سمسا / ناقل / أخرى - بدون توقيع)</option>
+                        </select>
+                        {% if dispatch.customer_signature %}
+                        <input type="hidden" name="delivery_method" value="{{ dispatch.delivery_method or 'direct' }}">
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- صندوق تفاصيل الشحن: يظهر عند اختيار شحن عبر شركة نقل -->
+                <div id="shippingDetailsBox" style="display: {% if dispatch.delivery_method == 'shipping' %}block{% else %}none{% endif %}; background: #eff6ff; border: 1.5px dashed #93c5fd; border-radius: 8px; padding: 14px; margin-top: 10px;">
+                    <div style="font-weight: 800; font-size: 12px; color: #1e40af; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                        <span>📦 بيانات الشحن والناقل:</span>
+                        <small style="color: #64748b; font-weight: normal;">(لا يطلب توقيع العميل بالاستلام ويكتفى ببيانات الشحن)</small>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #1e3a8a; display: block; margin-bottom: 4px;">شركة الشحن / الناقل *</label>
+                            {% set is_preset_co = dispatch.shipping_company in ['سمسا', 'ناقل', 'أرامكس', 'سبل', 'دي اتش ال'] %}
+                            <select name="shipping_company" id="shippingCompanySelect" class="form-control" onchange="onShippingCompanyChange()">
+                                <option value="سمسا" {% if dispatch.shipping_company == 'سمسا' %}selected{% endif %}>سمسا (SMSA Express)</option>
+                                <option value="ناقل" {% if dispatch.shipping_company == 'ناقل' %}selected{% endif %}>ناقل (Naqel Express)</option>
+                                <option value="أرامكس" {% if dispatch.shipping_company == 'أرامكس' %}selected{% endif %}>أرامكس (Aramex)</option>
+                                <option value="سبل" {% if dispatch.shipping_company == 'سبل' %}selected{% endif %}>سبل (SPL - البريد السعودي)</option>
+                                <option value="دي اتش ال" {% if dispatch.shipping_company == 'دي اتش ال' %}selected{% endif %}>دي إتش إل (DHL)</option>
+                                <option value="other" {% if dispatch.shipping_company and not is_preset_co %}selected{% endif %}>شركة شحن أخرى / ناقل خاص...</option>
+                            </select>
+                            <input type="text" name="shipping_company_other" id="shippingCompanyOther" class="form-control" placeholder="اكتب اسم شركة النقل..." value="{{ dispatch.shipping_company if (dispatch.shipping_company and not is_preset_co) else '' }}" style="display: {% if dispatch.shipping_company and not is_preset_co %}block{% else %}none{% endif %}; margin-top: 6px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #1e3a8a; display: block; margin-bottom: 4px;">المدينة / وجهة الشحن *</label>
+                            {% set saudi_cities = ['الخبر', 'الدمام', 'الرياض', 'جدة', 'مكة المكرمة', 'المدينة المنورة', 'الأحساء', 'الجبيل', 'الهفوف', 'القطيف', 'الطائف', 'ينبع', 'تبوك', 'حائل', 'بريدة', 'عنيزة', 'دخنه', 'أبها', 'خميس مشيط', 'جازان', 'نجران', 'الخرج', 'حفر الباطن', 'عرعر', 'سكاكا', 'بيشة', 'دوادمي', 'وادي الدواسر', 'شرورة', 'القنفذة'] %}
+                            {% set current_dest = dispatch.shipping_destination or '' %}
+                            {% set is_preset_city = current_dest in saudi_cities %}
+                            <select name="shipping_destination_select" id="shippingDestinationSelect" class="form-control" onchange="onShippingDestinationChange()">
+                                <option value="">-- اختر وجهة الشحن أو أضف مدينة جديدة --</option>
+                                {% for c in saudi_cities %}
+                                <option value="{{ c }}" {% if current_dest == c %}selected{% endif %}>{{ c }}</option>
+                                {% endfor %}
+                                <option value="other" {% if current_dest and not is_preset_city %}selected{% endif %}>➕ إضافة مدينة / وجهة أخرى غير موجودة بالقائمة...</option>
+                            </select>
+                            <input type="text" name="shipping_destination_other" id="shippingDestinationOther" class="form-control" placeholder="اكتب اسم المدينة أو الوجهة الجديدة هنا..." value="{{ current_dest if (current_dest and not is_preset_city) else '' }}" style="display: {% if current_dest and not is_preset_city %}block{% else %}none{% endif %}; margin-top: 6px;">
+                            <input type="hidden" name="shipping_destination" id="shippingDestination" value="{{ current_dest }}">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #1e3a8a; display: block; margin-bottom: 4px;">رقم بوليصة الشحن (Waybill) <small style="color: #64748b;">(اختياري)</small></label>
+                            <input type="text" name="shipping_tracking_number" id="shippingTrackingNumber" class="form-control" placeholder="رقم التتبع / البوليصة..." value="{{ dispatch.shipping_tracking_number or '' }}">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #1e3a8a; display: block; margin-bottom: 4px;">تكلفة الشحن لـ Xero (ر.س قبل الضريبة)</label>
+                            <input type="number" step="0.01" min="0" name="shipping_fee" id="shippingFeeInput" class="form-control" placeholder="تلقائي حسب الوزن" value="{{ dispatch.shipping_fee or '' }}" style="font-weight: 700; color: #1e40af;">
+                            <small style="color: #64748b; font-size: 10px; display: block; margin-top: 3px;">حساب 261 (ايرادات شحن وتوصيل) + 15% ضريبة</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- سبب الصرف في الحالات الأخرى -->
+            <div class="form-group" id="reasonGroup" style="display: {% if dispatch.dispatch_type not in ['branch', 'sale'] %}block{% else %}none{% endif %};">
+                <label>سبب وتفاصيل الصرف *</label>
+                <input type="text" name="issue_reason" id="issueReason" class="form-control" placeholder="وضح سبب الصرف..." value="{{ dispatch.issue_reason or '' }}">
+            </div>
+
+            {% if not is_readonly and (not dispatch.customer_signature or dispatch.status == 'draft') %}
+            <!-- 📷 قارئ الباركود الموحد السريع -->
+            <div class="barcode-box">
+                <label>📷 قارئ الباركود / Barcode Scanner (مسح متتابع وسريع):</label>
+                <input type="text" id="barcodeScannerInput" class="form-control" placeholder="امسح الباركود بجهاز المسح واضغط Enter للاختيار المباشر..." autocomplete="off">
+            </div>
+
+            <!-- صندوق إضافة وتعديل صنف محمص بتناسق تام -->
+            <div class="item-add-box">
+                <div class="item-add-title">
+                    <span>➕ إضافة / تعديل صنف في سند الصرف:</span>
+                </div>
+
+                <!-- حقل البحث التفاعلي العريض -->
+                <div class="search-wrap">
+                    <span class="search-icon-inside">🔍</span>
+                    <input type="text" id="roastedSearchInput" class="form-control" placeholder="ابحث بكود الصنف [RB] أو اسمه بالعربي أو الإنجليزي واضغط عليه للاختيار..." autocomplete="off">
+                    <div id="roastedSearchResults" class="search-results-dropdown"></div>
+                </div>
+
+                <!-- شبكة بيانات الصنف المتناسقة (عرض الكميات والتعبئة دون أسعار) -->
+                <div class="line-inputs-grid" id="lineInputsGrid">
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 700; color: var(--gray-700); margin-bottom: 5px;">الصنف المحمص المختار (RB) *</label>
+                        <select name="coffee_item_id" id="roastedItemSelect" class="form-control" onchange="onRoastedSelectChange()">
+                            <option value="">-- اختر الصنف المحمص --</option>
+                            {% for r in roasted_items %}
+                            <option value="{{ r.id }}" data-code="{{ r.xero_item_code }}" data-sale="{{ r.sale_price_per_kg or 0 }}">
+                                [{{ r.xero_item_code }}] {{ r.name_ar or r.xero_item_code }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 700; color: var(--gray-700); margin-bottom: 5px;">نوع التعبئة والتجزئة *</label>
+                        <select id="inputPackageType" class="form-control" onchange="onPackageTypeChange()" style="font-weight: 700;">
+                            <option value="bulk" data-weight="1.0">📦 حبوب بالكيلو (عام / فرع)</option>
+                            <option value="250g" data-weight="0.25">🛍️ أكياس ربع كيلو (250g) - فوديكس</option>
+                            <option value="1kg" data-weight="1.0">🛍️ أكياس 1 كيلو (1kg) - فوديكس</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label id="lblQtyKg" style="display: block; font-size: 11px; font-weight: 700; color: var(--gray-700); margin-bottom: 5px;">الكمية المصروفة (كجم) *</label>
+                        <input type="number" step="0.01" min="0.01" name="qty_kg" id="inputQtyKg" class="form-control" placeholder="0.00" oninput="onQtyInputChange()" style="font-weight: 700; color: #b45309;">
+                        <div id="pkgWeightHint" style="display: none; font-size: 11px; color: #0284c7; font-weight: 700; margin-top: 4px;"></div>
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 700; color: var(--gray-700); margin-bottom: 5px;">ملاحظة على الصنف</label>
+                        <input type="text" id="inputLineNotes" class="form-control" placeholder="ملاحظات الصنف...">
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px;">
+                    <button type="button" id="btnCancelEdit" onclick="cancelEditLine()" class="btn-secondary" style="display: none; padding: 8px 18px; font-weight: 700;">
+                        إلغاء التعديل
+                    </button>
+                    <button type="button" id="btnAddLine" onclick="addOrUpdateLine()" class="btn-primary" style="background: #b45309; border: none; padding: 8px 24px; font-weight: 700; color: #fff; border-radius: var(--radius-sm); cursor: pointer;">
+                        ➕ إضافة الصنف للسند
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- جدول الأصناف المضافة للسند (عرض الكميات فقط) -->
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="font-weight: 800; font-size: 14px; color: var(--navy-dark);">
+                        📋 الأصناف المضافة في هذا السند (<span id="lineCountBadge">0</span> أصناف):
+                    </label>
+                </div>
+
+                <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                    <table class="data-table" style="width: 100%; border-collapse: collapse; margin-bottom: 0;">
+                        <thead>
+                            <tr style="background: #f8fafc; text-align: right;">
+                                <th style="padding: 10px 14px; width: 40px;">#</th>
+                                <th style="padding: 10px 14px;">كود واسم الصنف المحمص</th>
+                                <th style="padding: 10px 14px; width: 150px;">نوع التعبئة</th>
+                                <th style="padding: 10px 14px; width: 160px;">الكمية الإجمالية (كجم)</th>
+                                <th style="padding: 10px 14px;">ملاحظات</th>
+                                <th style="padding: 10px 14px; width: 110px; text-align: center;">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="linesTableBody">
+                            <tr id="emptyRow">
+                                <td colspan="6" style="text-align: center; padding: 24px; color: #94a3b8;">
+                                    لم يتم إضافة أصناف بعد. اختر الصنف والكمية أعلاه واضغط على "إضافة الصنف للسند".
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot id="tableFooter" style="background: #f1f5f9; font-weight: 700; display: none;">
+                            <tr>
+                                <td colspan="3" style="padding: 12px 14px;">الإجمالي الكلي للسند:</td>
+                                <td id="footerTotalQty" style="padding: 12px 14px; color: #b45309; font-size: 14px;">0.00 كجم</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- حاوية الحقول المخفية للنموذج -->
+                <div id="hiddenFormInputs"></div>
+            </div>
+
+            <div class="form-group">
+                <label>ملاحظات عامة على السند</label>
+                <textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات اختيارية حول السند أو التسليم...">{{ dispatch.notes or '' }}</textarea>
+            </div>
+
+            <!-- ✍️ خانة التوقيع الحي بالاستلام - في آخر الصفحة للسندات (تظهر عند الصرف للبيع وإلزامية للاعتماد) -->
+            <div id="signatureSection" style="display: {% if dispatch.dispatch_type == 'sale' %}block{% else %}none{% endif %}; margin-top: 24px; background: #f0fdf4; border: 2px dashed #86efac; border-radius: 8px; padding: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <label style="font-size: 13px; font-weight: 800; color: #166534; display: flex; align-items: center; gap: 6px; margin: 0;">
+                        ✍️ توقيع العميل بالاستلام (إلزامي لاعتماد السند) *
+                    </label>
+                    {% if not dispatch.customer_signature or dispatch.status == 'draft' %}
+                    <button type="button" class="btn-sm" onclick="clearSignaturePad()" style="background: #ffffff; color: #15803d; border: 1px solid #86efac; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 700;">
+                        🔄 مسح وإعادة التوقيع
+                    </button>
+                    {% else %}
+                    <span style="font-size: 11px; font-weight: 700; color: #15803d; background: #dcfce7; padding: 3px 8px; border-radius: 4px;">
+                        ✅ توقيع العميل معتمد ومحفوظ
+                    </span>
+                    {% endif %}
+                </div>
+                <p style="font-size: 11px; color: #475569; margin: 0 0 10px 0;">
+                    يرجى توقيع العميل الحي بالإصبع مباشرة على شاشة الجوال أو بالماوس. <strong>لا يمكن اعتماد السند بدون التوقيع.</strong>
+                </p>
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 6px 12px; margin-bottom: 10px; font-size: 11px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
+                    <span>ℹ️</span>
+                    <span><strong>ملاحظة:</strong> توقيع العميل مخصص للاعتماد والتسليم النهائي فقط؛ عند حفظ السند كمسودة لا يُقبل التوقيع.</span>
+                </div>
+                <div id="signatureWrapper" style="border: 2px solid #93c5fd; border-radius: 6px; background: #ffffff; position: relative; touch-action: none; width: 100%; max-width: 520px; height: 160px;">
+                    <canvas id="signatureCanvas" width="520" height="160" style="width: 100%; height: 100%; display: block; {% if dispatch.customer_signature and dispatch.status != 'draft' %}pointer-events: none; opacity: 0.95;{% else %}cursor: crosshair;{% endif %}"></canvas>
+                    <div id="signaturePlaceholder" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #94a3b8; font-size: 13px; pointer-events: none; user-select: none; {% if dispatch.customer_signature and dispatch.status != 'draft' %}display: none;{% endif %}">
+                        وقع هنا باللمس أو القلم ✍️
+                    </div>
+                </div>
+                <input type="hidden" name="customer_signature" id="customerSignatureInput" value="{% if dispatch.status != 'draft' %}{{ dispatch.customer_signature or '' }}{% endif %}">
+            </div>
+            </fieldset>
+
+            <!-- أزرار الإجراءات: حفظ كمسودة / اعتماد وتحديث السند -->
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
+                <a href="{{ url_for('coffee.dispatches_list') }}" class="btn-secondary" style="padding: 11px 22px; font-weight: 700; text-decoration: none; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px;">
+                    ⬅️ رجوع لقائمة السندات
+                </a>
+                <a href="{{ url_for('coffee.roasted_dispatch_print', dispatch_id=dispatch.id) }}" target="_blank" class="btn-secondary" style="background: #f8fafc; border: 1.5px solid #cbd5e1; color: #334155; padding: 11px 24px; font-weight: 700; text-decoration: none; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px;">
+                    🖨️ طباعة السند
+                </a>
+                {% if not is_readonly %}
+                    {% if dispatch.customer_signature and dispatch.status != 'draft' %}
+                    <button type="submit" name="form_action" value="save_notes" class="btn-primary" style="background: #1e3a8a; border: none; padding: 11px 32px; font-size: 14px; font-weight: 800; border-radius: var(--radius-sm); color: #fff; cursor: pointer;">
+                        💾 حفظ الملاحظات العامة (السند مقفل بالتوقيع)
+                    </button>
+                    {% else %}
+                    {% if dispatch.status == 'draft' %}
+                    <button type="button" onclick="if(confirm('⚠️ هل أنت متأكد من حذف وإلغاء هذه المسودة نهائياً؟ سيتم تحرير رقم السند {{ dispatch.doc_number }}.')) { document.getElementById('deleteDraftFormBottom').submit(); }" class="btn-secondary" style="background: #fef2f2; border: 1.5px solid #fca5a5; padding: 11px 20px; font-size: 14px; font-weight: 700; border-radius: var(--radius-sm); color: #dc2626; cursor: pointer;">
+                        🗑️ إلغاء وحذف المسودة
+                    </button>
+                    {% endif %}
+                    <button type="submit" name="form_action" value="draft" onclick="if(document.getElementById('customerSignatureInput')) document.getElementById('customerSignatureInput').value='';" class="btn-secondary" style="background: #f8fafc; border: 1.5px solid #cbd5e1; padding: 11px 24px; font-size: 14px; font-weight: 800; border-radius: var(--radius-sm); color: #334155; cursor: pointer;">
+                        📝 حفظ كمسودة
+                    </button>
+                    <button type="submit" name="form_action" value="approve" class="btn-primary" style="background: #b45309; border: none; padding: 11px 32px; font-size: 14px; font-weight: 800; border-radius: var(--radius-sm); color: #fff; cursor: pointer;">
+                        ✅ اعتماد وتحديث السند
+                    </button>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </form>
+
+        {% if dispatch.status == 'draft' or (session.get('role') == 'admin') %}
+        <form method="POST" action="{{ url_for('coffee.roasted_dispatch_delete', dispatch_id=dispatch.id) }}" id="deleteDraftFormBottom" style="display: none;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+const isCustomerSigned = {% if dispatch.customer_signature and dispatch.status != 'draft' %}true{% else %}false{% endif %};
+const isReadOnly = {% if is_readonly %}true{% else %}false{% endif %};
+const roastedItems = [
+    {% for r in roasted_items %}
+    {
+        "id": {{ r.id }},
+        "code": {{ r.xero_item_code|tojson }},
+        "name_ar": {{ (r.name_ar or r.xero_item_code)|tojson }},
+        "name_en": {{ (r.name_en or '')|tojson }},
+        "sale_price": {{ (r.sale_price_per_kg or 0)|float }},
+        "packages": [
+            {% for p in r.retail_packages %}
+            {
+                "type": {{ p.package_type|tojson }},
+                "name": {{ p.package_name_ar|tojson }},
+                "weight_kg": {{ p.weight_kg or 0.0 }},
+                "foodics_item_id": {{ p.foodics_item_id or 'null' }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ]
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+let dispatchLines = [
+    {% for l in dispatch.all_lines %}
+    {
+        item_id: {{ l.coffee_item_id }},
+        code: {{ (l.coffee_item.xero_item_code if l.coffee_item else '')|tojson }},
+        name: {{ (l.coffee_item.name_ar if l.coffee_item else '')|tojson }},
+        qty: {{ (l.qty_kg or 0.0)|float }},
+        price: 0,
+        notes: {{ (l.notes or '')|tojson }},
+        package_type: {{ (l.package_type or 'bulk')|tojson }},
+        package_qty: {{ (l.package_qty or 0.0)|float }},
+        package_weight_kg: {{ (l.package_weight_kg or 0.0)|float }},
+        foodics_item_id: {{ l.foodics_item_id or 'null' }},
+        package_label: {{ l.package_label_ar|tojson }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+let editingLineIndex = -1;
+
+window.onPackageTypeChange = function onPackageTypeChange() {
+    const pkgType = document.getElementById("inputPackageType") ? document.getElementById("inputPackageType").value : "bulk";
+    const lbl = document.getElementById("lblQtyKg");
+    const inp = document.getElementById("inputQtyKg");
+
+    if (pkgType === "250g") {
+        if (lbl) lbl.innerText = "عدد أكياس الربع كيلو (250g) *";
+        if (inp) {
+            inp.placeholder = "مثال: 20 كيس";
+            inp.step = "1";
+        }
+    } else if (pkgType === "1kg") {
+        if (lbl) lbl.innerText = "عدد أكياس الكيلو (1 كجم) *";
+        if (inp) {
+            inp.placeholder = "مثال: 5 أكياس";
+            inp.step = "1";
+        }
+    } else {
+        if (lbl) lbl.innerText = "الكمية المصروفة (كجم) *";
+        if (inp) {
+            inp.placeholder = "0.00";
+            inp.step = "0.01";
+        }
+    }
+    if (typeof window.onQtyInputChange === "function") window.onQtyInputChange();
+};
+
+window.onQtyInputChange = function onQtyInputChange() {
+    const pkgType = document.getElementById("inputPackageType") ? document.getElementById("inputPackageType").value : "bulk";
+    const inp = document.getElementById("inputQtyKg");
+    const hint = document.getElementById("pkgWeightHint");
+    if (!inp || !hint) return;
+
+    const val = parseFloat(inp.value) || 0;
+    if (pkgType === "250g" && val > 0) {
+        const totalKg = (val * 0.25).toFixed(2);
+        hint.style.display = "block";
+        hint.innerHTML = `⚖️ الوزن الإجمالي: <strong>${totalKg} كجم</strong> (خصم المحمصة: ${totalKg} كجم | استلام فوديكس: ${parseInt(val)} كيس)`;
+    } else if (pkgType === "1kg" && val > 0) {
+        hint.style.display = "block";
+        hint.innerHTML = `⚖️ الوزن الإجمالي: <strong>${val.toFixed(2)} كجم</strong> (${parseInt(val)} كيس)`;
+    } else {
+        hint.style.display = "none";
+        hint.innerHTML = "";
+    }
+};
+
+window.onDispatchTypeChange = function onDispatchTypeChange() {
+    const dtypeElem = document.getElementById("dispatchTypeSelect");
+    if (!dtypeElem) return;
+    const dtype = dtypeElem.value;
+    const branchGroup = document.getElementById("branchSelectGroup");
+    const saleSec = document.getElementById("saleSection");
+    const reasonGroup = document.getElementById("reasonGroup");
+    const sigSec = document.getElementById("signatureSection");
+
+    const custName = document.getElementById("customerName");
+
+    if (dtype === "branch") {
+        if (branchGroup) branchGroup.style.display = "block";
+        if (saleSec) saleSec.style.display = "none";
+        if (reasonGroup) reasonGroup.style.display = "none";
+        if (sigSec) sigSec.style.display = "none";
+        if (custName) custName.required = false;
+    } else if (dtype === "sale") {
+        if (branchGroup) branchGroup.style.display = "none";
+        if (saleSec) saleSec.style.display = "block";
+        if (reasonGroup) reasonGroup.style.display = "none";
+        if (custName) custName.required = true;
+        if (typeof window.onDeliveryMethodChange === "function") window.onDeliveryMethodChange();
+    } else {
+        if (branchGroup) branchGroup.style.display = "none";
+        if (saleSec) saleSec.style.display = "none";
+        if (reasonGroup) reasonGroup.style.display = "block";
+        if (sigSec) sigSec.style.display = "none";
+        if (custName) custName.required = false;
+    }
+    if (typeof renderLinesTable === "function") renderLinesTable();
+};
+
+window.onDeliveryMethodChange = function onDeliveryMethodChange() {
+    const dMethod = document.getElementById("deliveryMethodSelect") ? document.getElementById("deliveryMethodSelect").value : "direct";
+    const shippingBox = document.getElementById("shippingDetailsBox");
+    const sigSec = document.getElementById("signatureSection");
+    const dtype = document.getElementById("dispatchTypeSelect") ? document.getElementById("dispatchTypeSelect").value : "";
+
+    if (dMethod === "shipping") {
+        if (shippingBox) shippingBox.style.display = "block";
+        if (sigSec) sigSec.style.display = "none";
+    } else {
+        if (shippingBox) shippingBox.style.display = "none";
+        if (dtype === "sale" && sigSec) {
+            sigSec.style.display = "block";
+            setTimeout(initSignaturePad, 100);
+        }
+    }
+};
+
+const coffeeCustomersData = [
+    {% for c in customers %}
+    { name: {{ c.name|tojson }}, phone: {{ (c.phone or '')|tojson }} },
+    {% endfor %}
+];
+
+function onCustomerInput(field) {
+    const nameInput = document.getElementById("customerName");
+    const phoneInput = document.getElementById("customerPhone");
+    const badge = document.getElementById("customerMatchBadge");
+    if (!nameInput || !phoneInput || !badge) return;
+
+    const valName = nameInput.value.trim();
+    const valNameLower = valName.toLowerCase();
+    const valPhone = phoneInput.value.trim();
+
+    let matched = null;
+    if (field === 'phone' && valPhone.length >= 3) {
+        matched = coffeeCustomersData.find(c => c.phone && c.phone === valPhone);
+    } else if (field === 'name' && valNameLower.length >= 2) {
+        matched = coffeeCustomersData.find(c => c.name && c.name.toLowerCase() === valNameLower);
+    }
+
+    if (!matched) {
+        matched = coffeeCustomersData.find(c => 
+            (valPhone && c.phone && c.phone === valPhone) || 
+            (valNameLower && c.name && c.name.toLowerCase() === valNameLower)
+        );
+    }
+
+    if (matched) {
+        if (field === 'phone' && matched.name && !nameInput.value.trim()) {
+            nameInput.value = matched.name;
+        } else if (field === 'name' && matched.phone && !phoneInput.value.trim()) {
+            phoneInput.value = matched.phone;
+        }
+
+        if (!matched.phone && valPhone) {
+            badge.style.display = 'inline-block';
+            badge.style.background = '#eff6ff';
+            badge.style.color = '#1d4ed8';
+            badge.innerHTML = '🟢 مسجل (سيتم حفظ رقم الجوال له ✓)';
+        } else {
+            badge.style.display = 'inline-block';
+            badge.style.background = '#dcfce7';
+            badge.style.color = '#15803d';
+            badge.innerHTML = '🟢 عميل مسجل مسبقاً ✓';
+        }
+    } else if (valName.length >= 2) {
+        badge.style.display = 'inline-block';
+        badge.style.background = '#fef3c7';
+        badge.style.color = '#b45309';
+        badge.innerHTML = '✨ عميل جديد (سيُحفظ تلقائياً عند حفظ السند)';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+async function promptAddNewCustomer() {
+    const nameInput = document.getElementById("customerName");
+    const phoneInput = document.getElementById("customerPhone");
+    const defaultName = nameInput ? nameInput.value.trim() : '';
+    const defaultPhone = phoneInput ? phoneInput.value.trim() : '';
+
+    const name = prompt("أدخل اسم العميل / المنشأة الجديدة:", defaultName);
+    if (!name || !name.trim()) return;
+
+    const phone = prompt("أدخل رقم جوال العميل (اختياري، يمكن تركه فارغاً وتأكيده لاحقاً):", defaultPhone);
+
+    try {
+        const res = await fetch("{{ url_for('coffee.api_customers_new') }}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: name.trim(), phone: (phone || '').trim() })
+        });
+        const data = await res.json();
+        if (data.success && data.customer) {
+            coffeeCustomersData.push({ name: data.customer.name, phone: data.customer.phone || '' });
+            if (nameInput) nameInput.value = data.customer.name;
+            if (phoneInput) phoneInput.value = data.customer.phone || '';
+            onCustomerInput('name');
+            alert(`✅ تم حفظ وتأكيد العميل '${data.customer.name}' بنجاح`);
+        } else {
+            alert(data.error || 'تعذر إضافة العميل');
+        }
+    } catch (e) {
+        alert('حدث خطأ في الاتصال بالخادم');
+    }
+}
+
+function onShippingCompanyChange() {
+    const sel = document.getElementById("shippingCompanySelect");
+    const otherInp = document.getElementById("shippingCompanyOther");
+    if (sel && otherInp) {
+        otherInp.style.display = (sel.value === "other") ? "block" : "none";
+        if (sel.value === "other") otherInp.focus();
+    }
+}
+
+function onShippingDestinationChange() {
+    const sel = document.getElementById("shippingDestinationSelect");
+    const otherInp = document.getElementById("shippingDestinationOther");
+    const hiddenInp = document.getElementById("shippingDestination");
+    if (!sel) return;
+    if (sel.value === "other") {
+        if (otherInp) {
+            otherInp.style.display = "block";
+            otherInp.focus();
+            if (hiddenInp) hiddenInp.value = otherInp.value.trim();
+        }
+    } else {
+        if (otherInp) {
+            otherInp.style.display = "none";
+        }
+        if (hiddenInp) hiddenInp.value = sel.value;
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    const dOther = document.getElementById("shippingDestinationOther");
+    if (dOther) {
+        dOther.addEventListener("input", function() {
+            const hiddenInp = document.getElementById("shippingDestination");
+            if (hiddenInp) hiddenInp.value = this.value.trim();
+        });
+    }
+});
+
+// البحث التفاعلي في أصناف البن المحمص
+const rSearch = document.getElementById("roastedSearchInput");
+const rResults = document.getElementById("roastedSearchResults");
+
+if (rSearch && rResults) {
+    rSearch.addEventListener("input", function() {
+        const q = this.value.trim().toLowerCase();
+        if (!q) {
+            rResults.style.display = "none";
+            return;
+        }
+
+        const matches = (typeof roastedItems !== "undefined" ? roastedItems : []).filter(r => {
+            return (r.code && r.code.toLowerCase().includes(q)) ||
+                   (r.name_ar && r.name_ar.toLowerCase().includes(q)) ||
+                   (r.name_en && r.name_en.toLowerCase().includes(q));
+        });
+
+        rResults.innerHTML = "";
+        if (matches.length === 0) {
+            rResults.innerHTML = '<div style="padding: 10px; color: #94a3b8; font-size: 13px;">لا توجد أصناف مطابقة</div>';
+        } else {
+            matches.forEach(m => {
+                const div = document.createElement("div");
+                div.className = "search-result-item";
+                div.innerHTML = `<span><strong>[${m.code}]</strong> ${m.name_ar}</span><span style="color:#b45309; font-weight:700;">اختيار 👈</span>`;
+                div.onclick = function() {
+                    window.selectRoastedItem(m.id);
+                    rResults.style.display = "none";
+                    if (rSearch) rSearch.value = `[${m.code}] ${m.name_ar}`;
+                };
+                rResults.appendChild(div);
+            });
+        }
+        rResults.style.display = "block";
+    });
+}
+
+document.addEventListener("click", function(e) {
+    if (rSearch && rResults && !rSearch.contains(e.target) && !rResults.contains(e.target)) {
+        rResults.style.display = "none";
+    }
+});
+
+// قارئ الباركود الموحد السريع
+const bInput = document.getElementById("barcodeScannerInput");
+if (bInput) {
+    bInput.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const scanned = this.value.trim();
+            if (!scanned) return;
+
+            const found = (typeof roastedItems !== "undefined" ? roastedItems : []).find(r => r.code && r.code.toLowerCase() === scanned.toLowerCase());
+            if (found) {
+                window.selectRoastedItem(found.id);
+                if (rSearch) rSearch.value = `[${found.code}] ${found.name_ar}`;
+                this.value = "";
+                const qInp = document.getElementById("inputQtyKg");
+                if (qInp) qInp.focus();
+            } else {
+                alert(`لم يتم العثور على صنف بالباركود: ${scanned}`);
+            }
+        }
+    });
+}
+
+window.selectRoastedItem = function selectRoastedItem(itemId) {
+    const sel = document.getElementById("roastedItemSelect");
+    if (!sel) return;
+    sel.value = itemId;
+    if (typeof window.onRoastedSelectChange === "function") window.onRoastedSelectChange();
+};
+
+window.onRoastedSelectChange = function onRoastedSelectChange() {
+    const sel = document.getElementById("roastedItemSelect");
+    if (!sel) return;
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) return;
+
+    const code = opt.getAttribute("data-code") || "";
+    const name = opt.text;
+    if (rSearch) rSearch.value = name;
+    const qInp = document.getElementById("inputQtyKg");
+    if (qInp) qInp.focus();
+};
+
+window.addOrUpdateLine = function addOrUpdateLine() {
+    const sel = document.getElementById("roastedItemSelect");
+    const itemId = parseInt(sel.value);
+    const inputVal = parseFloat(document.getElementById("inputQtyKg").value);
+    const notes = document.getElementById("inputLineNotes").value.trim();
+    const pkgTypeSel = document.getElementById("inputPackageType");
+    const pkgType = pkgTypeSel ? pkgTypeSel.value : "bulk";
+
+    if (!itemId || isNaN(itemId)) {
+        alert("يرجى اختيار الصنف المحمص أولاً");
+        sel.focus();
+        return;
+    }
+    if (!inputVal || isNaN(inputVal) || inputVal <= 0) {
+        alert("يرجى إدخال كمية صحيحة أكبر من الصفر");
+        document.getElementById("inputQtyKg").focus();
+        return;
+    }
+
+    const item = roastedItems.find(r => r.id === itemId);
+    const itemCode = item ? item.code : "";
+    const itemName = item ? item.name_ar : "";
+
+    let qtyKg = inputVal;
+    let pkgQty = inputVal;
+    let pkgWeight = 1.0;
+    let pkgLabel = "بالكيلو (حبوب)";
+    let targetFoodicsItemId = null;
+
+    if (pkgType === "250g") {
+        pkgWeight = 0.25;
+        pkgQty = inputVal;
+        qtyKg = Math.round(pkgQty * pkgWeight * 10000) / 10000;
+        pkgLabel = `${parseInt(pkgQty)} كيس (250g)`;
+    } else if (pkgType === "1kg") {
+        pkgWeight = 1.0;
+        pkgQty = inputVal;
+        qtyKg = Math.round(pkgQty * pkgWeight * 10000) / 10000;
+        pkgLabel = `${parseInt(pkgQty)} كيس (1 كجم)`;
+    } else {
+        pkgWeight = 1.0;
+        pkgQty = inputVal;
+        qtyKg = inputVal;
+        pkgLabel = "بالكيلو (حبوب)";
+    }
+
+    if (item && item.packages) {
+        const pMatch = item.packages.find(p => p.type === pkgType);
+        if (pMatch) {
+            targetFoodicsItemId = pMatch.foodics_item_id;
+        }
+    }
+
+    const lineData = {
+        item_id: itemId,
+        code: itemCode,
+        name: itemName,
+        qty: qtyKg,
+        price: 0,
+        notes: notes,
+        package_type: pkgType,
+        package_qty: pkgQty,
+        package_weight_kg: pkgWeight,
+        foodics_item_id: targetFoodicsItemId,
+        package_label: pkgLabel
+    };
+
+    if (editingLineIndex >= 0) {
+        dispatchLines[editingLineIndex] = lineData;
+        editingLineIndex = -1;
+        document.getElementById("btnAddLine").innerHTML = "➕ إضافة الصنف للسند";
+        document.getElementById("btnCancelEdit").style.display = "none";
+    } else {
+        const existingIdx = dispatchLines.findIndex(l => l.item_id === itemId && l.package_type === pkgType);
+        if (existingIdx >= 0) {
+            if (confirm(`هذا الصنف مضاف مسبقاً بنفس نوع التعبئة (${pkgLabel}). هل تريد جمع الكمية الجديدة مع السابقة؟`)) {
+                dispatchLines[existingIdx].qty += qtyKg;
+                dispatchLines[existingIdx].package_qty += pkgQty;
+                if (pkgType === "250g") {
+                    dispatchLines[existingIdx].package_label = `${parseInt(dispatchLines[existingIdx].package_qty)} كيس (250g)`;
+                } else if (pkgType === "1kg") {
+                    dispatchLines[existingIdx].package_label = `${parseInt(dispatchLines[existingIdx].package_qty)} كيس (1 كجم)`;
+                }
+                if (notes) dispatchLines[existingIdx].notes = (dispatchLines[existingIdx].notes ? dispatchLines[existingIdx].notes + " - " : "") + notes;
+            } else {
+                return;
+            }
+        } else {
+            dispatchLines.push(lineData);
+        }
+    }
+
+    resetLineInputs();
+    renderLinesTable();
+}
+
+function editLine(idx) {
+    const line = dispatchLines[idx];
+    if (!line) return;
+
+    editingLineIndex = idx;
+    document.getElementById("roastedItemSelect").value = line.item_id;
+    document.getElementById("roastedSearchInput").value = `[${line.code}] ${line.name}`;
+    
+    const pkgSel = document.getElementById("inputPackageType");
+    if (pkgSel) {
+        pkgSel.value = line.package_type || "bulk";
+        onPackageTypeChange();
+    }
+    
+    if (line.package_type && line.package_type !== "bulk") {
+        document.getElementById("inputQtyKg").value = line.package_qty || (line.qty / (line.package_weight_kg || 0.25));
+    } else {
+        document.getElementById("inputQtyKg").value = line.qty;
+    }
+    onQtyInputChange();
+
+    document.getElementById("inputLineNotes").value = line.notes || "";
+
+    document.getElementById("btnAddLine").innerHTML = "💾 تحديث بيانات الصنف";
+    document.getElementById("btnCancelEdit").style.display = "inline-block";
+    document.getElementById("inputQtyKg").focus();
+}
+
+function cancelEditLine() {
+    editingLineIndex = -1;
+    resetLineInputs();
+    document.getElementById("btnAddLine").innerHTML = "➕ إضافة الصنف للسند";
+    document.getElementById("btnCancelEdit").style.display = "none";
+}
+
+function removeLine(idx) {
+    if (confirm("هل أنت متأكد من حذف هذا الصنف من السند؟")) {
+        dispatchLines.splice(idx, 1);
+        if (editingLineIndex === idx) {
+            cancelEditLine();
+        }
+        renderLinesTable();
+    }
+}
+
+function resetLineInputs() {
+    document.getElementById("roastedItemSelect").value = "";
+    document.getElementById("roastedSearchInput").value = "";
+    const pkgSel = document.getElementById("inputPackageType");
+    if (pkgSel) pkgSel.value = "bulk";
+    onPackageTypeChange();
+    document.getElementById("inputQtyKg").value = "";
+    onQtyInputChange();
+    document.getElementById("inputLineNotes").value = "";
+}
+
+function renderLinesTable() {
+    const tbody = document.getElementById("linesTableBody");
+    const hiddenDiv = document.getElementById("hiddenFormInputs");
+
+    tbody.innerHTML = "";
+    hiddenDiv.innerHTML = "";
+
+    document.getElementById("lineCountBadge").innerText = dispatchLines.length;
+
+    if (dispatchLines.length === 0) {
+        tbody.innerHTML = `
+            <tr id="emptyRow">
+                <td colspan="6" style="text-align: center; padding: 24px; color: #94a3b8;">
+                    لم يتم إضافة أصناف بعد. اختر الصنف والكمية أعلاه واضغط على "إضافة الصنف للسند".
+                </td>
+            </tr>
+        `;
+        document.getElementById("tableFooter").style.display = "none";
+        return;
+    }
+
+    let totalQty = 0;
+
+    dispatchLines.forEach((l, idx) => {
+        totalQty += l.qty;
+
+        const pkgBadgeStyle = (l.package_type && l.package_type !== 'bulk') 
+            ? "background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe;" 
+            : "background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;";
+
+        const tr = document.createElement("tr");
+        tr.style.borderBottom = "1px solid #e2e8f0";
+        tr.innerHTML = `
+            <td style="padding: 10px 14px; font-weight: 600;">${idx + 1}</td>
+            <td style="padding: 10px 14px;"><strong>[${l.code}]</strong> ${l.name}</td>
+            <td style="padding: 10px 14px;">
+                <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; ${pkgBadgeStyle}">
+                    ${l.package_label || 'بالكيلو (حبوب)'}
+                </span>
+            </td>
+            <td style="padding: 10px 14px; font-weight: 700; color: #b45309;">${l.qty.toFixed(2)} كجم</td>
+            <td style="padding: 10px 14px; color: #64748b; font-size: 13px;">${l.notes || '-'}</td>
+            <td style="padding: 10px 14px; text-align: center;">
+                ${(isCustomerSigned || isReadOnly) ? '<span style="color: #64748b; font-size: 11px; font-weight: 700; background: #f1f5f9; padding: 3px 8px; border-radius: 4px;">🔒 معتمد</span>' : `
+                <button type="button" onclick="editLine(${idx})" style="background: none; border: none; cursor: pointer; color: #2563eb; font-size: 15px; margin-left: 6px;" title="تعديل">✏️</button>
+                <button type="button" onclick="removeLine(${idx})" style="background: none; border: none; cursor: pointer; color: #ef4444; font-size: 15px;" title="حذف">🗑️</button>
+                `}
+            </td>
+        `;
+        tbody.appendChild(tr);
+
+        // إنشاء الحقول المخفية للنموذج
+        hiddenDiv.innerHTML += `
+            <input type="hidden" name="line_coffee_item_id[]" value="${l.item_id}">
+            <input type="hidden" name="coffee_item_id[]" value="${l.item_id}">
+            <input type="hidden" name="line_qty_kg[]" value="${l.qty}">
+            <input type="hidden" name="qty_kg[]" value="${l.qty}">
+            <input type="hidden" name="line_notes[]" value="${l.notes || ''}">
+            <input type="hidden" name="line_package_type[]" value="${l.package_type || 'bulk'}">
+            <input type="hidden" name="line_package_qty[]" value="${l.package_qty || 0}">
+            <input type="hidden" name="line_package_weight_kg[]" value="${l.package_weight_kg || 0}">
+            <input type="hidden" name="line_foodics_item_id[]" value="${l.foodics_item_id || ''}">
+        `;
+    });
+
+    document.getElementById("tableFooter").style.display = "";
+    document.getElementById("footerTotalQty").innerText = totalQty.toFixed(2) + " كجم";
+    autoUpdateShippingFee(totalQty);
+}
+
+function autoUpdateShippingFee(totalWeight) {
+    const feeInput = document.getElementById("shippingFeeInput");
+    if (!feeInput) return;
+    if (feeInput.dataset.manual === "true") return;
+    if (!totalWeight || totalWeight <= 0) {
+        if (!feeInput.value) feeInput.value = "";
+        return;
+    }
+    // Only set if field is empty or not manually modified
+    if (!feeInput.value || feeInput.dataset.autoFilled === "true") {
+        if (totalWeight <= 15) {
+            feeInput.value = "40.60";
+        } else if (totalWeight <= 25) {
+            feeInput.value = "52.20";
+        } else {
+            feeInput.value = "92.80";
+        }
+        feeInput.dataset.autoFilled = "true";
+    }
+}
+
+// متابعة الزر المضغوط (حفظ كمسودة أو اعتماد)
+let activeSubmitAction = "approve";
+document.querySelectorAll("button[type=submit]").forEach(btn => {
+    btn.addEventListener("click", function() {
+        activeSubmitAction = this.value || "approve";
+    });
+});
+
+// معالج الإرسال الذكي والمباشر
+document.getElementById("dispatchForm").addEventListener("submit", function(e) {
+    const sel = document.getElementById("roastedItemSelect");
+    const qtyInput = document.getElementById("inputQtyKg");
+
+    // إذا كانت القائمة فارغة لكن المستخدم اختار صنفاً وأدخل كمية، نضيفه تلقائياً
+    if (dispatchLines.length === 0) {
+        const itemId = parseInt(sel.value);
+        const qty = parseFloat(qtyInput.value);
+        if (itemId && qty > 0) {
+            addOrUpdateLine();
+        }
+    }
+
+    // إذا لا زالت فارغة ولم يحدد صنفاً
+    if (dispatchLines.length === 0 && (!sel.value || !qtyInput.value || parseFloat(qtyInput.value) <= 0)) {
+        e.preventDefault();
+        alert("يرجى اختيار صنف محمص وتحديد الكمية المصروفة قبل الحفظ");
+        qtyInput.focus();
+        return;
+    }
+
+    const dtype = document.getElementById("dispatchTypeSelect").value;
+    if (dtype === "branch") {
+        const b = document.getElementById("branchLocationId").value;
+        if (!b) {
+            e.preventDefault();
+            alert("يرجى اختيار الفرع المستلم");
+            document.getElementById("branchLocationId").focus();
+            return;
+        }
+    } else if (dtype === "sale") {
+        const cNameInput = document.getElementById("customerName");
+        if (!cNameInput.value.trim()) {
+            cNameInput.value = "عميل نقدي";
+        }
+        saveSignatureToInput();
+
+        // فحص إلزامي للتوقيع إذا كان الإجراء اعتماد وليس مسودة (وفقط في حالة التسليم المباشر)
+        if (activeSubmitAction === "approve") {
+            const dMethod = document.getElementById("deliveryMethodSelect") ? document.getElementById("deliveryMethodSelect").value : "direct";
+            if (dMethod === "shipping") {
+                const sSel = document.getElementById("shippingDestinationSelect");
+                const sOther = document.getElementById("shippingDestinationOther");
+                let sDest = sSel ? sSel.value : "";
+                if (sDest === "other") {
+                    sDest = sOther ? sOther.value.trim() : "";
+                }
+                const hiddenInp = document.getElementById("shippingDestination");
+                if (hiddenInp) hiddenInp.value = sDest;
+
+                if (!sDest) {
+                    e.preventDefault();
+                    alert("⚠️ يرجى اختيار أو كتابة المدينة / الوجهة المشحون إليها البضاعة (مثل: الخبر أو الدمام، أو كتابة مدينة أخرى).");
+                    if (sSel && sSel.value === "other" && sOther) {
+                        sOther.focus();
+                    } else if (sSel) {
+                        sSel.focus();
+                    }
+                    return false;
+                }
+            } else {
+                const sigVal = (document.getElementById("customerSignatureInput").value || "").trim();
+                if (!sigVal || !hasSigned) {
+                    e.preventDefault();
+                    alert("⚠️ تنبيه إلزامي: لا يمكن اعتماد سند الصرف للبيع بدون توقيع العميل بالاستلام.\nيرجى جعل العميل يوقع في خانة التوقيع أسفل الصفحة، أو اختيار طريقة التسليم 'شحن عبر شركة نقل' إذا تم شحن البضاعة.");
+                    const sigSec = document.getElementById("signatureSection");
+                    if (sigSec) {
+                        sigSec.scrollIntoView({ behavior: "smooth", block: "center" });
+                        const wrap = document.getElementById("signatureWrapper");
+                        if (wrap) wrap.style.border = "2px solid #ef4444";
+                    }
+                    return false;
+                }
+            }
+        }
+    }
+});
+
+// ─── منطق التوقيع الحي للعميل (Touch / Mouse Canvas) ───
+let sigCanvas = document.getElementById("signatureCanvas");
+let sigCtx = null;
+let isDrawing = false;
+let hasSigned = {% if dispatch.customer_signature %}true{% else %}false{% endif %};
+
+function initSignaturePad() {
+    sigCanvas = document.getElementById("signatureCanvas");
+    if (!sigCanvas) return;
+    sigCtx = sigCanvas.getContext("2d");
+    const rect = sigCanvas.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+        sigCanvas.width = rect.width;
+        sigCanvas.height = rect.height;
+    }
+    sigCtx.strokeStyle = "#0044cc"; // حبر أزرق واضح
+    sigCtx.lineWidth = 2.5;
+    sigCtx.lineCap = "round";
+    sigCtx.lineJoin = "round";
+
+    // إذا كان هناك توقيع محفوظ مسبقاً، نقوم برسمه في الكانفاس
+    const existingSig = document.getElementById("customerSignatureInput").value;
+    if (existingSig && existingSig.startsWith("data:image")) {
+        const img = new Image();
+        img.onload = function() {
+            sigCtx.drawImage(img, 0, 0, sigCanvas.width, sigCanvas.height);
+            hasSigned = true;
+            const pl = document.getElementById("signaturePlaceholder");
+            if (pl) pl.style.display = "none";
+        };
+        img.src = existingSig;
+    }
+}
+
+function getCanvasPos(e) {
+    const rect = sigCanvas.getBoundingClientRect();
+    let clientX, clientY;
+    if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+    return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+    };
+}
+
+function startDrawing(e) {
+    if (!sigCtx) initSignaturePad();
+    isDrawing = true;
+    const pos = getCanvasPos(e);
+    sigCtx.beginPath();
+    sigCtx.moveTo(pos.x, pos.y);
+    const pl = document.getElementById("signaturePlaceholder");
+    if (pl) pl.style.display = "none";
+    if (e.type.startsWith("touch")) e.preventDefault();
+}
+
+function drawStroke(e) {
+    if (!isDrawing || !sigCtx) return;
+    const pos = getCanvasPos(e);
+    sigCtx.lineTo(pos.x, pos.y);
+    sigCtx.stroke();
+    hasSigned = true;
+    if (e.type.startsWith("touch")) e.preventDefault();
+}
+
+function stopDrawing() {
+    if (isDrawing) {
+        isDrawing = false;
+        saveSignatureToInput();
+    }
+}
+
+function clearSignaturePad() {
+    if (!sigCanvas || !sigCtx) return;
+    sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+    hasSigned = false;
+    const pl = document.getElementById("signaturePlaceholder");
+    if (pl) pl.style.display = "block";
+    const inp = document.getElementById("customerSignatureInput");
+    if (inp) inp.value = "";
+}
+
+function saveSignatureToInput() {
+    if (!hasSigned || !sigCanvas) return;
+    const inp = document.getElementById("customerSignatureInput");
+    if (inp) {
+        inp.value = sigCanvas.toDataURL("image/png");
+    }
+}
+
+if (sigCanvas) {
+    sigCanvas.addEventListener("mousedown", startDrawing);
+    sigCanvas.addEventListener("mousemove", drawStroke);
+    window.addEventListener("mouseup", stopDrawing);
+
+    sigCanvas.addEventListener("touchstart", startDrawing, { passive: false });
+    sigCanvas.addEventListener("touchmove", drawStroke, { passive: false });
+    window.addEventListener("touchend", stopDrawing);
+}
+
+// تهيئة أولية
+document.addEventListener("DOMContentLoaded", function() {
+    renderLinesTable();
+    const dtype = document.getElementById("dispatchTypeSelect").value;
+    if (dtype === "sale") {
+        setTimeout(initSignaturePad, 120);
+    }
+});
+</script>
+{% endblock %}

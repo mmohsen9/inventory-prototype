@@ -1,0 +1,540 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}تسجيل عملية جرد المخزون (القهوة الخضراء والمحمصة){% endblock %}
+
+{% block coffee_extra_css %}
+<style>
+    .coffee-page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 20px;
+        background: #fff;
+        padding: 20px 24px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+    }
+    .form-card {
+        background: #fff;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: var(--shadow-sm);
+    }
+    .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        align-items: flex-end;
+    }
+    .meta-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--gray-700);
+        margin-bottom: 6px;
+    }
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin-bottom: 20px;
+    }
+    .kpi-card {
+        background: #fff;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        padding: 16px;
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        flex-direction: column;
+    }
+    .kpi-card.book { border-right: 4px solid #0284c7; }
+    .kpi-card.actual { border-right: 4px solid #059669; }
+    .kpi-card.diff { border-right: 4px solid #b45309; }
+    .kpi-card.diffval { border-right: 4px solid #dc2626; }
+    .kpi-title { font-size: 11px; font-weight: 700; color: var(--gray-500); margin-bottom: 4px; }
+    .kpi-val { font-size: 19px; font-weight: 800; color: var(--gray-900); }
+    
+    .badge-match { background: #ecfdf5; color: #047857; font-weight: 700; padding: 3px 8px; border-radius: 10px; font-size: 11px; }
+    .badge-shortage { background: #fef2f2; color: #dc2626; font-weight: 700; padding: 3px 8px; border-radius: 10px; font-size: 11px; }
+    .badge-surplus { background: #eff6ff; color: #2563eb; font-weight: 700; padding: 3px 8px; border-radius: 10px; font-size: 11px; }
+
+    .count-input {
+        width: 115px;
+        padding: 7px 10px;
+        border: 1.5px solid #d97706;
+        border-radius: var(--radius-sm);
+        font-size: 14px;
+        font-weight: 800;
+        text-align: center;
+        background: #fffbeb;
+        color: #78350f;
+        transition: all 0.2s;
+    }
+    .count-input:focus {
+        border-color: #b45309;
+        background: #fff;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.25);
+    }
+    .btn-match-line {
+        background: #e2e8f0;
+        border: none;
+        border-radius: 4px;
+        font-size: 11px;
+        padding: 4px 6px;
+        cursor: pointer;
+        color: #334155;
+        font-weight: 700;
+        transition: background 0.15s;
+    }
+    .btn-match-line:hover { background: #cbd5e1; }
+
+    .action-bottom-bar {
+        position: sticky;
+        bottom: 12px;
+        z-index: 100;
+        background: #0f172a;
+        color: #fff;
+        padding: 14px 22px;
+        border-radius: var(--radius-md);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 14px;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+    }
+</style>
+{% endblock %}
+
+{% block coffee_content %}
+<div class="content-container">
+
+    <!-- ترويسة الشاشة -->
+    <div class="coffee-page-header">
+        <div>
+            <div style="font-size: 13px; color: var(--gray-500); margin-bottom: 4px;">
+                <a href="{{ url_for('coffee.reports') }}" style="color: var(--gray-600); text-decoration: none;">📑 التقارير</a>
+                &larr; <a href="{{ url_for('coffee.report_inventory_count') }}" style="color: var(--gray-600); text-decoration: none;">تقرير جرد الأصناف</a>
+                {% if is_edit and session_obj %}
+                &larr; تعديل محضر الجرد ({{ session_obj.count_number }})
+                {% else %}
+                &larr; تسجيل محضر جرد
+                {% endif %}
+            </div>
+            <h2 style="margin: 0; font-size: 21px; font-weight: 800; color: var(--gray-900);">
+                {% if is_edit and session_obj %}
+                ✏️ تعديل محضر الجرد: <span style="font-family: monospace; color: #1e40af;">{{ session_obj.count_number }}</span>
+                {% if session_obj.status == 'approved' %}
+                <span style="font-size: 12px; vertical-align: middle; background: #dcfce7; color: #15803d; padding: 3px 10px; border-radius: 12px; font-weight: 700; margin-right: 8px;">{{ session_obj.status_label_ar }}</span>
+                {% else %}
+                <span style="font-size: 12px; vertical-align: middle; background: #fef3c7; color: #b45309; padding: 3px 10px; border-radius: 12px; font-weight: 700; margin-right: 8px;">{{ session_obj.status_label_ar }}</span>
+                {% endif %}
+                {% else %}
+                📝 تسجيل عملية جرد المخزون (القهوة الخضراء والمحمصة)
+                {% endif %}
+            </h2>
+            <div style="font-size: 13px; color: #475569; margin-top: 4px;">
+                {% if is_edit and session_obj %}
+                يمكنك مراجعة وتعديل الأرصدة المجرودة، وحفظ المحضر كمسودة أو اعتماده وتسوية الفروقات مع أرصدة المستودعات فورياً
+                {% else %}
+                أدخل الأرصدة الفعلية المجرودة بدقة لمقارنتها بالرصيد الدفتري وتسوية الفروقات المخزنية تلقائياً
+                {% endif %}
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <a href="{{ url_for('coffee.report_inventory_count') }}{% if session_obj %}?session_id={{ session_obj.id }}{% endif %}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; font-weight: 700; border-radius: var(--radius-sm); text-decoration: none; border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700); box-shadow: var(--shadow-sm);">
+                ⬅️ رجوع لتقرير الجرد
+            </a>
+            <a href="{{ url_for('coffee.inventory_count_record', export='template', coffee_type=selected_type) }}" class="btn-sm" style="background: #047857; color: #fff; font-weight: 700; text-decoration: none; padding: 9px 16px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px;">
+                📥 تحميل كشف جرد فارغ Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- نموذج تسجيل واعتماد الجرد -->
+    <form method="POST" action="{% if is_edit and session_obj %}{{ url_for('coffee.inventory_count_edit', session_id=session_obj.id) }}{% else %}{{ url_for('coffee.inventory_count_record') }}{% endif %}" id="inventoryRecordForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" id="actionField" value="approve">
+        
+        <!-- بطاقة بيانات محضر الجرد -->
+        <div class="form-card">
+            <div style="font-weight: 800; font-size: 15px; color: #0f172a; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                <span>📋</span> بيانات محضر الجرد التشغيلي:
+            </div>
+            <div class="meta-grid">
+                <div class="meta-group">
+                    <label>{% if is_edit and session_obj %}رقم محضر الجرد{% else %}رقم محضر الجرد المقترح{% endif %}</label>
+                    <input type="text" class="form-control" value="{% if session_obj %}{{ session_obj.count_number }}{% else %}{{ next_seq_preview }}{% endif %}" readonly style="background: #f1f5f9; font-weight: 800; color: #0f172a; text-align: center;">
+                </div>
+
+                <div class="meta-group">
+                    <label>تاريخ الجرد الفعلي *</label>
+                    <input type="date" name="count_date" class="form-control" value="{% if session_obj and session_obj.count_date %}{{ session_obj.count_date }}{% else %}{{ today }}{% endif %}" required style="font-weight: 700;">
+                </div>
+
+                <div class="meta-group">
+                    <label>نطاق الجرد / نوع الأصناف</label>
+                    <select name="coffee_type" class="form-control" {% if not is_edit %}onchange="window.location.href='{{ url_for('coffee.inventory_count_record') }}?coffee_type=' + this.value"{% endif %} style="font-weight: 700;">
+                        <option value="all" {% if selected_type == 'all' %}selected{% endif %}>جميع الأصناف (أخضر ومحمص)</option>
+                        <option value="green" {% if selected_type == 'green' %}selected{% endif %}>🌱 بن أخضر فقط (GB)</option>
+                        <option value="roasted" {% if selected_type == 'roasted' %}selected{% endif %}>☕ بن محمص فقط (RB)</option>
+                    </select>
+                </div>
+
+                <div class="meta-group" style="grid-column: span 2;">
+                    <label>سبب / ملاحظات الجرد (اختياري)</label>
+                    <input type="text" name="notes" class="form-control" placeholder="مثال: جرد دوري لشهر أكتوبر 2026، مطابقة المخزون الفعلي..." value="{% if notes is defined %}{{ notes }}{% elif session_obj %}{{ session_obj.notes or '' }}{% else %}جرد دوري فعلي لمخزون القهوة{% endif %}">
+                </div>
+            </div>
+        </div>
+
+        <!-- بطاقات المؤشرات اللحظية (تتغير أثناء الإدخال) -->
+        <div class="kpi-grid">
+            <div class="kpi-card book">
+                <span class="kpi-title">إجمالي الرصيد الدفتري الحالي</span>
+                <span class="kpi-val" style="color: #0284c7;"><span id="kpiBookKg">{{ "{:,.2f}".format(tot_book_kg) }}</span> <small style="font-size: 13px;">كجم</small></span>
+            </div>
+
+            <div class="kpi-card actual">
+                <span class="kpi-title">إجمالي الفعلي المدخل</span>
+                <span class="kpi-val" style="color: #059669;"><span id="kpiActualKg">{{ "{:,.2f}".format(tot_book_kg) }}</span> <small style="font-size: 13px;">كجم</small></span>
+                <span style="font-size: 12px; font-weight: 700; color: #047857; margin-top: 4px;">
+                    إجمالي قيمة الفعلي: <span id="kpiActualVal">{{ "{:,.2f}".format(tot_book_val) }}</span> ريال
+                </span>
+            </div>
+
+            <div class="kpi-card diff">
+                <span class="kpi-title">صافي فارق الكمية المجرودة</span>
+                <span class="kpi-val"><span id="kpiDiffKg">0.00</span> <small style="font-size: 13px;">كجم</small></span>
+            </div>
+
+            <div class="kpi-card diffval">
+                <span class="kpi-title">إجمالي قيمة الفارق (ريال)</span>
+                <span class="kpi-val"><span id="kpiDiffVal">0.00</span> <small style="font-size: 13px;">ريال</small></span>
+            </div>
+        </div>
+
+        <!-- شريط البحث والتحكم في كشف التسجيل -->
+        <div style="background: #fff; border-radius: var(--radius-md); border: 1px solid var(--gray-200); padding: 12px 18px; margin-bottom: 16px; box-shadow: var(--shadow-sm); display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between;">
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex: 1; min-width: 300px;">
+                <div style="position: relative; flex: 1; min-width: 220px;">
+                    <input type="text" id="liveSearch" class="form-control" placeholder="⚡ بحث سريع بالاسم أو الكود أو النوع..." oninput="filterRows()" style="padding-right: 32px; border-radius: var(--radius-sm);">
+                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8;">🔍</span>
+                </div>
+                <button type="button" class="btn-secondary" onclick="resetAllToBook()" style="padding: 7px 14px; font-size: 12px; font-weight: 700; border-radius: var(--radius-sm);">
+                    🔄 مطابقة الكل مع الدفتري
+                </button>
+                <button type="button" id="btnFilterVariance" onclick="toggleVarianceFilter()" class="btn-secondary" style="padding: 7px 14px; font-size: 12px; font-weight: 700; border-radius: var(--radius-sm); color: #b45309;">
+                    ⚠️ إظهار الفروقات فقط
+                </button>
+            </div>
+            <div style="font-size: 13px; font-weight: 700; color: #475569;">
+                عدد الأصناف في الكشف: <span id="visibleCount" style="color: #b45309;">{{ items_data|length }}</span> صنف
+            </div>
+        </div>
+
+        <!-- جدول إدخال بيانات الجرد الفعلي -->
+        <div class="card" style="background: #fff; border-radius: var(--radius-md); border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm); overflow: hidden; margin-bottom: 24px;">
+            <div class="table-responsive">
+                <table class="data-table" id="recordTable">
+                    <thead>
+                        <tr style="background: #f8fafc;">
+                            <th style="width: 40px;">#</th>
+                            <th>كود الصنف</th>
+                            <th>اسم الصنف</th>
+                            <th>النوع</th>
+                            <th>المستودع</th>
+                            <th>تكلفة الكيلو</th>
+                            <th>الرصيد الدفتري (كجم)</th>
+                            <th style="background: #fffbeb; color: #92400e; width: 170px;">الرصيد الفعلي (كجم) ✍️</th>
+                            <th style="background: #ecfdf5; color: #047857; text-align: center;" title="حاصل ضرب تكلفة الكيلو في الرصيد الفعلي">قيمة الصنف (ريال)</th>
+                            <th>الفارق (كجم)</th>
+                            <th>نسبة الفارق %</th>
+                            <th>قيمة الفارق (ريال)</th>
+                            <th>الحالة</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in items_data %}
+                        <tr id="row_{{ loop.index }}"
+                            class="item-row"
+                            data-index="{{ loop.index }}"
+                            data-cost="{{ row.cost }}"
+                            data-book="{{ row.book_qty }}"
+                            data-diff="0"
+                            data-code="{{ row.ci.xero_item_code|lower }}"
+                            data-name-ar="{{ (row.ci.name_ar or '')|lower }}"
+                            data-name-en="{{ (row.ci.name_en or '')|lower }}"
+                            data-type="{{ row.ci.coffee_type }}">
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                <strong>{{ row.ci.xero_item_code }}</strong>
+                                <input type="hidden" name="coffee_item_ids[]" value="{{ row.ci.id }}">
+                            </td>
+                            <td>
+                                <div style="font-weight: 700;">{{ row.ci.name_ar or '—' }}</div>
+                                <div style="font-size: 11px; color: var(--gray-500);">{{ row.ci.name_en or '' }}</div>
+                            </td>
+                            <td>
+                                {% if row.ci.coffee_type == 'green' %}
+                                <span style="color: #047857; font-weight: 700;">🌱 أخضر</span>
+                                {% else %}
+                                <span style="color: #b45309; font-weight: 700;">☕ محمص</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ row.warehouse.name_ar if row.warehouse else '—' }}</td>
+                            <td>{{ "{:,.2f}".format(row.cost) }} ريال</td>
+                            <td>
+                                <strong style="color: #0284c7;">{{ "{:,.2f}".format(row.book_qty) }} كجم</strong>
+                            </td>
+                            <td style="background: #fffbeb; text-align: center;">
+                                <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                    <input type="number" step="0.01" min="0" name="actual_qtys[]" class="count-input" id="actInput_{{ loop.index }}" value="{{ '{:.2f}'.format(row.actual_qty) }}" oninput="onInputChanged({{ loop.index }})">
+                                    <button type="button" class="btn-match-line" onclick="matchLineToBook({{ loop.index }})" title="مطابقة مع الدفتري">🔄</button>
+                                </div>
+                            </td>
+                            <td style="background: #ecfdf5; text-align: center;">
+                                <strong id="actualVal_{{ loop.index }}" style="color: #047857; font-size: 13px;">{{ "{:,.2f}".format(row.actual_qty * row.cost) }} ريال</strong>
+                            </td>
+                            <td>
+                                <strong id="diffKg_{{ loop.index }}" style="color: #16a34a;">0.00</strong>
+                            </td>
+                            <td>
+                                <span id="diffPct_{{ loop.index }}">0.0%</span>
+                            </td>
+                            <td>
+                                <strong id="diffVal_{{ loop.index }}" style="color: #16a34a;">0.00 ريال</strong>
+                            </td>
+                            <td id="statusBadge_{{ loop.index }}">
+                                <span class="badge-match">مطابق ✅</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- شريط الإجراءات السفلي المثبت -->
+        <div class="action-bottom-bar">
+            <div>
+                <div style="font-size: 14px; font-weight: 800;">
+                    {% if is_edit and session_obj %}
+                    حفظ التعديلات على محضر الجرد ({{ session_obj.count_number }})
+                    {% else %}
+                    جاهز لحفظ أو اعتماد محضر الجرد؟
+                    {% endif %}
+                </div>
+                <div style="font-size: 12px; color: #cbd5e1;">
+                    يمكنك الحفظ كمسودة للمراجعة لاحقاً، أو الاعتماد والتسوية الفورية لتحديث أرصدة المستودعات
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <a href="{{ url_for('coffee.report_inventory_count') }}{% if session_obj %}?session_id={{ session_obj.id }}{% endif %}" class="btn-secondary" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 10px 18px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 700;">
+                    إلغاء والرجوع
+                </a>
+                
+                <button type="submit" id="btnSaveDraft" onclick="document.getElementById('actionField').value='draft'" class="btn-secondary" style="background: #d97706; border: none; padding: 11px 22px; font-weight: 800; font-size: 14px; border-radius: var(--radius-sm); color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 10px rgba(217, 119, 6, 0.3);">
+                    📝 حفظ كمسودة
+                </button>
+
+                <button type="submit" id="btnSubmitCount" onclick="document.getElementById('actionField').value='approve'" class="btn-primary" style="background: #15803d; border: none; padding: 11px 26px; font-weight: 800; font-size: 14px; border-radius: var(--radius-sm); color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(21,128,61,0.4);">
+                    💾 اعتماد وتسوية محضر الجرد الآن
+                </button>
+            </div>
+        </div>
+
+    </form>
+
+</div>
+
+<script>
+    let filterVarianceOnly = false;
+
+    function onInputChanged(idx) {
+        const row = document.getElementById('row_' + idx);
+        if (!row) return;
+
+        const cost = parseFloat(row.dataset.cost) || 0;
+        const book = parseFloat(row.dataset.book) || 0;
+        const input = document.getElementById('actInput_' + idx);
+        let actual = parseFloat(input.value);
+
+        if (isNaN(actual) || actual < 0) {
+            actual = book;
+        }
+
+        const diff = actual - book;
+        const diffVal = diff * cost;
+        const diffPct = (book > 0) ? (diff / book) * 100 : 0;
+        const actualVal = actual * cost;
+
+        row.dataset.diff = diff.toFixed(4);
+
+        // تحديث خلايا السطر
+        const actualValElem = document.getElementById('actualVal_' + idx);
+        if (actualValElem) {
+            actualValElem.textContent = actualVal.toFixed(2) + ' ريال';
+        }
+        const diffKgElem = document.getElementById('diffKg_' + idx);
+        const diffPctElem = document.getElementById('diffPct_' + idx);
+        const diffValElem = document.getElementById('diffVal_' + idx);
+        const badgeElem = document.getElementById('statusBadge_' + idx);
+
+        diffKgElem.textContent = (diff >= 0 ? '+' : '') + diff.toFixed(2);
+        diffPctElem.textContent = (diff >= 0 ? '+' : '') + diffPct.toFixed(1) + '%';
+        diffValElem.textContent = (diffVal >= 0 ? '+' : '') + diffVal.toFixed(2) + ' ريال';
+
+        if (Math.abs(diff) < 0.001) {
+            diffKgElem.style.color = '#16a34a';
+            diffValElem.style.color = '#16a34a';
+            badgeElem.innerHTML = '<span class="badge-match">مطابق ✅</span>';
+        } else if (diff < 0) {
+            diffKgElem.style.color = '#dc2626';
+            diffValElem.style.color = '#dc2626';
+            badgeElem.innerHTML = '<span class="badge-shortage">عجز ⚠️</span>';
+        } else {
+            diffKgElem.style.color = '#2563eb';
+            diffValElem.style.color = '#2563eb';
+            badgeElem.innerHTML = '<span class="badge-surplus">زيادة ➕</span>';
+        }
+
+        recalcTotalKPIs();
+    }
+
+    function matchLineToBook(idx) {
+        const row = document.getElementById('row_' + idx);
+        if (!row) return;
+        const book = parseFloat(row.dataset.book) || 0;
+        const input = document.getElementById('actInput_' + idx);
+        input.value = book.toFixed(2);
+        onInputChanged(idx);
+    }
+
+    function resetAllToBook() {
+        if (!confirm('هل أنت متأكد من رغبتك في مطابقة كافة الأصناف مع الرصيد الدفتري (تصفير جميع الفروقات)؟')) return;
+        const rows = document.querySelectorAll('.item-row');
+        rows.forEach(r => {
+            const idx = r.dataset.index;
+            matchLineToBook(idx);
+        });
+    }
+
+    function recalcTotalKPIs() {
+        const rows = document.querySelectorAll('.item-row');
+        let totBook = 0;
+        let totActual = 0;
+        let totActualVal = 0;
+        let totDiffKg = 0;
+        let totDiffVal = 0;
+
+        rows.forEach(r => {
+            const idx = r.dataset.index;
+            const cost = parseFloat(r.dataset.cost) || 0;
+            const book = parseFloat(r.dataset.book) || 0;
+            const input = document.getElementById('actInput_' + idx);
+            let actual = parseFloat(input ? input.value : 0);
+            if (isNaN(actual)) actual = book;
+
+            const diff = actual - book;
+            const val = diff * cost;
+
+            totBook += book;
+            totActual += actual;
+            totActualVal += (actual * cost);
+            totDiffKg += diff;
+            totDiffVal += val;
+        });
+
+        document.getElementById('kpiBookKg').textContent = totBook.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('kpiActualKg').textContent = totActual.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        
+        const kpiActValElem = document.getElementById('kpiActualVal');
+        if (kpiActValElem) {
+            kpiActValElem.textContent = totActualVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        }
+
+        const diffKgElem = document.getElementById('kpiDiffKg');
+        diffKgElem.textContent = (totDiffKg >= 0 ? '+' : '') + totDiffKg.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        diffKgElem.style.color = (Math.abs(totDiffKg) < 0.001) ? '#0f172a' : (totDiffKg < 0 ? '#dc2626' : '#2563eb');
+
+        const diffValElem = document.getElementById('kpiDiffVal');
+        diffValElem.textContent = (totDiffVal >= 0 ? '+' : '') + totDiffVal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        diffValElem.style.color = (Math.abs(totDiffVal) < 0.001) ? '#0f172a' : (totDiffVal < 0 ? '#dc2626' : '#2563eb');
+    }
+
+    function toggleVarianceFilter() {
+        filterVarianceOnly = !filterVarianceOnly;
+        const btn = document.getElementById('btnFilterVariance');
+        if (filterVarianceOnly) {
+            btn.style.background = '#fef3c7';
+            btn.style.borderColor = '#d97706';
+            btn.textContent = '✅ عرض كافة الأصناف';
+        } else {
+            btn.style.background = '';
+            btn.style.borderColor = '';
+            btn.textContent = '⚠️ إظهار الفروقات فقط';
+        }
+        filterRows();
+    }
+
+    function filterRows() {
+        const query = (document.getElementById('liveSearch').value || '').trim().toLowerCase();
+        const rows = document.querySelectorAll('.item-row');
+        let visibleCount = 0;
+
+        rows.forEach(r => {
+            const code = r.dataset.code || '';
+            const nameAr = r.dataset.nameAr || '';
+            const nameEn = r.dataset.nameEn || '';
+            const type = r.dataset.type || '';
+            const diff = parseFloat(r.dataset.diff) || 0;
+
+            let matchesQuery = !query || code.includes(query) || nameAr.includes(query) || nameEn.includes(query) || type.includes(query);
+            let matchesVariance = !filterVarianceOnly || Math.abs(diff) >= 0.001;
+
+            if (matchesQuery && matchesVariance) {
+                r.style.display = '';
+                visibleCount++;
+            } else {
+                r.style.display = 'none';
+            }
+        });
+
+        document.getElementById('visibleCount').textContent = visibleCount;
+    }
+
+    // تحديث كافة الأسطر والمؤشرات عند فتح الصفحة (يدعم وضع التعديل فورياً)
+    window.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.item-row').forEach(function(r) {
+            onInputChanged(r.dataset.index);
+        });
+    });
+
+    document.getElementById('inventoryRecordForm').addEventListener('submit', function(e) {
+        const action = document.getElementById('actionField').value;
+        const btnSubmit = document.getElementById('btnSubmitCount');
+        const btnDraft = document.getElementById('btnSaveDraft');
+        setTimeout(function() {
+            if (action === 'draft') {
+                if (btnDraft) {
+                    btnDraft.disabled = true;
+                    btnDraft.innerHTML = '⏳ جاري الحفظ كمسودة...';
+                }
+            } else {
+                if (btnSubmit) {
+                    btnSubmit.disabled = true;
+                    btnSubmit.innerHTML = '⏳ جاري الاعتماد والتسوية...';
+                }
+            }
+        }, 10);
+    });
+</script>
+{% endblock %}

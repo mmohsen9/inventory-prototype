@@ -1,0 +1,595 @@
+{% extends "cafe_base.html" %}
+
+{% block title %}كشف استلامات الموردين{% endblock %}
+
+{% block cafe_extra_css %}
+<style>
+  .supplier-summary-card {
+    background: #ffffff;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    margin-bottom: 18px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .supplier-summary-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  }
+  .supplier-card-header {
+    background: #f8fafc;
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid var(--gray-200);
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .supplier-card-header:hover {
+    background: #f1f5f9;
+  }
+  .supplier-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .supplier-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: #ecfdf5;
+    color: #059669;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    border: 1px solid #a7f3d0;
+  }
+  .supplier-meta-pills {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .supplier-total-badge {
+    background: #1e3a8a;
+    color: #ffffff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 0.3px;
+  }
+  .supplier-count-badge {
+    background: #e2e8f0;
+    color: #334155;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .accordion-chevron {
+    transition: transform 0.25s ease;
+    font-size: 14px;
+    color: #64748b;
+  }
+  .supplier-summary-card.open .accordion-chevron {
+    transform: rotate(180deg);
+  }
+  .supplier-card-body {
+    display: none;
+    padding: 0;
+  }
+  .supplier-summary-card.open .supplier-card-body {
+    display: block;
+  }
+  .sub-items-table {
+    width: 100%;
+    margin: 8px 0;
+    background: #fdfefe;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 12px;
+  }
+  .sub-items-table th {
+    background: #f1f5f9;
+    color: #475569;
+    font-weight: 700;
+    padding: 6px 10px;
+  }
+  .sub-items-table td {
+    padding: 6px 10px;
+    border-top: 1px solid #f1f5f9;
+  }
+  .item-toggle-btn {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .item-toggle-btn:hover {
+    background: #bae6fd;
+  }
+  .items-dropdown-row {
+    display: none;
+    background: #f8fafc;
+  }
+  .items-dropdown-row.show {
+    display: table-row;
+  }
+  .custom-supplier-dropdown {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f8fafc;
+  }
+  .custom-supplier-dropdown::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-supplier-dropdown::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 4px;
+  }
+  .supplier-dd-item {
+    transition: background-color 0.15s, color 0.15s;
+  }
+  .supplier-dd-item:hover {
+    background: #e0f2fe !important;
+    color: #0369a1 !important;
+  }
+  .supplier-dd-item.selected {
+    background: #eff6ff;
+    font-weight: 700;
+  }
+</style>
+{% endblock %}
+
+{% block cafe_content %}
+<div class="page-header">
+    <div class="page-title">
+        <h2>📑 كشف استلامات الموردين</h2>
+        <p>كشف حساب تحليلي لاستلامات وفواتير الموردين المرتبطة بسندات الاستلام (المشتريات) في الفروع والمستودعات</p>
+    </div>
+    <div class="page-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <a href="{{ url_for('reports_suppliers_export', **filters) }}" class="btn btn-secondary" title="تصدير كشف الموردين إلى ملف Excel بالترميز العربي">
+            📥 تصدير إلى Excel
+        </a>
+        <button type="button" class="btn btn-secondary" onclick="window.print()">
+            🖨️ طباعة
+        </button>
+        <a href="{{ url_for('purchase_new') }}" class="btn btn-primary">
+            ➕ سند استلام جديد
+        </a>
+    </div>
+</div>
+
+<!-- شريط الفلاتر والبحث -->
+<form method="GET" action="{{ url_for('reports_suppliers') }}" class="filter-bar no-print" style="display: flex; flex-wrap: wrap; gap: 12px; background: #ffffff; padding: 16px; border-radius: 10px; border: 1px solid var(--gray-200); margin-bottom: 20px;">
+    <!-- فلتر المورد -->
+    <div class="filter-item" style="flex: 1.8; min-width: 230px; position: relative;">
+        <label for="supplierInput" style="font-size: 12px; font-weight: 700; color: var(--gray-700); display: block; margin-bottom: 4px;">المورد</label>
+        <div style="position: relative; display: flex; align-items: center;">
+            <input type="text"
+                   id="supplierInput"
+                   name="supplier_name"
+                   class="form-control"
+                   placeholder="-- كافة الموردين --"
+                   value="{{ filters.supplier_name }}"
+                   autocomplete="off"
+                   list="suppliersDatalist"
+                   style="width: 100%; padding-left: 28px;"
+                   oninput="filterSupplierDropdown(this.value)"
+                   onfocus="openSupplierDropdown()"
+                   onclick="openSupplierDropdown()">
+            {% if filters.supplier_name %}
+            <button type="button"
+                    onclick="clearSupplierInput()"
+                    style="position: absolute; left: 8px; background: none; border: none; font-size: 14px; color: #64748b; cursor: pointer; padding: 2px 4px; line-height: 1;"
+                    title="مسح اختيار المورد وعرض كافة الموردين">✕</button>
+            {% else %}
+            <span style="position: absolute; left: 10px; color: #94a3b8; pointer-events: none; font-size: 11px;">▼</span>
+            {% endif %}
+        </div>
+        <!-- قائمة المتصفح الأصلية Datalist لدعم الإكمال التلقائي الطبيعي -->
+        <datalist id="suppliersDatalist">
+            {% for s in all_suppliers %}
+            <option value="{{ s }}">
+            {% endfor %}
+        </datalist>
+
+        <!-- قائمة منسدلة مخصصة تفاعلية تفتح وتفلتر فوراً بمجرد كتابة حرفين أو ثلاثة -->
+        <div id="supplierDropdownList"
+             class="custom-supplier-dropdown"
+             style="display: none; position: absolute; top: calc(100% + 2px); right: 0; left: 0; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 8px; max-height: 250px; overflow-y: auto; z-index: 1050; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.18), 0 8px 10px -6px rgba(0,0,0,0.1);">
+            <div onclick="selectSupplierOption('')" class="supplier-dd-item" style="padding: 9px 12px; cursor: pointer; font-size: 12px; color: #64748b; border-bottom: 1px solid #f1f5f9; background: #fafafa; font-weight: 600;">
+                -- كافة الموردين (عرض الكل) --
+            </div>
+            {% for s in all_suppliers %}
+            <div onclick="selectSupplierOption('{{ s }}')"
+                 data-supplier-name="{{ s }}"
+                 class="supplier-dd-item {% if filters.supplier_name == s %}selected{% endif %}"
+                 style="padding: 8px 12px; cursor: pointer; font-size: 13px; color: #1e293b; border-bottom: 1px solid #f8fafc; display: flex; align-items: center; justify-content: space-between;">
+                <span>{{ s }}</span>
+                {% if filters.supplier_name == s %}<span style="color: #059669; font-weight: bold; font-size: 14px;">✓</span>{% endif %}
+            </div>
+            {% endfor %}
+            <div id="noSupplierMatches" style="display: none; padding: 14px; text-align: center; color: #94a3b8; font-size: 12px;">
+                ⚠️ لا يوجد مورد يطابق أحرف البحث المدخلة
+            </div>
+        </div>
+    </div>
+
+    <!-- فلتر الفرع / الموقع -->
+    <div class="filter-item" style="flex: 1.2; min-width: 160px;">
+        <label style="font-size: 12px; font-weight: 700; color: var(--gray-700); display: block; margin-bottom: 4px;">الموقع / الفرع المستلم</label>
+        <select name="location_id" class="form-control" style="width: 100%;">
+            <option value="">-- كافة الفروع والمستودعات --</option>
+            {% for loc in locations %}
+            <option value="{{ loc.id }}" {% if filters.location_id == loc.id %}selected{% endif %}>{{ loc_name(loc) }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- من تاريخ -->
+    <div class="filter-item" style="flex: 1; min-width: 130px;">
+        <label style="font-size: 12px; font-weight: 700; color: var(--gray-700); display: block; margin-bottom: 4px;">من تاريخ</label>
+        <input type="date" name="date_from" value="{{ filters.date_from }}" class="form-control" style="width: 100%;">
+    </div>
+
+    <!-- إلى تاريخ -->
+    <div class="filter-item" style="flex: 1; min-width: 130px;">
+        <label style="font-size: 12px; font-weight: 700; color: var(--gray-700); display: block; margin-bottom: 4px;">إلى تاريخ</label>
+        <input type="date" name="date_to" value="{{ filters.date_to }}" class="form-control" style="width: 100%;">
+    </div>
+
+    <!-- حالة السند -->
+    <div class="filter-item" style="flex: 1.2; min-width: 150px;">
+        <label style="font-size: 12px; font-weight: 700; color: var(--gray-700); display: block; margin-bottom: 4px;">حالة السند</label>
+        <select name="status" class="form-control" style="width: 100%;">
+            <option value="all_confirmed" {% if filters.status == 'all_confirmed' or not filters.status %}selected{% endif %}>المعتمدة والمرحلة فقط (افتراضي)</option>
+            <option value="all" {% if filters.status == 'all' %}selected{% endif %}>جميع الحالات (شامل المسودات)</option>
+            <option value="approved" {% if filters.status == 'approved' %}selected{% endif %}>معتمدة فقط</option>
+            <option value="posted" {% if filters.status == 'posted' %}selected{% endif %}>مرحلة لفوديكس فقط</option>
+            <option value="draft" {% if filters.status == 'draft' %}selected{% endif %}>مسودات فقط</option>
+            <option value="submitted" {% if filters.status == 'submitted' %}selected{% endif %}>بانتظار المراجعة</option>
+            <option value="rejected" {% if filters.status == 'rejected' %}selected{% endif %}>مرفوضة فقط</option>
+        </select>
+    </div>
+
+    <!-- أزرار الإجراءات -->
+    <div style="display: flex; align-items: flex-end; gap: 6px;">
+        <button type="submit" class="btn btn-primary" style="padding: 9px 16px;">🔍 تصفية</button>
+        {% if filters.supplier_name or filters.location_id or filters.date_from or filters.date_to or (filters.status and filters.status != 'all_confirmed') %}
+        <a href="{{ url_for('reports_suppliers') }}" class="btn btn-secondary" style="padding: 9px 14px;">إلغاء</a>
+        {% endif %}
+    </div>
+</form>
+
+<!-- إحصائيات وبطاقات KPI -->
+<div class="kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    <div class="kpi-card" style="background: #ffffff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h4 style="margin: 0 0 6px 0; font-size: 13px; color: var(--gray-600); font-weight: 600;">إجمالي استلامات الموردين</h4>
+            <div style="font-size: 20px; font-weight: 800; color: #1e3a8a;">{{ "{:,.2f}".format(total_amount_all) }} <span style="font-size: 13px; font-weight: 600;">ر.س</span></div>
+            <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">صافي القيمة المعتمدة للمشتريات</div>
+        </div>
+        <div style="font-size: 26px; background: #eff6ff; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">💰</div>
+    </div>
+
+    <div class="kpi-card" style="background: #ffffff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h4 style="margin: 0 0 6px 0; font-size: 13px; color: var(--gray-600); font-weight: 600;">عدد فواتير / سندات الاستلام</h4>
+            <div style="font-size: 20px; font-weight: 800; color: #047857;">{{ total_vouchers_count }} <span style="font-size: 13px; font-weight: 600;">سند</span></div>
+            <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">إجمالي الفواتير المستلمة</div>
+        </div>
+        <div style="font-size: 26px; background: #ecfdf5; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">📦</div>
+    </div>
+
+    <div class="kpi-card" style="background: #ffffff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h4 style="margin: 0 0 6px 0; font-size: 13px; color: var(--gray-600); font-weight: 600;">عدد الموردين المستلم منهم</h4>
+            <div style="font-size: 20px; font-weight: 800; color: #7c3aed;">{{ total_suppliers_count }} <span style="font-size: 13px; font-weight: 600;">مورد</span></div>
+            <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">موردين نشطين في الفترة</div>
+        </div>
+        <div style="font-size: 26px; background: #f5f3ff; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">🏢</div>
+    </div>
+
+    <div class="kpi-card" style="background: #ffffff; border: 1px solid var(--gray-200); border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h4 style="margin: 0 0 6px 0; font-size: 13px; color: var(--gray-600); font-weight: 600;">متوسط قيمة السند</h4>
+            <div style="font-size: 20px; font-weight: 800; color: #b45309;">{{ "{:,.2f}".format(avg_voucher_amount) }} <span style="font-size: 13px; font-weight: 600;">ر.س</span></div>
+            <div style="font-size: 11px; color: var(--gray-500); margin-top: 4px;">متوسط الفاتورة لكل استلام</div>
+        </div>
+        <div style="font-size: 26px; background: #fffbeb; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">📊</div>
+    </div>
+</div>
+
+<!-- أدوات التحكم في الأكورديون (توسيع الكل / طي الكل) -->
+{% if grouped_data %}
+<div class="no-print" style="display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px;">
+    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllAccordions(true)">
+        🔽 توسيع كافة الموردين
+    </button>
+    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAllAccordions(false)">
+        🔼 طي كافة الموردين
+    </button>
+</div>
+{% endif %}
+
+<!-- قائمة كشوفات حساب الموردين (Accordion) -->
+{% if grouped_data %}
+    {% for group in grouped_data %}
+    <div class="supplier-summary-card open" id="supplierCard_{{ loop.index }}">
+        <!-- رأس بطاقة المورد التفاعلي -->
+        <div class="supplier-card-header" onclick="toggleSupplierCard('supplierCard_{{ loop.index }}')">
+            <div class="supplier-title-wrap">
+                <div class="supplier-icon">🏢</div>
+                <div>
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 800; color: var(--gray-900);">
+                        {{ group.supplier_name }}
+                    </h3>
+                    <div style="font-size: 12px; color: var(--gray-600); margin-top: 2px;">
+                        إجمالي عدد الأصناف المستلمة: <strong>{{ group.total_items_count }}</strong> صنف
+                    </div>
+                </div>
+            </div>
+
+            <div class="supplier-meta-pills">
+                <span class="supplier-count-badge">
+                    📄 {{ group.vouchers_count }} سندات استلام
+                </span>
+                <span class="supplier-total-badge">
+                    {{ "{:,.2f}".format(group.total_amount) }} ر.س
+                </span>
+                <span class="accordion-chevron">▼</span>
+            </div>
+        </div>
+
+        <!-- محتوى بطاقة المورد: جدول السندات والفواتير -->
+        <div class="supplier-card-body">
+            <div class="table-responsive" style="margin: 0;">
+                <table class="data-table" style="margin: 0; width: 100%;">
+                    <thead>
+                        <tr style="background: #f8fafc;">
+                            <th style="width: 70px;">رقم السند</th>
+                            <th>رقم فاتورة المورد</th>
+                            <th>تاريخ الاستلام</th>
+                            <th>الفرع / المستودع</th>
+                            <th>المستلم</th>
+                            <th>الحالة</th>
+                            <th>الأصناف</th>
+                            <th style="text-align: left;">إجمالي الفاتورة</th>
+                            <th style="width: 140px; text-align: center;" class="no-print">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in group.purchases %}
+                        <tr style="transition: background-color 0.15s;">
+                            <td>
+                                <a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="doc-link" target="_blank" title="فتح سند الاستلام في نافذة جديدة">
+                                    <strong>#{{ p.id }}</strong>
+                                </a>
+                            </td>
+                            <td>
+                                {% if p.invoice_number %}
+                                <strong>{{ p.invoice_number }}</strong>
+                                {% if p.foodics_reference %}
+                                <span class="badge" style="background: #ecfdf5; color: #047857; font-size: 10px; margin-right: 4px;" title="معرف فوديكس">⚡ فوديكس</span>
+                                {% endif %}
+                                {% else %}
+                                <span style="color: var(--gray-400);">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if p.invoice_date %}
+                                {{ p.invoice_date.strftime('%Y-%m-%d') }}
+                                {% elif p.created_at %}
+                                {{ p.created_at.strftime('%Y-%m-%d') }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span style="font-weight: 600; color: #0f172a;">{{ p.location.name_ar if p.location else '-' }}</span>
+                            </td>
+                            <td>
+                                <span style="font-size: 12px; color: var(--gray-600);">{{ p.creator.name if p.creator else '-' }}</span>
+                            </td>
+                            <td>
+                                <span class="badge badge-{{ p.status }}">{{ p.status_label_ar }}</span>
+                            </td>
+                            <td>
+                                <span style="font-weight: 700;">{{ p.lines|length }}</span> أصناف
+                            </td>
+                            <td style="text-align: left; font-weight: 800; font-size: 14px; color: #1e3a8a;">
+                                {{ "{:,.2f}".format(p.total_amount) }} ر.س
+                            </td>
+                            <td style="text-align: center;" class="no-print">
+                                <div style="display: flex; gap: 4px; justify-content: center;">
+                                    {% if p.lines %}
+                                    <button type="button" class="item-toggle-btn" onclick="toggleItemsDropdown('itemsRow_{{ p.id }}', this)" title="عرض الأصناف المستلمة">
+                                        📦 الأصناف
+                                    </button>
+                                    {% endif %}
+                                    <a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: 11px;" target="_blank">
+                                        عرض ↗
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- صف التفاصيل المنسدلة للأصناف المستلمة داخل الفاتورة -->
+                        {% if p.lines %}
+                        <tr id="itemsRow_{{ p.id }}" class="items-dropdown-row">
+                            <td colspan="9" style="padding: 10px 18px; border-bottom: 2px solid #e2e8f0;">
+                                <div style="font-weight: 700; font-size: 12px; color: #334155; margin-bottom: 6px;">
+                                    📦 بيان الأصناف المستلمة في سند الاستلام #{{ p.id }} (فاتورة: {{ p.invoice_number or 'بدون رقم' }}):
+                                </div>
+                                <table class="sub-items-table">
+                                    <thead>
+                                        <tr>
+                                            <th>كود الصنف (SKU)</th>
+                                            <th>اسم الصنف</th>
+                                            <th>الكمية المستلمة</th>
+                                            <th>الوحدة</th>
+                                            <th style="text-align: left;">سعر الوحدة</th>
+                                            <th style="text-align: left;">الإجمالي</th>
+                                            <th>ملاحظات</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for line in p.lines %}
+                                        <tr>
+                                            <td style="font-family: monospace; font-weight: 700; color: #475569;">{{ line.item.sku if line.item else '-' }}</td>
+                                            <td style="font-weight: 600;">{{ line.item.name_ar if line.item else '-' }}</td>
+                                            <td style="font-weight: 700; color: #047857;">{{ line.quantity }}</td>
+                                            <td style="color: var(--gray-600);">{{ line.item.storage_unit if line.item else '-' }}</td>
+                                            <td style="text-align: left;">{{ "{:,.2f}".format(line.unit_cost) }} ر.س</td>
+                                            <td style="text-align: left; font-weight: 700; color: #1e3a8a;">{{ "{:,.2f}".format(line.total_cost) }} ر.س</td>
+                                            <td style="color: var(--gray-500); font-size: 11px;">{{ line.notes or '-' }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </td>
+                        </tr>
+                        {% endif %}
+
+                        {% endfor %}
+                    </tbody>
+                    <!-- ذيل الجدول للمورد بمجموع مشترياته -->
+                    <tfoot>
+                        <tr style="background: #f1f5f9; font-weight: 800;">
+                            <td colspan="6" style="text-align: right; color: var(--gray-700);">
+                                مجموع استلامات {{ group.supplier_name }} ({{ group.vouchers_count }} سندات استلام):
+                            </td>
+                            <td>{{ group.total_items_count }} صنف</td>
+                            <td style="text-align: left; color: #1e3a8a; font-size: 15px;">
+                                {{ "{:,.2f}".format(group.total_amount) }} ر.س
+                            </td>
+                            <td class="no-print"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <!-- حالة عدم وجود بيانات -->
+    <div class="card" style="text-align: center; padding: 48px 20px; background: #ffffff; border-radius: 12px; border: 1px dashed var(--gray-300);">
+        <div style="font-size: 48px; margin-bottom: 12px;">📑</div>
+        <h3 style="margin: 0 0 8px 0; color: var(--gray-800);">لا توجد استلامات مطابقة لمعايير البحث</h3>
+        <p style="color: var(--gray-500); max-width: 500px; margin: 0 auto 18px auto; font-size: 14px;">
+            لم يتم العثور على أي سندات استلام مشتريات تطابق الفلاتر المحددة حالياً. يمكنك تعديل خيارات التصفية أو اختيار مورد وفترة أخرى.
+        </p>
+        <a href="{{ url_for('reports_suppliers') }}" class="btn btn-secondary btn-sm" style="padding: 8px 18px;">
+            🔄 إعادة تعيين كافة الفلاتر
+        </a>
+    </div>
+{% endif %}
+
+<script>
+function toggleSupplierCard(cardId) {
+    const card = document.getElementById(cardId);
+    if (card) {
+        card.classList.toggle('open');
+    }
+}
+
+function toggleAllAccordions(expand) {
+    document.querySelectorAll('.supplier-summary-card').forEach(card => {
+        if (expand) {
+            card.classList.add('open');
+        } else {
+            card.classList.remove('open');
+        }
+    });
+}
+
+function toggleItemsDropdown(rowId, btn) {
+    const row = document.getElementById(rowId);
+    if (row) {
+        row.classList.toggle('show');
+        if (btn) {
+            if (row.classList.contains('show')) {
+                btn.style.background = '#bae6fd';
+                btn.innerHTML = '🔼 إخفاء الأصناف';
+            } else {
+                btn.style.background = '#e0f2fe';
+                btn.innerHTML = '📦 الأصناف';
+            }
+        }
+    }
+}
+
+// التحكم في البحث التفاعلي الفوري للمورد بحرفين أو 3 حروف
+function openSupplierDropdown() {
+    const dd = document.getElementById('supplierDropdownList');
+    if (dd) {
+        dd.style.display = 'block';
+        const input = document.getElementById('supplierInput');
+        filterSupplierDropdown(input ? input.value : '');
+    }
+}
+
+function filterSupplierDropdown(query) {
+    const q = (query || '').trim().toLowerCase();
+    const items = document.querySelectorAll('.supplier-dd-item[data-supplier-name]');
+    let matchCount = 0;
+    items.forEach(el => {
+        const name = (el.getAttribute('data-supplier-name') || '').toLowerCase();
+        if (!q || name.includes(q)) {
+            el.style.display = 'flex';
+            matchCount++;
+        } else {
+            el.style.display = 'none';
+        }
+    });
+    const noMatch = document.getElementById('noSupplierMatches');
+    if (noMatch) {
+        noMatch.style.display = (matchCount === 0 && q) ? 'block' : 'none';
+    }
+}
+
+function selectSupplierOption(name) {
+    const input = document.getElementById('supplierInput');
+    if (input) {
+        input.value = name;
+    }
+    const dd = document.getElementById('supplierDropdownList');
+    if (dd) {
+        dd.style.display = 'none';
+    }
+}
+
+function clearSupplierInput() {
+    const input = document.getElementById('supplierInput');
+    if (input) {
+        input.value = '';
+        input.focus();
+        filterSupplierDropdown('');
+        openSupplierDropdown();
+    }
+}
+
+// إغلاق القائمة المنسدلة عند النقر في أي مكان خارجها
+document.addEventListener('click', function(e) {
+    const dd = document.getElementById('supplierDropdownList');
+    const input = document.getElementById('supplierInput');
+    if (dd && input && !dd.contains(e.target) && e.target !== input) {
+        dd.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}
+

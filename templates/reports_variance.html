@@ -1,8 +1,8 @@
-{% extends "base.html" %}
+{% extends "cafe_base.html" %}
 
 {% block title %}تقرير فروقات الجرد والتحويلات{% endblock %}
 
-{% block content %}
+{% block cafe_content %}
 <div class="page-header">
     <div class="page-title">
         <h2>⚖️ تقرير فروقات الجرد والتحويلات</h2>
@@ -29,7 +29,7 @@
     <div style="background: var(--gray-50); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px; border: 1px solid var(--gray-200);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
             <div>
-                <strong style="font-size: 16px; color: var(--gray-900);">جلسة جرد #{{ s.id }} - {{ s.location.name_ar if s.location else '-' }}</strong>
+                <strong style="font-size: 16px; color: var(--gray-900);">جلسة جرد {{ s.display_number }} - {{ s.location.name_ar if s.location else '-' }}</strong>
                 <span style="font-size: 13px; color: #1e3a8a; font-weight: 700; margin-right: 12px; background: #e0f2fe; padding: 2px 8px; border-radius: 4px;">
                     👤 المسؤول عن الجرد: {{ s.creator.name if s.creator else '-' }}
                 </span>
@@ -49,17 +49,27 @@
                 </span>
                 {% if s.status == 'pending_review' and user.role in ['admin', 'accountant'] %}
                 <form method="POST" action="{{ url_for('count_edit', session_id=s.id) }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="action" value="approve_session">
                     <input type="hidden" name="sync_now" value="1">
                     <button type="submit" class="btn btn-success btn-sm">✅ اعتماد وترحيل لفوديكس</button>
                 </form>
                 {% elif s.status in ['approved', 'failed'] and user.role in ['admin', 'accountant'] %}
                 <form method="POST" action="{{ url_for('count_edit', session_id=s.id) }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="action" value="sync_now">
                     <button type="submit" class="btn btn-primary btn-sm">⚡ ترحيل لفوديكس</button>
                 </form>
                 {% endif %}
                 <a href="{{ url_for('count_edit', session_id=s.id) }}" class="btn btn-secondary btn-sm">تعديل / عرض</a>
+                {% if user.role in ['admin', 'accountant', 'warehouse'] %}
+                <form method="POST" action="{{ url_for('count_delete', session_id=s.id) }}" style="display:inline;" onsubmit="return confirm('هل أنت متأكد من رغبتك في حذف جلسة الجرد ({{ s.display_number }}) نهائياً؟');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger btn-sm" style="background: #dc2626; color: #fff; border: 1px solid #b91c1c; padding: 5px 12px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer;">
+                        🗑️ حذف الجلسة
+                    </button>
+                </form>
+                {% endif %}
             </div>
         </div>
 

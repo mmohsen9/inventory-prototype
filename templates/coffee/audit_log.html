@@ -1,0 +1,74 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}سجل التدقيق — قسم القهوة{% endblock %}
+
+{% block coffee_content %}
+  <div class="kf-page-header">
+    <div>
+      <h1 class="kf-page-title">سجل التدقيق والعمليات (Coffee Audit Log)</h1>
+      <p style="margin: 4px 0 0; font-size: 13px; color: var(--kf-steel);">
+        سجل إلكتروني غير قابل للتعديل يوثق جميع العمليات، اعتمادات الصرف، الترحيل المحاسبي، والمستخدمين
+      </p>
+    </div>
+  </div>
+
+  <div class="kf-card" style="padding: 0; overflow: hidden;">
+    <div class="kf-table-wrap" style="border: none; border-radius: 0;">
+      <table class="kf-table">
+        <thead>
+          <tr>
+            <th>التاريخ والوقت</th>
+            <th>نوع العملية</th>
+            <th>نوع الكيان</th>
+            <th>معرف السجل</th>
+            <th>المستخدم</th>
+            <th>التفاصيل / الملاحظات</th>
+            <th>عنوان IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in logs.items %}
+          <tr>
+            <td>{{ l.created_at.strftime('%Y-%m-%d %H:%M:%S') if l.created_at else '—' }}</td>
+            <td>
+              <strong style="color: var(--kf-iris);">{{ l.event_type_label_ar }}</strong>
+            </td>
+            <td><code>{{ l.entity_type or '—' }}</code></td>
+            <td class="kf-num">#{{ l.entity_id or '—' }}</td>
+            <td><strong>{{ l.actor.name if l.actor else 'النظام' }}</strong></td>
+            <td>
+              {% if l.notes %}
+              <div>{{ l.notes }}</div>
+              {% endif %}
+              {% if l.new_value %}
+              <code style="font-size: 11px; color: var(--kf-steel);">{{ l.new_value }}</code>
+              {% endif %}
+            </td>
+            <td><small style="color: var(--kf-steel);">{{ l.ip_address or '—' }}</small></td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 48px 24px; color: var(--kf-steel);">
+              لا توجد سجلات تدقيق حتى الآن.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if logs.pages > 1 %}
+    <div style="padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--kf-border); background: var(--kf-page);">
+      <div style="font-size: 13px; color: var(--kf-steel);">صفحة {{ logs.page }} من {{ logs.pages }}</div>
+      <div style="display: flex; gap: 8px;">
+        {% if logs.has_prev %}
+        <a href="{{ url_for('coffee.audit_log', page=logs.prev_num) }}" class="kf-btn kf-btn-secondary kf-btn-sm">&rarr; السابقة</a>
+        {% endif %}
+        {% if logs.has_next %}
+        <a href="{{ url_for('coffee.audit_log', page=logs.next_num) }}" class="kf-btn kf-btn-secondary kf-btn-sm">التالية &larr;</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+{% endblock %}

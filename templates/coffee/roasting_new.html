@@ -1,0 +1,791 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}إنشاء أمر تشغيل تحميص جديد{% endblock %}
+
+{% block coffee_extra_css %}
+<style>
+    .coffee-form-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    .form-card {
+        background: #fff;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+    .form-header-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--gray-200);
+        padding-bottom: 16px;
+        margin-bottom: 20px;
+    }
+    .form-header-title h2 {
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--gray-900);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .form-grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+    @media (max-width: 768px) {
+        .form-grid-3 { grid-template-columns: 1fr; }
+    }
+    .form-group {
+        margin-bottom: 14px;
+    }
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--gray-700);
+        margin-bottom: 6px;
+    }
+    .form-control {
+        width: 100%;
+        padding: 9px 12px;
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-sm);
+        font-size: 13px;
+        background: #fff;
+        font-family: inherit;
+        box-sizing: border-box;
+    }
+    .form-control:focus {
+        border-color: #b45309;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.15);
+    }
+    
+    /* صندوق إضافة صنف مطابق لنمط سند الاستلام */
+    .add-item-box {
+        background: #fdfbf7;
+        border: 1.5px solid #fed7aa;
+        border-radius: var(--radius-md);
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+    .add-item-box-title {
+        font-size: 15px;
+        font-weight: 800;
+        color: #9a3412;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+    .barcode-box {
+        margin-bottom: 16px;
+        background: #faf5ff;
+        padding: 10px 14px;
+        border-radius: var(--radius-sm);
+        border: 1px dashed #d8b4fe;
+    }
+    .barcode-box label {
+        font-size: 12px;
+        font-weight: 700;
+        color: #6b21a8;
+        display: block;
+        margin-bottom: 4px;
+    }
+    .item-inputs-grid {
+        display: grid;
+        grid-template-columns: 2.2fr 1.2fr 2fr 1fr 1fr 1.2fr;
+        gap: 12px;
+        align-items: flex-end;
+    }
+    @media (max-width: 992px) {
+        .item-inputs-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+    
+    .btn-add-to-order {
+        background: #b45309;
+        color: #fff;
+        font-weight: 800;
+        font-size: 13px;
+        padding: 10px 16px;
+        border-radius: var(--radius-sm);
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        width: 100%;
+        height: 40px;
+        transition: all 0.2s;
+    }
+    .btn-add-to-order:hover {
+        background: #92400e;
+    }
+
+    /* قائمة نتائج البحث السريعة */
+    .search-results-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        left: 0;
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        z-index: 1000;
+        box-shadow: var(--shadow-lg);
+        max-height: 250px;
+        overflow-y: auto;
+    }
+    .search-result-item {
+        padding: 9px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 13px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .search-result-item:hover {
+        background: #fffbeb;
+        color: #78350f;
+    }
+
+    /* جدول الأصناف */
+    .lines-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    .lines-table th {
+        background: #f8fafc;
+        padding: 10px 12px;
+        border: 1px solid var(--gray-200);
+        font-weight: 700;
+        color: var(--gray-700);
+        text-align: right;
+    }
+    .lines-table td {
+        padding: 10px 12px;
+        border: 1px solid var(--gray-200);
+        vertical-align: middle;
+    }
+    .totals-summary-bar {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: var(--radius-sm);
+        padding: 16px 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 16px;
+        margin-top: 20px;
+        font-size: 14px;
+        text-align: center;
+    }
+    .totals-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .totals-label {
+        font-size: 11px;
+        color: #92400e;
+        font-weight: 600;
+    }
+    .totals-val {
+        font-size: 18px;
+        font-weight: 800;
+        color: #78350f;
+    }
+    .btn-remove-line {
+        background: #fee2e2;
+        color: #b91c1c;
+        border: 1px solid #fca5a5;
+        border-radius: var(--radius-sm);
+        padding: 5px 8px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    .btn-remove-line:hover {
+        background: #ef4444;
+        color: #fff;
+    }
+</style>
+{% endblock %}
+
+{% block coffee_content %}
+<div class="content-container coffee-form-container">
+
+    <div class="form-card">
+        <div class="form-header-title">
+            <h2>🔥 إنشاء أمر تشغيل تحميص جديد</h2>
+            <a href="{{ url_for('coffee.roasting_list') }}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-weight: 700; font-size: 13px; border-radius: var(--radius-sm); text-decoration: none; border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700); box-shadow: var(--shadow-sm); transition: all 0.2s;">
+                ⬅️ رجوع للخلف
+            </a>
+        </div>
+
+        {% if existing_draft %}
+        <div style="background: #fffbeb; border: 1.5px solid #f59e0b; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 26px;">⚠️</span>
+                <div>
+                    <div style="font-weight: 800; font-size: 13.5px; color: #92400e;">
+                        تنبيه: يوجد أمر تحميص مسودة مفتوح بالفعل برقم ({{ existing_draft.order_number }})
+                    </div>
+                    <div style="font-size: 12px; color: #78350f; margin-top: 2px;">
+                        تاريخ الأمر: {{ existing_draft.order_date }} | إجمالي الكمية: {{ existing_draft.total_green_kg }} كجم. يرجى استكماله أو إلغاؤه لتفادي حجز أرقام أوامر إضافية.
+                    </div>
+                </div>
+            </div>
+            <div>
+                <a href="{{ url_for('coffee.roasting_edit', order_id=existing_draft.id) }}" class="btn btn-warning" style="background: #f59e0b; color: #fff; font-weight: 700; font-size: 13px; text-decoration: none; padding: 8px 16px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>✏️ فتح واستكمال أمر التحميص</span>
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="POST" id="roastingNewForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- معلومات الرأس -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>رقم أمر التحميص</label>
+                    <input type="text" class="form-control" value="{{ next_order_number or 'OP-00001' }}" readonly style="font-weight: 800; font-size: 14px; color: #9a3412; background: var(--gray-100);">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>تاريخ الأمر *</label>
+                    <input type="date" name="order_date" class="form-control" value="{{ today }}" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>وقت البدء</label>
+                    <input type="time" name="order_time" class="form-control" value="09:00">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>رقم مرجعي إضافي (اختياري)</label>
+                    <input type="text" name="reference_number" class="form-control" placeholder="مثال: رقم تشغيلة إضافي">
+                </div>
+            </div>
+
+            <div class="form-grid-3">
+                <div class="form-group">
+                    <label>مستودع البن الأخضر (المصدر)</label>
+                    <input type="text" class="form-control" value="{{ gw.name_ar }}" readonly style="background: var(--gray-100); font-weight: 600;">
+                </div>
+                <div class="form-group">
+                    <label>مستودع البن المحمص (المستلم)</label>
+                    <input type="text" class="form-control" value="{{ rw.name_ar }}" readonly style="background: var(--gray-100); font-weight: 600;">
+                </div>
+                <div class="form-group">
+                    <label>مسؤول التحميص / الحماص</label>
+                    <input type="text" name="roasting_supervisor" class="form-control" placeholder="اسم المختص أو الحماص">
+                </div>
+            </div>
+
+            <!-- ➕ صندوق إضافة صنف جديد مطابق لسند الاستلام -->
+            <div class="add-item-box">
+                <div class="add-item-box-title">
+                    <span>➕ إضافة صنف بن لأمر التحميص</span>
+                </div>
+
+                <div class="barcode-box">
+                    <label>📷 قارئ الباركود / Barcode Scanner (مسح متتابع):</label>
+                    <input type="text" id="barcodeScannerInput" class="form-control" placeholder="امسح الباركود بجهاز المسح واضغط Enter للإضافة الفورية..." autocomplete="off">
+                </div>
+
+                <div class="item-inputs-grid">
+                    <!-- 1. بحث -->
+                    <div class="form-group" style="position: relative; margin-bottom: 0;">
+                        <label for="greenItemSearch">بحث الصنف الأخضر *</label>
+                        <input type="text" id="greenItemSearch" class="form-control" placeholder="ابحث بالاسم عربي/إنجليزي أو الكود..." autocomplete="off">
+                        <div id="greenSearchResults" class="search-results-dropdown"></div>
+                    </div>
+
+                    <!-- 2. كود الصنف -->
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>كود الصنف (GB) *</label>
+                        <input type="text" id="entryGreenCode" class="form-control" placeholder="GB..." readonly style="background: var(--gray-100); font-weight: 700;">
+                        <input type="hidden" id="entryGreenId">
+                    </div>
+
+                    <!-- 3. صنف المحمص المقابل -->
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>صنف البن المحمص المقابل (RB) *</label>
+                        <select id="entryRoastedId" class="form-control">
+                            <option value="">-- اختر صنف المحمص --</option>
+                            {% for r in roasted_items %}
+                            <option value="{{ r.id }}" data-code="{{ r.xero_item_code }}" data-base="{{ r.base_code }}">
+                                [{{ r.xero_item_code }}] {{ r.name_ar or r.xero_item_code }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- 4. الكمية بالكيلو -->
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>الكمية (كجم) *</label>
+                        <input type="number" step="0.01" id="entryQtyKg" class="form-control" placeholder="0.00">
+                    </div>
+
+                    <!-- 5. الخيشة المحسوبة تلقائياً -->
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>الخيشة (تلقائي)</label>
+                        <input type="text" id="entryQtySacks" class="form-control" placeholder="0.00" readonly style="background: #f1f5f9; font-weight: 700; color: #047857;">
+                        <input type="hidden" id="entrySackWeight" value="60">
+                    </div>
+
+                    <!-- 6. الكمية الناتجة الفعلية -->
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label style="color: #92400e;">الناتج الفعلي (كجم)</label>
+                        <input type="number" step="0.01" id="entryRoastedActualKg" class="form-control" placeholder="اختياري" style="background: #fffbeb; font-weight: 700; border-color: #f59e0b;">
+                    </div>
+                </div>
+
+                <div style="margin-top: 14px; display: flex; justify-content: flex-end;">
+                    <button type="button" class="btn-add-to-order" onclick="commitEntryToTable()" style="max-width: 240px;">
+                        ➕ إضافة لأمر التحميص
+                    </button>
+                </div>
+            </div>
+
+            <!-- جدول أصناف أمر التحميص -->
+            <div style="margin-top: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="font-size: 15px; font-weight: 800; color: var(--gray-800);">
+                        📦 أصناف البن المضافة لأمر التحميص (<span id="lineCountBadge">0</span> صنف)
+                    </h3>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="lines-table" id="linesTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>صنف البن الأخضر (GB)</th>
+                                <th>صنف المحمص المقابل (RB)</th>
+                                <th>الكمية الداخلة (كجم)</th>
+                                <th>الأخياش</th>
+                                <th style="background: #fffbeb; color: #78350f;">الناتج الفعلي (كجم)</th>
+                                <th>الفاقد المحسوب</th>
+                                <th>تكلفة الكيلو</th>
+                                <th>حذف</th>
+                            </tr>
+                        </thead>
+                        <tbody id="linesTbody">
+                            <tr id="emptyTableMsg">
+                                <td colspan="9" style="text-align: center; color: var(--gray-400); padding: 30px;">
+                                    لم تتم إضافة أي أصناف بعد. استخدم صندوق الإضافة بالأعلى للبحث وإضافة الأصناف.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="totals-summary-bar">
+                    <div class="totals-item">
+                        <span class="totals-label">إجمالي كمية الأخضر الداخلة</span>
+                        <span class="totals-val"><span id="sumGreenKg">0.00</span> كجم</span>
+                    </div>
+                    <div class="totals-item">
+                        <span class="totals-label">إجمالي عدد الأصناف</span>
+                        <span class="totals-val" id="sumLinesCount">0</span>
+                    </div>
+                    <div class="totals-item">
+                        <span class="totals-label">إجمالي الناتج المحمص الفعلي</span>
+                        <span class="totals-val" style="color: #047857;"><span id="sumRoastedKg">0.00</span> كجم</span>
+                    </div>
+                    <div class="totals-item">
+                        <span class="totals-label">متوسط نسبة الفاقد</span>
+                        <span class="totals-val" style="color: #b45309;"><span id="avgLossPct">0.00</span>%</span>
+                    </div>
+                    <div class="totals-item">
+                        <span class="totals-label">إجمالي تكلفة الأخضر</span>
+                        <span class="totals-val"><span id="sumEstimatedCost">0.00</span> ريال</span>
+                    </div>
+                    <div class="totals-item">
+                        <span class="totals-label">متوسط تكلفة كيلو المحمص</span>
+                        <span class="totals-val" style="color: #0369a1;"><span id="avgRoastedCost">0.00</span> ريال</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- أزرار الحفظ -->
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                <a href="{{ url_for('coffee.roasting_list') }}" class="btn-secondary" style="padding: 10px 20px; font-weight: 700; text-decoration: none; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px;">
+                    ⬅️ رجوع للخلف
+                </a>
+                <button type="submit" class="btn-primary" style="background: #b45309; border: none; padding: 10px 28px; font-size: 14px; font-weight: 700; border-radius: var(--radius-sm); color: #fff; cursor: pointer;">
+                    💾 حفظ أمر التحميص
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+<!-- بيانات الأصناف البرمجية -->
+<script>
+const greenItemsList = [
+    {% for g in green_items %}
+    {
+        "id": {{ g.id }},
+        "code": {{ g.xero_item_code|tojson }},
+        "base_code": {{ g.base_code|tojson }},
+        "name_ar": {{ (g.name_ar or g.xero_item_code)|tojson }},
+        "name_en": {{ (g.name_en or '')|tojson }},
+        "sack_allowed": {{ 'true' if g.sack_allowed else 'false' }},
+        "default_sack_weight": {{ g.default_sack_weight or 60 }},
+        "unit_cost": {{ (g.item.cost if g.item else 0)|float }},
+        "ref_loss_pct": {{ g.reference_loss_pct or 0 }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+const roastedItemsList = [
+    {% for r in roasted_items %}
+    {
+        "id": {{ r.id }},
+        "code": {{ r.xero_item_code|tojson }},
+        "base_code": {{ r.base_code|tojson }},
+        "name_ar": {{ (r.name_ar or r.xero_item_code)|tojson }},
+        "name_en": {{ (r.name_en or '')|tojson }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+let addedLines = [];
+let lineCounter = 0;
+
+// البحث الفوري التلقائي
+const searchInput = document.getElementById("greenItemSearch");
+const resultsContainer = document.getElementById("greenSearchResults");
+
+searchInput.addEventListener("input", function() {
+    const q = this.value.trim().toLowerCase();
+    if (!q) {
+        resultsContainer.style.display = "none";
+        return;
+    }
+
+    const matches = greenItemsList.filter(g => {
+        return (g.code && g.code.toLowerCase().includes(q)) ||
+               (g.name_ar && g.name_ar.toLowerCase().includes(q)) ||
+               (g.name_en && g.name_en.toLowerCase().includes(q)) ||
+               (g.base_code && g.base_code.toLowerCase().includes(q));
+    });
+
+    resultsContainer.innerHTML = "";
+    if (matches.length === 0) {
+        resultsContainer.innerHTML = '<div style="padding:10px 14px; color:#64748b; font-size:12px;">لا توجد أصناف بن أخضر مطابقة للبحث</div>';
+        resultsContainer.style.display = "block";
+        return;
+    }
+
+    matches.slice(0, 15).forEach(item => {
+        const div = document.createElement("div");
+        div.className = "search-result-item";
+        div.innerHTML = `
+            <div>
+                <strong>[${item.code}]</strong> ${item.name_ar}
+                ${item.name_en ? `<span style="color:#64748b; font-size:11px;"> - ${item.name_en}</span>` : ''}
+            </div>
+            <div style="font-size:11px; color:#047857; font-weight:700;">
+                خيشة: ${item.default_sack_weight} كجم
+            </div>
+        `;
+        div.addEventListener("click", () => selectGreenItem(item));
+        resultsContainer.appendChild(div);
+    });
+
+    resultsContainer.style.display = "block";
+});
+
+// إخفاء نتائج البحث عند النقر خارجها
+document.addEventListener("click", function(e) {
+    if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
+        resultsContainer.style.display = "none";
+    }
+});
+
+function selectGreenItem(item) {
+    document.getElementById("entryGreenId").value = item.id;
+    document.getElementById("entryGreenCode").value = item.code;
+    searchInput.value = `[${item.code}] ${item.name_ar}`;
+    resultsContainer.style.display = "none";
+
+    // وزن الخيشة
+    const sackWt = item.default_sack_weight > 0 ? item.default_sack_weight : 60;
+    document.getElementById("entrySackWeight").value = sackWt;
+
+    // الربط التلقائي بالبن المحمص المطابق لنفس base_code
+    const roastedSelect = document.getElementById("entryRoastedId");
+    roastedSelect.value = "";
+    if (item.base_code) {
+        for (let i = 0; i < roastedSelect.options.length; i++) {
+            const opt = roastedSelect.options[i];
+            const optBase = opt.getAttribute("data-base");
+            if (optBase && optBase.trim().toLowerCase() === item.base_code.trim().toLowerCase()) {
+                roastedSelect.selectedIndex = i;
+                break;
+            }
+        }
+    }
+
+    // حساب الأخياش إذا كانت الكمية مدخلة
+    calcEntrySacks();
+
+    // التركيز على حقل الكمية
+    document.getElementById("entryQtyKg").focus();
+}
+
+// حساب الأخياش تلقائياً عند إدخال الكيلو
+document.getElementById("entryQtyKg").addEventListener("input", calcEntrySacks);
+
+function calcEntrySacks() {
+    const qtyKg = parseFloat(document.getElementById("entryQtyKg").value) || 0;
+    const sackWt = parseFloat(document.getElementById("entrySackWeight").value) || 60;
+    const sacksInput = document.getElementById("entryQtySacks");
+
+    if (qtyKg > 0 && sackWt > 0) {
+        const fullSacks = qtyKg / sackWt;
+        sacksInput.value = fullSacks.toFixed(2);
+    } else {
+        sacksInput.value = "0.00";
+    }
+}
+
+// الباركود: الضغط على Enter في حقل الباركود
+document.getElementById("barcodeScannerInput").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        const code = this.value.trim().toLowerCase();
+        if (!code) return;
+        const match = greenItemsList.find(g => (g.code && g.code.toLowerCase() === code) || (g.base_code && g.base_code.toLowerCase() === code));
+        if (match) {
+            selectGreenItem(match);
+            this.value = "";
+        } else {
+            alert("لم يتم العثور على صنف مطابق للباركود: " + code);
+        }
+    }
+});
+
+// إضافة السطر من صندوق الإدخال إلى جدول الأمر
+function commitEntryToTable() {
+    const greenId = document.getElementById("entryGreenId").value;
+    const greenCode = document.getElementById("entryGreenCode").value;
+    const roastedSelect = document.getElementById("entryRoastedId");
+    const roastedId = roastedSelect.value;
+    const roastedText = roastedSelect.options[roastedSelect.selectedIndex]?.text || "—";
+    const qtyKg = parseFloat(document.getElementById("entryQtyKg").value) || 0;
+    const qtySacks = parseFloat(document.getElementById("entryQtySacks").value) || 0;
+    const sackWt = parseFloat(document.getElementById("entrySackWeight").value) || 60;
+    const roastedActualKg = parseFloat(document.getElementById("entryRoastedActualKg").value) || null;
+
+    if (!greenId) {
+        alert("يرجى اختيار صنف البن الأخضر أولاً");
+        searchInput.focus();
+        return;
+    }
+    if (!roastedId) {
+        alert("يرجى اختيار صنف البن المحمص المقابل");
+        roastedSelect.focus();
+        return;
+    }
+    if (qtyKg <= 0) {
+        alert("يرجى إدخال كمية بن أخضر صالحة أكبر من الصفر");
+        document.getElementById("entryQtyKg").focus();
+        return;
+    }
+
+    const greenItem = greenItemsList.find(g => String(g.id) === String(greenId));
+    lineCounter++;
+
+    const lineData = {
+        index: lineCounter,
+        greenId: greenId,
+        greenCode: greenCode,
+        greenName: greenItem ? greenItem.name_ar : greenCode,
+        unitCost: greenItem ? greenItem.unit_cost : 0,
+        roastedId: roastedId,
+        roastedName: roastedText,
+        qtyKg: qtyKg,
+        qtySacks: qtySacks,
+        sackWeight: sackWt,
+        roastedActualKg: roastedActualKg
+    };
+
+    addedLines.push(lineData);
+    renderLinesTable();
+
+    // تفريغ الحقول وإعادة الضبط للصنف التالي
+    document.getElementById("entryGreenId").value = "";
+    document.getElementById("entryGreenCode").value = "";
+    document.getElementById("greenItemSearch").value = "";
+    document.getElementById("entryQtyKg").value = "";
+    document.getElementById("entryQtySacks").value = "";
+    document.getElementById("entryRoastedActualKg").value = "";
+    searchInput.focus();
+}
+
+// عرض جدول الأسطر وتحديث الإجماليات
+function renderLinesTable() {
+    const tbody = document.getElementById("linesTbody");
+    tbody.innerHTML = "";
+
+    if (addedLines.length === 0) {
+        tbody.innerHTML = `
+            <tr id="emptyTableMsg">
+                <td colspan="9" style="text-align: center; color: var(--gray-400); padding: 30px;">
+                    لم تتم إضافة أي أصناف بعد. استخدم صندوق الإضافة بالأعلى للبحث وإضافة الأصناف.
+                </td>
+            </tr>
+        `;
+        document.getElementById("lineCountBadge").innerText = "0";
+        updateTotals();
+        return;
+    }
+
+    document.getElementById("lineCountBadge").innerText = addedLines.length;
+
+    addedLines.forEach((line, idx) => {
+        const tr = document.createElement("tr");
+
+        let lossKg = 0;
+        let lossPct = 0;
+        let roastedUnitCost = 0;
+
+        if (line.roastedActualKg && line.roastedActualKg > 0) {
+            lossKg = Math.max(0, line.qtyKg - line.roastedActualKg);
+            lossPct = (lossKg / line.qtyKg) * 100;
+            const totalGreenCost = line.qtyKg * line.unitCost;
+            roastedUnitCost = totalGreenCost / line.roastedActualKg;
+        }
+
+        tr.innerHTML = `
+            <td>${idx + 1}</td>
+            <td>
+                <strong>${line.greenCode}</strong>
+                <div style="font-size:11px; color:#64748b;">${line.greenName}</div>
+                <!-- مدخلات النموذج المخفية -->
+                <input type="hidden" name="green_item_id[]" value="${line.greenId}">
+                <input type="hidden" name="green_item_ids[]" value="${line.greenId}">
+                <input type="hidden" name="green_qty_kg[]" value="${line.qtyKg}">
+                <input type="hidden" name="qty_kgs[]" value="${line.qtyKg}">
+                <input type="hidden" name="green_qty_sacks[]" value="${line.qtySacks}">
+                <input type="hidden" name="qty_sacks[]" value="${line.qtySacks}">
+                <input type="hidden" name="green_sack_weight[]" value="${line.sackWeight}">
+                <input type="hidden" name="sack_weights[]" value="${line.sackWeight}">
+                <input type="hidden" name="roasted_item_id[]" value="${line.roastedId}">
+                <input type="hidden" name="roasted_item_ids[]" value="${line.roastedId}">
+                <input type="hidden" name="roasted_qty_kg[]" value="${line.roastedActualKg || ''}">
+                <input type="hidden" name="roasted_actual_kgs[]" value="${line.roastedActualKg || ''}">
+                <input type="hidden" name="link_type[]" value="auto">
+                <input type="hidden" name="link_types[]" value="auto">
+                <input type="hidden" name="manual_link_reason[]" value="">
+                <input type="hidden" name="manual_reasons[]" value="">
+                <input type="hidden" name="line_notes[]" value="">
+            </td>
+            <td>${line.roastedName}</td>
+            <td><strong>${line.qtyKg.toFixed(2)}</strong> كجم</td>
+            <td><span style="color:#047857; font-weight:700;">${line.qtySacks.toFixed(2)}</span> خيشة</td>
+            <td style="background:#fffbeb;">
+                ${line.roastedActualKg ? `<strong>${line.roastedActualKg.toFixed(2)}</strong> كجم` : '<span style="color:#94a3b8;">—</span>'}
+            </td>
+            <td>
+                ${line.roastedActualKg ? `<span style="color:${lossPct > 20 ? '#dc2626' : '#b45309'}; font-weight:700;">${lossKg.toFixed(2)} كجم (${lossPct.toFixed(1)}%)</span>` : '—'}
+            </td>
+            <td>
+                ${roastedUnitCost > 0 ? `<strong>${roastedUnitCost.toFixed(2)}</strong> ريال` : (line.unitCost ? `${line.unitCost.toFixed(2)} ريال` : '—')}
+            </td>
+            <td>
+                <div style="display: flex; gap: 4px; justify-content: center;">
+                    <button type="button" class="btn-remove-line" style="background: #eef2ff; color: #4338ca; border-color: #c7d2fe;" onclick="editLine(${idx})" title="تعديل السطر">
+                        ✏️
+                    </button>
+                    <button type="button" class="btn-remove-line" onclick="removeLine(${idx})" title="حذف السطر">
+                        🗑️
+                    </button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    updateTotals();
+}
+
+function editLine(index) {
+    const line = addedLines[index];
+    if (!line) return;
+
+    document.getElementById("entryGreenId").value = line.greenId;
+    document.getElementById("entryGreenCode").value = line.greenCode;
+    document.getElementById("greenItemSearch").value = `[${line.greenCode}] ${line.greenName}`;
+    document.getElementById("entryRoastedId").value = line.roastedId;
+    document.getElementById("entryQtyKg").value = line.qtyKg;
+    document.getElementById("entryQtySacks").value = line.qtySacks;
+    document.getElementById("entrySackWeight").value = line.sackWeight;
+    document.getElementById("entryRoastedActualKg").value = line.roastedActualKg || "";
+
+    addedLines.splice(index, 1);
+    renderLinesTable();
+    document.getElementById("entryQtyKg").focus();
+}
+
+function removeLine(index) {
+    addedLines.splice(index, 1);
+    renderLinesTable();
+}
+
+function updateTotals() {
+    let totGreenKg = 0;
+    let totRoastedKg = 0;
+    let totGreenCost = 0;
+
+    addedLines.forEach(l => {
+        totGreenKg += l.qtyKg;
+        totGreenCost += (l.qtyKg * l.unitCost);
+        if (l.roastedActualKg && l.roastedActualKg > 0) {
+            totRoastedKg += l.roastedActualKg;
+        }
+    });
+
+    document.getElementById("sumGreenKg").innerText = totGreenKg.toFixed(2);
+    document.getElementById("sumLinesCount").innerText = addedLines.length;
+    document.getElementById("sumRoastedKg").innerText = totRoastedKg.toFixed(2);
+    document.getElementById("sumEstimatedCost").innerText = totGreenCost.toFixed(2);
+
+    let avgLoss = 0;
+    if (totGreenKg > 0 && totRoastedKg > 0) {
+        avgLoss = ((totGreenKg - totRoastedKg) / totGreenKg) * 100;
+    }
+    document.getElementById("avgLossPct").innerText = avgLoss.toFixed(2);
+
+    let avgRoastedCost = 0;
+    if (totRoastedKg > 0) {
+        avgRoastedCost = totGreenCost / totRoastedKg;
+    }
+    document.getElementById("avgRoastedCost").innerText = avgRoastedCost.toFixed(2);
+}
+
+// التحقق قبل إرسال النموذج
+document.getElementById("roastingNewForm").addEventListener("submit", function(e) {
+    if (addedLines.length === 0) {
+        e.preventDefault();
+        alert("يرجى إضافة سطر صنف واحد على الأقل قبل حفظ أمر التحميص.");
+        searchInput.focus();
+    }
+});
+</script>
+{% endblock %}

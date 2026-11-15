@@ -1,0 +1,561 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}كشف حساب واستلامات عملاء البن (المحمص والأخضر){% endblock %}
+
+{% block coffee_extra_css %}
+<style>
+  .customer-statement-card {
+    background: #ffffff;
+    border: 1px solid var(--kf-border, #e2e8f0);
+    border-radius: 12px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .customer-statement-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  }
+  .customer-card-header {
+    background: #f8fafc;
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid var(--kf-border, #e2e8f0);
+    gap: 12px;
+    flex-wrap: wrap;
+    transition: background 0.15s ease;
+  }
+  .customer-card-header:hover {
+    background: #f1f5f9;
+  }
+  .customer-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .customer-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: #fef3c7;
+    color: #92400e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    border: 1px solid #fde68a;
+    font-weight: 800;
+  }
+  .customer-meta-pills {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .customer-total-badge {
+    background: #1e3a8a;
+    color: #ffffff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 800;
+    font-size: 13.5px;
+    letter-spacing: 0.3px;
+  }
+  .customer-weight-badge {
+    background: #065f46;
+    color: #ffffff;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .customer-count-badge {
+    background: #e2e8f0;
+    color: #334155;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .accordion-chevron {
+    transition: transform 0.25s ease;
+    font-size: 13px;
+    color: #64748b;
+  }
+  .customer-statement-card.open .accordion-chevron {
+    transform: rotate(180deg);
+  }
+  .customer-card-body {
+    display: none;
+    padding: 0;
+  }
+  .customer-statement-card.open .customer-card-body {
+    display: block;
+  }
+  .vouchers-table {
+    width: 100%;
+    margin-bottom: 0;
+    border-collapse: collapse;
+    font-size: 12.5px;
+  }
+  .vouchers-table th {
+    background: #f1f5f9;
+    color: #475569;
+    font-weight: 700;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: right;
+  }
+  .vouchers-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+  }
+  .vouchers-table tr:hover td {
+    background: #fafafa;
+  }
+  .badge-roasted {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .badge-green {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .sub-lines-box {
+    margin-top: 4px;
+    padding: 4px 8px;
+    background: #f8fafc;
+    border-radius: 6px;
+    border: 1px solid #f1f5f9;
+    font-size: 11px;
+    color: #475569;
+  }
+
+  @media print {
+    .no-print, .kf-sidebar, .coffee-page-header .page-actions, .filter-bar, .subtabs-bar {
+      display: none !important;
+    }
+    .customer-card-body {
+      display: block !important;
+    }
+    .customer-statement-card {
+      box-shadow: none !important;
+      border: 1px solid #cbd5e1 !important;
+      page-break-inside: avoid;
+      margin-bottom: 24px !important;
+    }
+    .print-only-header {
+      display: block !important;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+  }
+  @media screen {
+    .print-only-header {
+      display: none;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block coffee_content %}
+<div class="coffee-page-container">
+
+    <!-- شريط التبويبات الفرعية -->
+    <div class="subtabs-bar no-print">
+        <a href="{{ url_for('coffee.dashboard') }}" class="subtab-item">📊 لوحة التحكم</a>
+        <a href="{{ url_for('coffee.green_stock') }}" class="subtab-item">🌱 مخزون الأخضر (GB)</a>
+        <a href="{{ url_for('coffee.roasting_list') }}" class="subtab-item">🔥 أوامر التحميص</a>
+        <a href="{{ url_for('coffee.green_issues_list') }}" class="subtab-item">📤 صرف البن الأخضر</a>
+        <a href="{{ url_for('coffee.roasted_stock') }}" class="subtab-item">☕ مخزون المحمص (RB)</a>
+        <a href="{{ url_for('coffee.dispatches_list') }}" class="subtab-item">🚚 صرف المحمص للفروع</a>
+        <a href="{{ url_for('coffee.customers_list') }}" class="subtab-item">👥 دليل العملاء</a>
+        <a href="{{ url_for('coffee.reports') }}" class="subtab-item active">📑 التقارير</a>
+    </div>
+
+    <!-- ترويسة الصفحة للطباعة فقط -->
+    <div class="print-only-header">
+        <h2 style="margin: 0; color: #0f172a;">كشف حساب واستلامات عملاء البن (المحمص والأخضر)</h2>
+        <div style="font-size: 12px; color: #64748b; margin-top: 4px;">تاريخ الطباعة: {{ date.today() if date else '' }}</div>
+    </div>
+
+    <!-- ترويسة الصفحة للشاشة -->
+    <div class="coffee-page-header no-print" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+        <div class="coffee-page-title">
+            <h2 style="margin: 0; font-size: 20px; font-weight: 800; color: #0f172a;">
+                📑 كشف حساب واستلامات عملاء البن
+            </h2>
+            <p style="color: var(--kf-steel, #64748b); font-size: 13px; margin: 4px 0 0 0;">
+                كشف حساب تحليلي تفصيلي لمبيعات واستلامات العملاء من البن المحمص والأخضر المباشر بنمط الأكورديون التفاعلي
+            </p>
+        </div>
+        <div class="page-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a href="{{ url_for('coffee.report_customers_statement_export', **filters) }}" class="kf-btn kf-btn-secondary" title="تصدير كشف حساب العملاء إلى إكسل">
+                📥 تصدير إلى Excel
+            </a>
+            <button type="button" class="kf-btn kf-btn-secondary" onclick="window.print()" title="طباعة الكشف A4">
+                🖨️ طباعة البيان
+            </button>
+            <a href="{{ url_for('coffee.customers_list') }}" class="kf-btn kf-btn-secondary" title="الانتقال إلى دليل عملاء القهوة">
+                👥 دليل العملاء
+            </a>
+            <a href="{{ url_for('coffee.dispatch_new') }}" class="kf-btn kf-btn-primary" title="إنشاء سند صرف وبيع جديد">
+                ➕ سند صرف جديد
+            </a>
+        </div>
+    </div>
+
+    <!-- بطاقات الإحصاءات والـ KPIs -->
+    <div class="kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 22px;">
+        <!-- إجمالي المبيعات -->
+        <div style="background: #ffffff; border: 1px solid var(--kf-border, #e2e8f0); border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <div style="font-size: 12px; color: var(--kf-steel, #64748b); font-weight: 700;">إجمالي مبيعات العملاء</div>
+                <div style="font-size: 22px; font-weight: 900; color: #1e3a8a; margin-top: 4px;">
+                    {{ "{:,.2f}".format(grand_total_amount) }} <span style="font-size: 12px; font-weight: 700;">ر.س</span>
+                </div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 2px;">صافي قيمة المبيعات المستخرجة</div>
+            </div>
+            <div style="font-size: 24px; background: #eff6ff; width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">💰</div>
+        </div>
+
+        <!-- إجمالي الكمية المسلمة بالكيلو -->
+        <div style="background: #ffffff; border: 1px solid var(--kf-border, #e2e8f0); border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <div style="font-size: 12px; color: var(--kf-steel, #64748b); font-weight: 700;">إجمالي الكمية المسلمة</div>
+                <div style="font-size: 22px; font-weight: 900; color: #047857; margin-top: 4px;">
+                    {{ "{:,.2f}".format(grand_total_qty_kg) }} <span style="font-size: 12px; font-weight: 700;">كجم</span>
+                </div>
+                <div style="font-size: 11px; color: #059669; margin-top: 2px;">محمص: {{ "{:,.1f}".format(grand_roasted_qty_kg) }} | أخضر: {{ "{:,.1f}".format(grand_green_qty_kg) }}</div>
+            </div>
+            <div style="font-size: 24px; background: #ecfdf5; width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">⚖️</div>
+        </div>
+
+        <!-- عدد السندات -->
+        <div style="background: #ffffff; border: 1px solid var(--kf-border, #e2e8f0); border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <div style="font-size: 12px; color: var(--kf-steel, #64748b); font-weight: 700;">إجمالي السندات</div>
+                <div style="font-size: 22px; font-weight: 900; color: #d97706; margin-top: 4px;">
+                    {{ grand_total_vouchers }} <span style="font-size: 12px; font-weight: 700;">سند</span>
+                </div>
+                <div style="font-size: 11px; color: #b45309; margin-top: 2px;">متوسط السند: {{ "{:,.1f}".format(avg_voucher_amount) }} ر.س</div>
+            </div>
+            <div style="font-size: 24px; background: #fffbeb; width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">📦</div>
+        </div>
+
+        <!-- عدد العملاء -->
+        <div style="background: #ffffff; border: 1px solid var(--kf-border, #e2e8f0); border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <div style="font-size: 12px; color: var(--kf-steel, #64748b); font-weight: 700;">العملاء النشطون</div>
+                <div style="font-size: 22px; font-weight: 900; color: #7c3aed; margin-top: 4px;">
+                    {{ total_customers_count }} <span style="font-size: 12px; font-weight: 700;">عميل</span>
+                </div>
+                <div style="font-size: 11px; color: #6d28d9; margin-top: 2px;">مبيعات مباشرة مسجلة</div>
+            </div>
+            <div style="font-size: 24px; background: #f5f3ff; width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">👥</div>
+        </div>
+    </div>
+
+    <!-- شريط الفلاتر والبحث -->
+    <div class="no-print" style="background: white; border: 1px solid var(--kf-border, #e2e8f0); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+        <form method="GET" action="{{ url_for('coffee.report_customers_statement') }}" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;">
+            <!-- اختيار العميل -->
+            <div style="flex: 2; min-width: 220px;">
+                <label style="font-size: 12px; font-weight: 700; color: var(--kf-steel, #64748b); display: block; margin-bottom: 5px;">العميل</label>
+                <select name="customer_id" class="form-control" style="height: 42px; border-radius: 8px;">
+                    <option value="">-- كافة العملاء (عرض الكل) --</option>
+                    {% for cust in all_customers %}
+                    <option value="{{ cust.id }}" {% if filters.customer_id == cust.id|string %}selected{% endif %}>
+                        {{ cust.name }} {% if cust.phone %}({{ cust.phone }}){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- البحث بالاسم أو الأحرف -->
+            <div style="flex: 1.5; min-width: 180px;">
+                <label style="font-size: 12px; font-weight: 700; color: var(--kf-steel, #64748b); display: block; margin-bottom: 5px;">بحث بالاسم أو الأحرف</label>
+                <input type="text" name="customer_name" value="{{ filters.customer_name }}" placeholder="اكتب اسم العميل..." class="form-control" style="height: 42px; border-radius: 8px;" autocomplete="off">
+            </div>
+
+            <!-- نوع البن -->
+            <div style="flex: 1; min-width: 150px;">
+                <label style="font-size: 12px; font-weight: 700; color: var(--kf-steel, #64748b); display: block; margin-bottom: 5px;">نوع البن</label>
+                <select name="coffee_type" class="form-control" style="height: 42px; border-radius: 8px;">
+                    <option value="all" {% if filters.coffee_type == 'all' %}selected{% endif %}>الكل (محمص وأخضر)</option>
+                    <option value="roasted" {% if filters.coffee_type == 'roasted' %}selected{% endif %}>☕ بن محمص فقط</option>
+                    <option value="green" {% if filters.coffee_type == 'green' %}selected{% endif %}>🌱 بن أخضر فقط</option>
+                </select>
+            </div>
+
+            <!-- حالة السند -->
+            <div style="flex: 1.2; min-width: 180px;">
+                <label style="font-size: 12px; font-weight: 700; color: var(--kf-steel, #64748b); display: block; margin-bottom: 5px;">حالة السند</label>
+                <select name="status" class="form-control" style="height: 42px; border-radius: 8px;">
+                    <option value="confirmed" {% if filters.status == 'confirmed' or not filters.status %}selected{% endif %}>المعتمدة والمرحلة فقط (افتراضي)</option>
+                    <option value="all" {% if filters.status == 'all' %}selected{% endif %}>كافة السندات (شامل المسودات)</option>
+                    <option value="draft" {% if filters.status == 'draft' %}selected{% endif %}>المسودات فقط</option>
+                </select>
+            </div>
+
+            <!-- من تاريخ -->
+            <div style="flex: 1; min-width: 130px;">
+                <label style="font-size: 12px; font-weight: 700; color: var(--kf-steel, #64748b); display: block; margin-bottom: 5px;">من تاريخ</label>
+                <input type="date" name="date_from" value="{{ filters.date_from }}" class="form-control" style="height: 42px; border-radius: 8px;">
+            </div>
+
+            <!-- إلى تاريخ -->
+            <div style="flex: 1; min-width: 130px;">
+                <label style="font-size: 12px; font-weight: 700; color: var(--kf-steel, #64748b); display: block; margin-bottom: 5px;">إلى تاريخ</label>
+                <input type="date" name="date_to" value="{{ filters.date_to }}" class="form-control" style="height: 42px; border-radius: 8px;">
+            </div>
+
+            <!-- أزرار التصفية -->
+            <div style="display: flex; gap: 8px;">
+                <button type="submit" class="kf-btn kf-btn-primary" style="height: 42px; padding: 0 18px; border-radius: 8px;">
+                    <span>🔍 تصفية</span>
+                </button>
+                {% if filters.customer_id or filters.customer_name or filters.date_from or filters.date_to or (filters.coffee_type and filters.coffee_type != 'all') or (filters.status and filters.status != 'confirmed') %}
+                <a href="{{ url_for('coffee.report_customers_statement') }}" class="kf-btn kf-btn-secondary" style="height: 42px; padding: 0 16px; border-radius: 8px;">
+                    <span>إعادة ضبط</span>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- أدوات التحكم في الأكورديون (توسيع الكل / طي الكل) -->
+    {% if grouped_customers %}
+    <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <div style="font-size: 13px; font-weight: 800; color: #334155;">
+            قائمة كشوف حسابات العملاء ({{ grouped_customers|length }} عميل)
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllAccordions(true)" style="font-size: 12px; padding: 4px 12px; border-radius: 6px;">
+                🔽 توسيع كافة العملاء
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAllAccordions(false)" style="font-size: 12px; padding: 4px 12px; border-radius: 6px;">
+                🔼 طي الكل
+            </button>
+        </div>
+    </div>
+
+    <!-- بطاقات العملاء بنمط الأكورديون التفاعلي -->
+    {% for cust in grouped_customers %}
+    <div class="customer-statement-card {% if loop.first or grouped_customers|length == 1 %}open{% endif %}" id="custCard_{{ loop.index }}">
+        <div class="customer-card-header" onclick="toggleAccordion('custCard_{{ loop.index }}')">
+            <div class="customer-title-wrap">
+                <div class="customer-icon">
+                    <span>{{ cust.customer_name[0] if cust.customer_name else 'ع' }}</span>
+                </div>
+                <div>
+                    <div style="font-size: 15px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                        <span>{{ cust.customer_name }}</span>
+                        {% if cust.customer_phone %}
+                        <span style="font-size: 12px; font-weight: 600; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 1px 8px; border-radius: 4px; direction: ltr;">
+                            📞 {{ cust.customer_phone }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 3px;">
+                        محمص: <strong>{{ "{:,.1f}".format(cust.roasted_qty_kg) }} كجم</strong> | أخضر: <strong>{{ "{:,.1f}".format(cust.green_qty_kg) }} كجم</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="customer-meta-pills">
+                <div class="customer-total-badge" title="إجمالي قيمة المبيعات">
+                    {{ "{:,.2f}".format(cust.total_amount) }} ريال
+                </div>
+                <div class="customer-weight-badge" title="إجمالي الكمية المسلمة بالكيلو">
+                    {{ "{:,.2f}".format(cust.total_qty_kg) }} كجم
+                </div>
+                <div class="customer-count-badge" title="عدد السندات">
+                    {{ cust.vouchers_count }} سند
+                </div>
+                <span class="accordion-chevron">▼</span>
+            </div>
+        </div>
+
+        <div class="customer-card-body">
+            <div style="overflow-x: auto;">
+                <table class="vouchers-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 45px; text-align: center;">#</th>
+                            <th style="width: 105px;">تاريخ السند</th>
+                            <th style="width: 110px;">رقم السند</th>
+                            <th style="width: 110px;">نوع البن</th>
+                            <th>الأصناف والتعبئة المصروفة</th>
+                            <th style="width: 110px; text-align: center;">الكمية (كجم)</th>
+                            <th style="width: 120px; text-align: center;">إجمالي القيمة</th>
+                            <th style="width: 90px; text-align: center;">الحالة</th>
+                            <th style="width: 110px; text-align: center;">فاتورة Xero</th>
+                            <th style="width: 100px; text-align: center;" class="no-print">إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in cust.vouchers %}
+                        <tr>
+                            <td style="text-align: center; color: var(--kf-steel, #64748b); font-size: 11px;">{{ loop.index }}</td>
+                            <td style="font-weight: 700; color: #334155; font-size: 12px;">
+                                {{ v.date_str }}
+                                {% if v.time_str %}<div style="font-size: 10.5px; color: #94a3b8;">{{ v.time_str }}</div>{% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ v.edit_url }}" style="font-weight: 800; color: #1e3a8a; text-decoration: none;" title="عرض/تعديل السند">
+                                    {{ v.doc_number }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if v.voucher_type == 'roasted' %}
+                                <span class="badge-roasted">☕ محمص</span>
+                                {% else %}
+                                <span class="badge-green">🌱 أخضر</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if v.lines %}
+                                    {% for l in v.lines %}
+                                    <div style="margin-bottom: 2px;">
+                                        <strong>{{ l.item_name }}</strong>
+                                        <span style="color: #64748b; font-size: 11px;">
+                                            ({{ "{:,.2f}".format(l.qty_kg) }} كجم{% if l.package_label %} - {{ l.package_label }}{% endif %})
+                                        </span>
+                                        {% if l.unit_price > 0 %}
+                                        <span style="color: #047857; font-size: 11px; margin-right: 4px;">
+                                            @ {{ "{:,.2f}".format(l.unit_price) }} ر.س
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <span>{{ v.type_label }}</span>
+                                {% endif %}
+                                {% if v.notes %}
+                                <div style="font-size: 11px; color: #64748b; margin-top: 2px;">{{ v.notes }}</div>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center; font-weight: 800; color: #0f172a;">
+                                {{ "{:,.2f}".format(v.total_qty_kg) }}
+                            </td>
+                            <td style="text-align: center; font-weight: 800; color: #1e3a8a;">
+                                {{ "{:,.2f}".format(v.total_amount) }} ريال
+                            </td>
+                            <td style="text-align: center;">
+                                {% if v.status in ('approved', 'posted') %}
+                                <span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">
+                                    معتمد
+                                </span>
+                                {% else %}
+                                <span style="background: #fffbeb; color: #b45309; border: 1px solid #fde68a; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">
+                                    مسودة
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center; font-size: 11px;">
+                                {% if v.xero_invoice_number %}
+                                <span style="color: #0369a1; font-weight: 700; background: #e0f2fe; padding: 2px 6px; border-radius: 4px;">
+                                    {{ v.xero_invoice_number }}
+                                </span>
+                                {% elif v.xero_status == 'posted' %}
+                                <span style="color: #047857;">مرحّل ✓</span>
+                                {% else %}
+                                <span style="color: #94a3b8;">—</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center; white-space: nowrap;" class="no-print">
+                                <a href="{{ v.print_url }}" target="_blank" class="btn btn-sm btn-outline-secondary" style="font-size: 11px; padding: 2px 6px;" title="طباعة السند">
+                                    🖨️ طباعة
+                                </a>
+                                <a href="{{ v.edit_url }}" class="btn btn-sm btn-outline-primary" style="font-size: 11px; padding: 2px 6px; margin-right: 2px;" title="عرض السند">
+                                    👁️ عرض
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr style="background: #f8fafc; font-weight: 800; border-top: 1.5px solid #cbd5e1;">
+                            <td colspan="5" style="text-align: right; padding: 10px 12px; color: #334155;">
+                                إجمالي مشتريات واستلامات ({{ cust.customer_name }}):
+                            </td>
+                            <td style="text-align: center; color: #047857; font-size: 13px;">
+                                {{ "{:,.2f}".format(cust.total_qty_kg) }} كجم
+                            </td>
+                            <td style="text-align: center; color: #1e3a8a; font-size: 13px;">
+                                {{ "{:,.2f}".format(cust.total_amount) }} ريال
+                            </td>
+                            <td colspan="3"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% else %}
+    <!-- حالة عدم وجود بيانات -->
+    <div style="background: white; border: 1px solid var(--kf-border, #e2e8f0); border-radius: 12px; padding: 48px 16px; text-align: center; margin-top: 20px;">
+        <div style="font-size: 42px; margin-bottom: 12px;">👥</div>
+        <div style="font-size: 16px; font-weight: 800; color: #334155;">لا توجد سندات مبيعات تطابق معايير التصفية المحددة</div>
+        <div style="font-size: 13px; color: var(--kf-steel, #64748b); margin-top: 6px;">
+            جرب تعديل خيارات التصفية، أو تغيير حالة السند إلى «كافة السندات شامل المسودات»
+        </div>
+        <div style="margin-top: 16px;">
+            <a href="{{ url_for('coffee.report_customers_statement') }}" class="kf-btn kf-btn-secondary">
+                🔄 عرض كافة العملاء
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block coffee_scripts %}
+<script>
+  // فتح / إغلاق الأكورديون للعميل
+  function toggleAccordion(cardId) {
+    const card = document.getElementById(cardId);
+    if (card) {
+      card.classList.toggle('open');
+    }
+  }
+
+  // توسيع الكل أو طي الكل
+  function toggleAllAccordions(expand) {
+    const cards = document.querySelectorAll('.customer-statement-card');
+    cards.forEach(card => {
+      if (expand) {
+        card.classList.add('open');
+      } else {
+        card.classList.remove('open');
+      }
+    });
+  }
+</script>
+{% endblock %}

@@ -1,28 +1,55 @@
-{% extends "base.html" %}
+{% extends "cafe_base.html" %}
 
 {% block title %}{{ t('nav_purchases') }}{% endblock %}
 
-{% block content %}
+{% block cafe_content %}
 <div class="page-header">
     <div class="page-title">
         <h2>📦 {{ t('nav_purchases') }} ({{ t('purchases_list_title') }})</h2>
         <p>{{ t('purchases_list_subtitle') }}</p>
     </div>
-    <div class="page-actions">
+    <div class="page-actions" style="display: flex; gap: 8px;">
         <a href="{{ url_for('purchase_new') }}" class="btn btn-primary">
             ➕ {{ t('new_purchase') }}
         </a>
+        <button onclick="window.print()" class="btn btn-secondary btn-sm" style="font-weight: 700; cursor: pointer;">
+            🖨️ {{ 'طباعة البيان' if lang == 'ar' else 'Print Statement' }}
+        </button>
     </div>
 </div>
 
+{% if user.role in ['admin', 'accountant'] %}
+<!-- شريط الاعتماد الجماعي للسندات عبر الفروع المتعددة -->
+<form id="bulkApproveForm" method="POST" action="{{ url_for('purchase_bulk_approve') }}">
+<div id="bulkActionBar" style="display: none; background: linear-gradient(135deg, #1e3a8a, #1e40af); color: #ffffff; padding: 12px 18px; border-radius: 10px; margin-bottom: 16px; align-items: center; justify-content: space-between; box-shadow: 0 4px 14px rgba(30, 58, 138, 0.3);">
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 18px;">⚡</span>
+        <div>
+            <span style="font-weight: 800; font-size: 14px;">تم تحديد <span id="selectedCount" style="background: #3b82f6; padding: 2px 8px; border-radius: 12px;">0</span> سند استلام</span>
+            <span style="font-size: 12px; color: #bfdbfe; margin-right: 8px;">(اعتماد فوري لجميع الفروع المحددة وتحديث الأرصدة وترحيل فوديكس بضغطة واحدة)</span>
+        </div>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center;">
+        <button type="submit" class="btn btn-success" style="font-weight: 800; padding: 8px 18px; background: #059669; border: none; border-radius: 8px; color: white; cursor: pointer; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.4);" onclick="return confirm('هل أنت متأكد من رغبتك في اعتماد كافة سندات الاستلام المحددة لجميع الفروع المعنية في ضغطة واحدة؟ سيتم فوراً تحديث أرصدة المستودعات والفروع وإدراجها في طابور الترحيل لفوديكس.');">
+            ✅ {{ 'اعتماد السندات المحددة في ضغطة واحدة' if lang == 'ar' else 'Approve Selected Vouchers in 1-Click' }}
+        </button>
+    </div>
+</div>
+{% endif %}
+
 <div class="card">
-    <div class="card-header">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
         <div class="card-title">{{ t('purchases_records') }} ({{ purchases|length }})</div>
     </div>
     <div class="table-responsive">
         <table class="data-table">
             <thead>
                 <tr>
+                    {% if user.role in ['admin', 'accountant'] %}
+                    <th style="width: 38px; text-align: center;" title="تحديد الكل للاعتماد">
+                        <input type="checkbox" id="selectAllVouchers" style="cursor: pointer; width: 16px; height: 16px;">
+                    </th>
+                    {% endif %}
                     <th>#</th>
                     <th>{{ t('supplier') }}</th>
                     <th>{{ t('invoice_number') }}</th>
@@ -34,25 +61,53 @@
                     {% endif %}
                     <th>{{ t('items') }}</th>
                     <th>{{ t('status') }}</th>
-                    <th>{{ t('actions') }}</th>
+                    <th class="action-col">{{ t('actions') }}</th>
                 </tr>
             </thead>
             <tbody>
                 {% for p in purchases %}
-                <tr>
-                    <td><strong>#{{ p.id }}</strong></td>
+                <tr class="clickable-row"
+                    data-href="{{ url_for('purchase_edit', purchase_id=p.id) }}"
+                    onclick="handleVoucherRowClick(event, '{{ url_for('purchase_edit', purchase_id=p.id) }}')"
+                    style="cursor: pointer;"
+                    title="{{ 'انقر لفتح وتعديل السند' if lang == 'ar' else 'Click to open voucher' }}">
+                    {% if user.role in ['admin', 'accountant'] %}
+                    <td style="text-align: center;" class="voucher-checkbox-cell" onclick="event.stopPropagation();">
+                        {% if p.status in ['draft', 'submitted', 'pending'] %}
+                        <input type="checkbox" name="purchase_ids" value="{{ p.id }}" class="voucher-check-item" style="cursor: pointer; width: 16px; height: 16px;">
+                        {% else %}
+                        <span style="color: #10b981; font-weight: 800; font-size: 13px;" title="معتمد">✓</span>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    <td>
+                        <a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="doc-link" title="{{ 'فتح السند' if lang == 'ar' else 'Open voucher' }}">
+                            <strong>#{{ p.id }}</strong>
+                        </a>
+                    </td>
                     <td><strong>{{ p.supplier_name }}</strong></td>
-                    <td>{{ p.invoice_number or '-' }}</td>
+                    <td>
+                        {% if p.invoice_number %}
+                        <a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="doc-link" style="color: #0f172a;" title="{{ 'فتح السند' if lang == 'ar' else 'Open voucher' }}">
+                            <strong>{{ p.invoice_number }}</strong>
+                        </a>
+                        {% if p.foodics_reference %}
+                        <span class="badge" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-size: 11px; padding: 2px 6px; font-weight: 700; margin-right: 4px;" title="فاتورة مشتريات مستوردة من فوديكس">⚡ فوديكس</span>
+                        {% endif %}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
                     <td>{{ loc_name(p.location) }}</td>
                     <td style="color: var(--gray-600); font-size: 13px;">{{ p.invoice_date or p.created_at.strftime('%Y-%m-%d') }}</td>
-                    <td style="font-size: 12px; min-width: 135px;">
+                    <td style="font-size: 12px;">
                         <strong style="color: #1e3a8a;">👤 {{ p.creator.name if p.creator else '-' }}</strong>
                         <div style="font-size: 11px; color: var(--gray-500); margin-top: 2px;">
                             🕒 {{ p.created_at.strftime('%Y-%m-%d %H:%M') if p.created_at else '-' }}
                         </div>
                     </td>
                     {% if user.role != 'branch_staff' %}
-                    <td style="font-weight: 700; color: #1e1b4b;">{{ "{:,.2f}".format(p.total_amount) }} {{ currency }}</td>
+                    <td class="num-col" style="font-weight: 700; color: #1e1b4b;">{{ "{:,.2f}".format(p.total_amount) }} {{ currency }}</td>
                     {% endif %}
                     <td><span class="badge badge-draft">{{ p.lines|length }}</span></td>
                     <td>
@@ -61,15 +116,24 @@
                         <div style="font-size: 11px; color: var(--danger); margin-top: 2px;">{{ p.reject_reason }}</div>
                         {% endif %}
                     </td>
-                    <td>
-                        <a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="btn btn-secondary btn-sm">
-                            {% if p.status == 'draft' or user.role in ['admin', 'accountant'] %}✏️ {{ t('edit') }}{% else %}👁️ {{ t('details') }}{% endif %}
-                        </a>
+                    <td class="action-col" onclick="event.stopPropagation();">
+                        <div style="display: flex; gap: 6px; align-items: center; justify-content: flex-end;">
+                            <a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="btn btn-secondary btn-sm">
+                                {% if p.status == 'draft' or user.role in ['admin', 'accountant'] %}✏️ {{ t('edit') }}{% else %}👁️ {{ t('details') }}{% endif %}
+                            </a>
+                            {% if p.status == 'draft' or user.role in ['admin', 'accountant'] %}
+                            <form method="POST" action="{{ url_for('purchase_delete', purchase_id=p.id) }}" style="display:inline;" onsubmit="return confirm('{{ 'هل أنت متأكد من حذف سند الاستلام هذا نهائياً وعكس أي أثر مخزني؟' if lang == 'ar' else 'Are you sure you want to delete this receipt voucher?' }}');">
+                                <button type="submit" class="btn btn-danger btn-sm" title="{{ t('delete') }}" style="padding: 4px 8px; font-size: 12px;">
+                                    🗑️
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="{% if user.role != 'branch_staff' %}10{% else %}9{% endif %}" style="text-align: center; color: var(--gray-400); padding: 30px;">
+                    <td colspan="{% if user.role in ['admin', 'accountant'] %}11{% elif user.role != 'branch_staff' %}10{% else %}9{% endif %}" style="text-align: center; color: var(--gray-400); padding: 30px;">
                         {{ 'لا توجد سندات استلام مسجلة حتى الآن.' if lang == 'ar' else 'No receipt vouchers recorded yet.' }}
                     </td>
                 </tr>
@@ -78,4 +142,40 @@
         </table>
     </div>
 </div>
+
+{% if user.role in ['admin', 'accountant'] %}
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAllVouchers');
+    const checkboxes = document.querySelectorAll('.voucher-check-item');
+    const bulkBar = document.getElementById('bulkActionBar');
+    const selectedCountSpan = document.getElementById('selectedCount');
+
+    function updateBulkBar() {
+        const checked = document.querySelectorAll('.voucher-check-item:checked');
+        const count = checked.length;
+        if (selectedCountSpan) selectedCountSpan.textContent = count;
+        if (bulkBar) {
+            bulkBar.style.display = count > 0 ? 'flex' : 'none';
+        }
+        if (selectAll && checkboxes.length > 0) {
+            selectAll.checked = (count === checkboxes.length);
+        }
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            checkboxes.forEach(cb => { cb.checked = selectAll.checked; });
+            updateBulkBar();
+        });
+    }
+
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateBulkBar);
+    });
+});
+</script>
+{% endif %}
 {% endblock %}

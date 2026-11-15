@@ -98,4 +98,4 @@ def revoke_current_token(base_url, token):
         SystemSetting.set_val("foodics_token", "")
         return True, "تم إلغاء التوكن بنجاح وإيقاف الربط."
     return False, f"فشل إلغاء التوكن (كود {res.status_code}): {res.text[:200]}"
-</content>
+

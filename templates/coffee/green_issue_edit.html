@@ -1,0 +1,1220 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}تعديل سند صرف بن أخضر {{ issue.doc_number }}{% endblock %}
+
+{% block coffee_extra_css %}
+<style>
+    .coffee-form-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    .form-card {
+        background: #fff;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+        padding: 28px;
+        margin-bottom: 24px;
+    }
+    .form-header-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--gray-200);
+        padding-bottom: 16px;
+        margin-bottom: 22px;
+    }
+    .form-header-title h2 {
+        font-size: 19px;
+        font-weight: 800;
+        color: var(--gray-900);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .form-row-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        margin-bottom: 16px;
+    }
+    .form-group {
+        margin-bottom: 16px;
+    }
+    .form-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--gray-700);
+        margin-bottom: 6px;
+    }
+    .form-control {
+        width: 100%;
+        padding: 9px 12px;
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-sm);
+        font-family: inherit;
+        font-size: 13px;
+    }
+    .form-control:focus {
+        border-color: #047857;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(4, 120, 87, 0.12);
+    }
+    .sale-section {
+        background: #f0fdf4;
+        border: 1.5px solid #86efac;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 18px;
+    }
+    .item-add-box {
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        border-radius: var(--radius-md);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .item-add-title {
+        font-weight: 800;
+        color: #047857;
+        margin-bottom: 14px;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .search-wrap {
+        position: relative;
+        margin-bottom: 14px;
+    }
+    .search-wrap input {
+        background: #fff;
+        padding-right: 36px;
+    }
+    .search-icon-inside {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #047857;
+        pointer-events: none;
+    }
+    .search-results-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        left: 0;
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        z-index: 1000;
+        box-shadow: var(--shadow-lg);
+        max-height: 240px;
+        overflow-y: auto;
+    }
+    .search-result-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 13px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .search-result-item:hover {
+        background: #ecfdf5;
+        color: #065f46;
+    }
+    .barcode-box {
+        margin-bottom: 18px;
+        background: #faf5ff;
+        padding: 12px 18px;
+        border-radius: var(--radius-md);
+        border: 1px dashed #d8b4fe;
+    }
+    .barcode-box label {
+        font-size: 12px;
+        font-weight: 700;
+        color: #6b21a8;
+        display: block;
+        margin-bottom: 6px;
+    }
+</style>
+{% endblock %}
+
+{% block coffee_content %}
+<div class="coffee-form-container">
+
+    <div class="form-card">
+        <div class="form-header-title">
+            <h2>
+                <span>✏️</span>
+                تعديل سند صرف بن أخضر {{ issue.doc_number }}
+                {% if issue.status == 'draft' %}
+                <span class="badge" style="background: #fef3c7; color: #92400e; font-size: 12px; padding: 4px 10px;">مسودة 📝</span>
+                {% else %}
+                <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 12px; padding: 4px 10px;">معتمد ✅</span>
+                {% endif %}
+            </h2>
+            <div style="display: flex; gap: 8px;">
+                <a href="{{ url_for('coffee.green_issue_print', issue_id=issue.id) }}" target="_blank" class="btn-secondary" style="font-size: 12px; padding: 6px 14px; text-decoration: none;">
+                    🖨️ طباعة
+                </a>
+                <a href="{{ url_for('coffee.green_issues_list') }}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-weight: 700; font-size: 13px; border-radius: var(--radius-sm); text-decoration: none; border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700); box-shadow: var(--shadow-sm); transition: all 0.2s;">
+                    ⬅️ رجوع للخلف
+                </a>
+            </div>
+        </div>
+
+        {% if issue.status == 'draft' %}
+        <div style="background: #fffbeb; border: 1.5px solid #f59e0b; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 26px;">📝</span>
+                <div>
+                    <div style="font-weight: 800; font-size: 13.5px; color: #92400e;">
+                        سند صرف بن أخضر مسودة غير معتمد (رقم المستند: {{ issue.doc_number }})
+                    </div>
+                    <div style="font-size: 12px; color: #78350f; margin-top: 2px;">
+                        {% if issue.issue_type == 'roasting' %}
+                        هذه المسودة مخصصة لـ <strong>صرف البن الأخضر للتحميص</strong>. لن يتم فتح مسودة جديدة لنفس الغرض لتجنب تكرار الأرقام. يمكنك استكمال الأصناف والاعتماد، أو حذف المسودة.
+                        {% elif issue.issue_type == 'sale' %}
+                        هذه المسودة مخصصة للعميل <strong>{{ issue.customer_name }}</strong>. يمكنك استكمال الأصناف والاعتماد أو حذف المسودة.
+                        {% else %}
+                        يمكنك استكمال تعديل الأصناف ثم الاعتماد، أو حذف وإلغاء هذه المسودة لتحرير الرقم.
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div>
+                <button type="button" onclick="if(confirm('⚠️ هل أنت متأكد من حذف وإلغاء هذه المسودة نهائياً؟ سيتم تحرير رقم السند {{ issue.doc_number }} ولن يمكن استرجاعها.')) { document.getElementById('deleteGreenDraftFormBottom').submit(); }" style="background: #fee2e2; border: 1.5px solid #fca5a5; color: #b91c1c; padding: 8px 16px; font-weight: 700; font-size: 13px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                    🗑️ إلغاء وحذف المسودة
+                </button>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- بطاقة تكامل Xero المباشرة لسندات البن الأخضر -->
+        {% if issue.issue_type == 'sale' %}
+        <div style="background: #f8fafc; border: 1.5px solid {% if issue.xero_status == 'posted' %}#86efac{% elif issue.xero_status == 'failed' %}#fca5a5{% else %}#cbd5e1{% endif %}; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 20px;">{% if issue.xero_status == 'posted' %}✅{% elif issue.xero_status == 'failed' %}❌{% else %}⚡{% endif %}</span>
+                <div>
+                    <div style="font-weight: 800; font-size: 13px; color: var(--gray-800);">
+                        التكامل المحاسبي مع Xero: (فاتورة مبيعات معتمدة 15% ضريبة)
+                    </div>
+                    <div style="font-size: 12px; color: var(--gray-600); margin-top: 2px;">
+                        {% if issue.xero_status == 'posted' %}
+                            <span style="color: #15803d; font-weight: 700;">تم الترحيل بنجاح</span> — رقم الفاتورة: <strong>{{ issue.xero_invoice_number or issue.xero_invoice_id }}</strong>
+                            {% if issue.xero_posted_at %}({{ issue.xero_posted_at.strftime('%Y-%m-%d %H:%M') }}){% endif %}
+                        {% elif issue.xero_status == 'failed' %}
+                            <span style="color: #b91c1c; font-weight: 700;">تعذر الترحيل:</span> {{ issue.xero_error }}
+                        {% else %}
+                            لم يتم الترحيل بعد — يمكنك مراجعة بنود السند ثم ترحيله مباشرة كفاتورة مبيعات معتمدة.
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div>
+                {% if (issue.xero_status != 'posted' or session.get('role') == 'admin') and issue.status == 'approved' %}
+                <form method="POST" action="{{ url_for('coffee.green_issue_post_xero', issue_id=issue.id) }}" style="margin: 0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn-sm" style="background: #15803d; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                        ⚡ {% if issue.xero_status == 'failed' %}إعادة المحاولة{% else %}ترحيل لـ Xero كفاتورة معتمدة{% endif %}
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if issue.customer_signature %}
+        <div style="background: #fffbeb; border: 1.5px solid #f59e0b; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px;">
+            <span style="font-size: 26px;">🔒</span>
+            <div>
+                <div style="font-weight: 800; font-size: 14px; color: #92400e;">
+                    السند موثق رسمياً بتوقيع العميل المستلم — الكميات واسم العميل مقفلة نظامياً
+                </div>
+                <div style="font-size: 12px; color: #78350f; margin-top: 3px; line-height: 1.6;">
+                    نظراً لاعتماد هذا السند واستلام البضاعة وتوثيق التوقيع الحي للعميل، تم قفل اسم العميل وقائمة الأصناف والكميات نظامياً لمنع أي تغيير أو تلاعب. يُسمح لك فقط بتحديث الملاحظات العامة على السند.
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="post" id="greenIssueForm">
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label>تاريخ الصرف *</label>
+                    <input type="date" name="issue_date" class="form-control" value="{{ issue.issue_date.strftime('%Y-%m-%d') if issue.issue_date else '' }}" required {% if issue.customer_signature %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>
+                </div>
+                <div class="form-group">
+                    <label>نوع الصرف *</label>
+                    <select name="issue_type" id="issueTypeSelect" class="form-control" onchange="onIssueTypeChanged()" required {% if issue.customer_signature %}disabled style="background: #f1f5f9; cursor: not-allowed;"{% endif %}>
+                        {% if issue.issue_type == 'roasting' %}
+                        <option value="roasting" selected>تحميص داخلي</option>
+                        {% endif %}
+                        <option value="sale" {% if issue.issue_type == 'sale' %}selected{% endif %}>💰 صرف للبيع</option>
+                        <option value="sample" {% if issue.issue_type == 'sample' %}selected{% endif %}>🧪 صرف عينات فحص وتذوق</option>
+                        <option value="damaged" {% if issue.issue_type == 'damaged' %}selected{% endif %}>🗑️ صرف تالف / هالك</option>
+                        <option value="internal_use" {% if issue.issue_type == 'internal_use' %}selected{% endif %}>☕ استخدام داخلي وتجارب</option>
+                        {% if issue.issue_type == 'adjustment' %}
+                        <option value="adjustment" selected>تسوية مخزنية</option>
+                        {% endif %}
+                        <option value="other" {% if issue.issue_type == 'other' %}selected{% endif %}>📌 صرف آخر</option>
+                    </select>
+                    {% if issue.customer_signature %}
+                    <input type="hidden" name="issue_type" value="{{ issue.issue_type }}">
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- تفاصيل البيع: تظهر فقط عند اختيار بيع بن أخضر -->
+            <div class="sale-section" id="saleSection" style="{% if issue.issue_type != 'sale' %}display: none;{% endif %} background: #f8fafc; border: 1.5px solid #bbf7d0; border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px;">
+                <div style="font-weight: 800; color: #15803d; margin-bottom: 10px; font-size: 13px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>💰 بيانات العميل والتسليم (سند صرف للبيع)</span>
+                    {% if issue.customer_signature %}
+                    <span style="font-size: 11px; color: #92400e; background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-weight: 700;">🔒 مقفل بالتوقيع</span>
+                    {% endif %}
+                </div>
+                <div class="form-row-3" style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 12px; margin-bottom: 10px;">
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #166534; display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                            <span>اسم العميل / الجهة المشترية * {% if not issue.customer_signature %}<button type="button" onclick="promptAddNewCustomer()" style="background:none; border:none; color:#15803d; text-decoration:underline; font-size:11px; cursor:pointer; padding:0 4px;" title="إضافة عميل جديد فوراً">+ إضافة عميل</button>{% endif %}</span>
+                            <span id="customerMatchBadge" style="display:{% if issue.customer_id or issue.customer_phone %}inline-block{% else %}none{% endif %}; font-size:10px; background:#dcfce7; color:#15803d; padding:1px 6px; border-radius:4px; font-weight:700;">🟢 عميل مسجل مسبقاً ✓</span>
+                        </label>
+                        <input type="text" name="customer_name" id="customerName" class="form-control" list="customerNamesList" value="{{ issue.customer_name or '' }}" placeholder="اسم العميل أو الكافيه..." autocomplete="off" oninput="onCustomerInput('name')" {% if issue.customer_signature %}readonly style="background: #f1f5f9; cursor: not-allowed; font-weight: 700;"{% endif %}>
+                        <datalist id="customerNamesList">
+                            {% for c in customers %}
+                            <option value="{{ c.name }}" data-phone="{{ c.phone or '' }}">{{ c.name }}{% if c.phone %} ({{ c.phone }}){% endif %}</option>
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #166534; display: block; margin-bottom: 4px;">رقم جوال العميل</label>
+                        <input type="text" name="customer_phone" id="customerPhone" class="form-control" list="customerPhonesList" value="{{ issue.resolved_customer_phone or issue.customer_phone or '' }}" placeholder="05xxxxxxxx" dir="ltr" style="text-align: right;" autocomplete="off" oninput="onCustomerInput('phone')" {% if issue.customer_signature %}readonly style="background: #f1f5f9; cursor: not-allowed; font-weight: 700;"{% endif %}>
+                        <datalist id="customerPhonesList">
+                            {% for c in customers %}
+                            {% if c.phone %}
+                            <option value="{{ c.phone }}" data-name="{{ c.name }}">{{ c.phone }} - {{ c.name }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #166534; display: block; margin-bottom: 4px;">طريقة تسليم البضاعة *</label>
+                        <select name="delivery_method" id="deliveryMethodSelect" class="form-control" onchange="onDeliveryMethodChange()" style="font-weight: 700;" {% if issue.customer_signature %}disabled{% endif %}>
+                            <option value="direct" {% if issue.delivery_method != 'shipping' %}selected{% endif %}>👤 تسليم يدوي مباشر للعميل (يتطلب توقيع العميل)</option>
+                            <option value="shipping" {% if issue.delivery_method == 'shipping' %}selected{% endif %}>🚚 شحن عبر شركة نقل (سمسا / ناقل / أخرى - بدون توقيع)</option>
+                        </select>
+                        {% if issue.customer_signature %}
+                        <input type="hidden" name="delivery_method" value="{{ issue.delivery_method or 'direct' }}">
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- صندوق تفاصيل الشحن: يظهر عند اختيار شحن عبر شركة نقل -->
+                <div id="shippingDetailsBox" style="display: {% if issue.delivery_method == 'shipping' %}block{% else %}none{% endif %}; background: #eff6ff; border: 1.5px dashed #93c5fd; border-radius: 8px; padding: 14px; margin-top: 10px;">
+                    <div style="font-weight: 800; font-size: 12px; color: #1e40af; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                        <span>📦 بيانات الشحن والناقل:</span>
+                        <small style="color: #64748b; font-weight: normal;">(لا يطلب توقيع العميل بالاستلام ويكتفى ببيانات الشحن)</small>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #1e3a8a; display: block; margin-bottom: 4px;">شركة الشحن / الناقل *</label>
+                            {% set is_preset_co = issue.shipping_company in ['سمسا', 'ناقل', 'أرامكس', 'سبل', 'دي اتش ال'] %}
+                            <select name="shipping_company" id="shippingCompanySelect" class="form-control" onchange="onShippingCompanyChange()">
+                                <option value="سمسا" {% if issue.shipping_company == 'سمسا' %}selected{% endif %}>سمسا (SMSA Express)</option>
+                                <option value="ناقل" {% if issue.shipping_company == 'ناقل' %}selected{% endif %}>ناقل (Naqel Express)</option>
+                                <option value="أرامكس" {% if issue.shipping_company == 'أرامكس' %}selected{% endif %}>أرامكس (Aramex)</option>
+                                <option value="سبل" {% if issue.shipping_company == 'سبل' %}selected{% endif %}>سبل (SPL - البريد السعودي)</option>
+                                <option value="دي اتش ال" {% if issue.shipping_company == 'دي اتش ال' %}selected{% endif %}>دي إتش إل (DHL)</option>
+                                <option value="other" {% if issue.shipping_company and not is_preset_co %}selected{% endif %}>شركة شحن أخرى / ناقل خاص...</option>
+                            </select>
+                            <input type="text" name="shipping_company_other" id="shippingCompanyOther" class="form-control" placeholder="اكتب اسم شركة النقل..." value="{{ issue.shipping_company if (issue.shipping_company and not is_preset_co) else '' }}" style="display: {% if issue.shipping_company and not is_preset_co %}block{% else %}none{% endif %}; margin-top: 6px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #1e3a8a; display: block; margin-bottom: 4px;">المدينة / وجهة الشحن *</label>
+                            <input type="text" name="shipping_destination" id="shippingDestination" class="form-control" placeholder="مثل: الخبر، الدمام، جدة..." value="{{ issue.shipping_destination or '' }}" list="saudiCitiesList">
+                            <datalist id="saudiCitiesList">
+                                <option value="الخبر">
+                                <option value="الدمام">
+                                <option value="الرياض">
+                                <option value="جدة">
+                                <option value="مكة المكرمة">
+                                <option value="المدينة المنورة">
+                                <option value="الأحساء">
+                                <option value="الجبيل">
+                                <option value="الهفوف">
+                                <option value="القطيف">
+                                <option value="الطائف">
+                                <option value="ينبع">
+                                <option value="تبوك">
+                                <option value="حائل">
+                                <option value="بريدة">
+                                <option value="عنيزة">
+                                <option value="أبها">
+                                <option value="خميس مشيط">
+                                <option value="جازان">
+                                <option value="نجران">
+                            </datalist>
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #1e3a8a; display: block; margin-bottom: 4px;">رقم بوليصة الشحن (Waybill) <small style="color: #64748b;">(اختياري)</small></label>
+                            <input type="text" name="shipping_tracking_number" id="shippingTrackingNumber" class="form-control" placeholder="رقم التتبع / البوليصة..." value="{{ issue.shipping_tracking_number or '' }}">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #1e3a8a; display: block; margin-bottom: 4px;">تكلفة الشحن لـ Xero (ر.س قبل الضريبة)</label>
+                            <input type="number" step="0.01" min="0" name="shipping_fee" id="shippingFeeInput" class="form-control" placeholder="تلقائي حسب الوزن" value="{{ issue.shipping_fee or '' }}" style="font-weight: 700; color: #1e40af;">
+                            <small style="color: #64748b; font-size: 10px; display: block; margin-top: 3px;">حساب 261 (ايرادات شحن وتوصيل) + 15% ضريبة</small>
+                        </div>
+                    </div>
+                </div>
+
+                <input type="hidden" name="sale_price_per_kg" id="salePricePerKg" value="0">
+            </div>
+
+            <!-- سبب وتفاصيل الصرف -->
+            <div class="form-group" id="reasonGroup">
+                <label>سبب وتفاصيل الصرف *</label>
+                <input type="text" name="issue_reason" id="issueReason" class="form-control" value="{{ issue.issue_reason or '' }}" placeholder="وضح سبب الصرف بالتفصيل ورقم المرجع..." required>
+            </div>
+
+            {% if not issue.customer_signature or issue.status == 'draft' %}
+            <!-- قارئ الباركود السريع -->
+            <div class="barcode-box">
+                <label>📷 قارئ الباركود / Barcode Scanner (مسح متتابع وسريع):</label>
+                <input type="text" id="barcodeScannerInput" class="form-control" placeholder="امسح الباركود بجهاز المسح واضغط Enter للاختيار المباشر..." autocomplete="off">
+            </div>
+
+            <!-- صندوق إضافة وتعديل صنف بن أخضر في السند -->
+            <div class="item-add-box">
+                <div class="item-add-title">
+                    <span>➕</span> إضافة / تعديل صنف في سند الصرف:
+                </div>
+
+                <div class="search-wrap">
+                    <span class="search-icon-inside">🔍</span>
+                    <input type="text" id="greenSearchInput" class="form-control" placeholder="ابحث بكود الصنف أو اسمه واضغط عليه للاختيار..." autocomplete="off">
+                    <div id="greenSearchResults" class="search-results-dropdown"></div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 2fr 1.2fr 1.2fr 2fr; gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label>صنف البن الأخضر المختار *</label>
+                        <select name="coffee_item_id" id="greenItemSelect" class="form-control" onchange="onGreenSelectChange()">
+                            <option value="">-- اختر صنف الأخضر --</option>
+                            {% for g in green_items %}
+                            <option value="{{ g.id }}" data-code="{{ g.xero_item_code }}" data-sack="{{ g.default_sack_weight or 60 }}" data-cost="{{ (g.item.cost if g.item else 0)|float }}" data-sale="{{ g.sale_price_per_kg or 0 }}">
+                                [{{ g.xero_item_code }}] {{ g.name_ar or g.xero_item_code }} ({{ g.default_sack_weight or 60 }} كجم/خيشة)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label>الكمية (كجم) *</label>
+                        <input type="number" step="0.01" min="0.01" name="qty_kg" id="inputQtyKg" class="form-control" placeholder="0.00" oninput="onInputKgChanged()">
+                    </div>
+                    <div>
+                        <label>الخيشة (تلقائي)</label>
+                        <input type="number" step="0.01" min="0" name="qty_sacks" id="inputQtySacks" class="form-control" placeholder="0.00" oninput="onInputSacksChanged()" style="background: #f1f5f9; font-weight: 700; color: #047857;">
+                    </div>
+                    <input type="hidden" name="line_sale_price_single" id="inputSalePrice" value="0">
+                    <div>
+                        <label>ملاحظة على الصنف</label>
+                        <input type="text" id="inputLineNotes" class="form-control" placeholder="ملاحظات الصنف...">
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" id="btnCancelEdit" onclick="cancelEditLine()" class="btn-secondary" style="display: none; padding: 7px 16px;">
+                        إلغاء التعديل
+                    </button>
+                    <button type="button" id="btnAddLine" onclick="addOrUpdateLine()" class="btn-primary" style="background: #047857; border: none; padding: 7px 22px; font-weight: 700; color: #fff; border-radius: var(--radius-sm); cursor: pointer;">
+                        ➕ إضافة الصنف للسند
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- جدول الأصناف المضافة في السند -->
+            <div style="margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <label style="font-weight: 700; font-size: 14px; color: var(--navy-dark);">
+                        📋 أصناف البن الأخضر في هذا السند (<span id="lineCountBadge">0</span> أصناف):
+                    </label>
+                </div>
+
+                <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                    <table class="data-table" style="width: 100%; border-collapse: collapse; margin-bottom: 0;">
+                        <thead>
+                            <tr style="background: #f8fafc; text-align: right;">
+                                <th style="padding: 8px 12px; width: 40px;">#</th>
+                                <th style="padding: 8px 12px;">كود واسم صنف الأخضر</th>
+                                <th style="padding: 8px 12px; width: 140px;">الكمية (كجم)</th>
+                                <th style="padding: 8px 12px; width: 130px;">عدد الخياش</th>
+                                <th style="padding: 8px 12px;">ملاحظات</th>
+                                <th style="padding: 8px 12px; width: 110px; text-align: center;">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="linesTableBody">
+                            <tr id="emptyRow">
+                                <td colspan="6" style="text-align: center; padding: 20px; color: #94a3b8;">
+                                    لم يتم إضافة أصناف بعد.
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot id="tableFooter" style="background: #f1f5f9; font-weight: 700; display: none;">
+                            <tr>
+                                <td colspan="2" style="padding: 10px 12px;">الإجمالي الكلي للسند:</td>
+                                <td id="footerTotalKg" style="padding: 10px 12px; color: #047857;">0.00 كجم</td>
+                                <td id="footerTotalSacks" style="padding: 10px 12px; color: #1e3a8a;">0.00 خيشة</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- حاوية الحقول المخفية للنموذج -->
+                <div id="hiddenFormInputs"></div>
+            </div>
+
+            <div class="form-group">
+                <label>ملاحظات عامة على السند</label>
+                <textarea name="notes" class="form-control" rows="2" placeholder="أي ملاحظات إضافية على السند...">{{ issue.notes or '' }}</textarea>
+            </div>
+
+            <!-- توقيع العميل بالاستلام (في أسفل الصفحة) -->
+            <div id="signatureSection" style="{% if issue.issue_type != 'sale' %}display: none;{% endif %} margin-top: 18px; background: #ffffff; border: 1.5px dashed #2563eb; border-radius: 8px; padding: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <label style="font-size: 13px; font-weight: 800; color: #1e40af; display: flex; align-items: center; gap: 6px; margin: 0;">
+                        ✍️ توقيع العميل بالاستلام (إلزامي لاعتماد السند) *
+                    </label>
+                    {% if not issue.customer_signature or issue.status == 'draft' %}
+                    <button type="button" class="btn-sm" onclick="clearSignaturePad()" style="background: #ffffff; color: #1d4ed8; border: 1px solid #93c5fd; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 700;">
+                        🔄 مسح وإعادة التوقيع
+                    </button>
+                    {% else %}
+                    <span style="font-size: 11px; font-weight: 700; color: #15803d; background: #dcfce7; padding: 3px 8px; border-radius: 4px;">
+                        ✅ توقيع العميل معتمد ومحفوظ
+                    </span>
+                    {% endif %}
+                </div>
+                <p style="font-size: 11px; color: #475569; margin: 0 0 10px 0;">
+                    يرجى توقيع العميل الحي بالإصبع مباشرة على شاشة الجوال أو بالماوس. <strong>لا يمكن اعتماد السند بدون التوقيع.</strong>
+                </p>
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 6px 12px; margin-bottom: 10px; font-size: 11px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
+                    <span>ℹ️</span>
+                    <span><strong>ملاحظة:</strong> توقيع العميل مخصص للاعتماد والتسليم النهائي فقط؛ عند حفظ السند كمسودة لا يُقبل التوقيع.</span>
+                </div>
+                <div id="signatureWrapper" style="border: 2px solid #93c5fd; border-radius: 6px; background: #ffffff; position: relative; touch-action: none; width: 100%; max-width: 520px; height: 160px;">
+                    <canvas id="signatureCanvas" width="520" height="160" style="width: 100%; height: 100%; display: block; {% if issue.customer_signature and issue.status != 'draft' %}pointer-events: none; opacity: 0.95;{% else %}cursor: crosshair;{% endif %}"></canvas>
+                    <div id="signaturePlaceholder" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #94a3b8; font-size: 13px; pointer-events: none; user-select: none; {% if issue.customer_signature and issue.status != 'draft' %}display: none;{% endif %}">
+                        وقع هنا باللمس أو القلم ✍️
+                    </div>
+                </div>
+                <input type="hidden" name="customer_signature" id="customerSignatureInput" value="{% if issue.status != 'draft' %}{{ issue.customer_signature or '' }}{% endif %}">
+            </div>
+
+            <!-- أزرار الإجراءات: حفظ كمسودة / اعتماد وتحديث السند -->
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
+                <a href="{{ url_for('coffee.green_issues_list') }}" class="btn-secondary" style="padding: 11px 22px; font-weight: 700; text-decoration: none; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px;">
+                    ⬅️ رجوع للخلف
+                </a>
+                {% if issue.customer_signature and issue.status != 'draft' %}
+                <button type="submit" name="form_action" value="save_notes" class="btn-primary" style="background: #1e3a8a; border: none; padding: 11px 32px; font-size: 14px; font-weight: 800; border-radius: var(--radius-sm); color: #fff; cursor: pointer;">
+                    💾 حفظ الملاحظات العامة (السند مقفل بالتوقيع)
+                </button>
+                {% else %}
+                {% if issue.status == 'draft' %}
+                <button type="button" onclick="if(confirm('⚠️ هل أنت متأكد من حذف وإلغاء هذه المسودة نهائياً؟ سيتم تحرير رقم السند {{ issue.doc_number }}.')) { document.getElementById('deleteGreenDraftFormBottom').submit(); }" class="btn-secondary" style="background: #fef2f2; border: 1.5px solid #fca5a5; padding: 11px 20px; font-size: 14px; font-weight: 700; border-radius: var(--radius-sm); color: #dc2626; cursor: pointer;">
+                    🗑️ إلغاء وحذف المسودة
+                </button>
+                {% endif %}
+                <button type="submit" name="form_action" value="draft" onclick="if(document.getElementById('customerSignatureInput')) document.getElementById('customerSignatureInput').value='';" class="btn-secondary" style="background: #f8fafc; border: 1.5px solid #cbd5e1; padding: 11px 24px; font-size: 14px; font-weight: 800; border-radius: var(--radius-sm); color: #334155; cursor: pointer;">
+                    📝 حفظ كمسودة
+                </button>
+                <button type="submit" name="form_action" value="approve" class="btn-primary" style="background: #047857; border: none; padding: 11px 32px; font-size: 14px; font-weight: 800; border-radius: var(--radius-sm); color: #fff; cursor: pointer;">
+                    ✅ اعتماد وتحديث السند
+                </button>
+                {% endif %}
+            </div>
+        </form>
+
+        {% if issue.status == 'draft' or (session.get('role') == 'admin') %}
+        <form method="POST" action="{{ url_for('coffee.green_issue_delete', issue_id=issue.id) }}" id="deleteGreenDraftFormBottom" style="display: none;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        </form>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+const isCustomerSigned = {% if issue.customer_signature and issue.status != 'draft' %}true{% else %}false{% endif %};
+const greenItems = [
+    {% for g in green_items %}
+    {
+        "id": {{ g.id }},
+        "code": {{ g.xero_item_code|tojson }},
+        "base_code": {{ (g.base_code or '')|tojson }},
+        "name_ar": {{ (g.name_ar or g.xero_item_code)|tojson }},
+        "name_en": {{ (g.name_en or '')|tojson }},
+        "sack_weight": {{ (g.default_sack_weight or 60)|float }},
+        "cost": {{ (g.item.cost if g.item else 0)|float }},
+        "sale_price": {{ (g.sale_price_per_kg or 0)|float }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+let issueLines = [
+    {% for l in issue.all_lines %}
+    {
+        item_id: {{ l.coffee_item_id }},
+        code: {{ (l.coffee_item.xero_item_code if l.coffee_item else '')|tojson }},
+        name: {{ (l.coffee_item.name_ar if l.coffee_item else '')|tojson }},
+        qty_kg: {{ (l.qty_kg or 0.0)|float }},
+        qty_sacks: {{ (l.qty_sacks or 0.0)|float }},
+        sack_weight: {{ (l.sack_weight or (l.coffee_item.default_sack_weight if l.coffee_item else 60) or 60)|float }},
+        price: 0,
+        notes: {{ (l.notes or '')|tojson }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+let editingLineIndex = -1;
+
+function onIssueTypeChanged() {
+    const itype = document.getElementById("issueTypeSelect").value;
+    const saleSec = document.getElementById("saleSection");
+    const sigSec = document.getElementById("signatureSection");
+    const custName = document.getElementById("customerName");
+
+    if (itype === "sale") {
+        saleSec.style.display = "block";
+        if (custName) custName.required = true;
+        onDeliveryMethodChange();
+    } else {
+        saleSec.style.display = "none";
+        if (sigSec) sigSec.style.display = "none";
+        if (custName) custName.required = false;
+    }
+    renderLinesTable();
+}
+
+function onDeliveryMethodChange() {
+    const dMethod = document.getElementById("deliveryMethodSelect") ? document.getElementById("deliveryMethodSelect").value : "direct";
+    const shippingBox = document.getElementById("shippingDetailsBox");
+    const sigSec = document.getElementById("signatureSection");
+    const itype = document.getElementById("issueTypeSelect") ? document.getElementById("issueTypeSelect").value : "";
+
+    if (dMethod === "shipping") {
+        if (shippingBox) shippingBox.style.display = "block";
+        if (sigSec) sigSec.style.display = "none";
+    } else {
+        if (shippingBox) shippingBox.style.display = "none";
+        if (itype === "sale" && sigSec) {
+            sigSec.style.display = "block";
+            setTimeout(initSignaturePad, 100);
+        }
+    }
+}
+
+const coffeeCustomersData = [
+    {% for c in customers %}
+    { name: {{ c.name|tojson }}, phone: {{ (c.phone or '')|tojson }} },
+    {% endfor %}
+];
+
+function onCustomerInput(field) {
+    const nameInput = document.getElementById("customerName");
+    const phoneInput = document.getElementById("customerPhone");
+    const badge = document.getElementById("customerMatchBadge");
+    if (!nameInput || !phoneInput || !badge) return;
+
+    const valName = nameInput.value.trim();
+    const valNameLower = valName.toLowerCase();
+    const valPhone = phoneInput.value.trim();
+
+    let matched = null;
+    if (field === 'phone' && valPhone.length >= 3) {
+        matched = coffeeCustomersData.find(c => c.phone && c.phone === valPhone);
+    } else if (field === 'name' && valNameLower.length >= 2) {
+        matched = coffeeCustomersData.find(c => c.name && c.name.toLowerCase() === valNameLower);
+    }
+
+    if (!matched) {
+        matched = coffeeCustomersData.find(c => 
+            (valPhone && c.phone && c.phone === valPhone) || 
+            (valNameLower && c.name && c.name.toLowerCase() === valNameLower)
+        );
+    }
+
+    if (matched) {
+        if (field === 'phone' && matched.name && !nameInput.value.trim()) {
+            nameInput.value = matched.name;
+        } else if (field === 'name' && matched.phone && !phoneInput.value.trim()) {
+            phoneInput.value = matched.phone;
+        }
+
+        if (!matched.phone && valPhone) {
+            badge.style.display = 'inline-block';
+            badge.style.background = '#eff6ff';
+            badge.style.color = '#1d4ed8';
+            badge.innerHTML = '🟢 مسجل (سيتم حفظ رقم الجوال له ✓)';
+        } else {
+            badge.style.display = 'inline-block';
+            badge.style.background = '#dcfce7';
+            badge.style.color = '#15803d';
+            badge.innerHTML = '🟢 عميل مسجل مسبقاً ✓';
+        }
+    } else if (valName.length >= 2) {
+        badge.style.display = 'inline-block';
+        badge.style.background = '#fef3c7';
+        badge.style.color = '#b45309';
+        badge.innerHTML = '✨ عميل جديد (سيُحفظ تلقائياً عند حفظ السند)';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+async function promptAddNewCustomer() {
+    const nameInput = document.getElementById("customerName");
+    const phoneInput = document.getElementById("customerPhone");
+    const defaultName = nameInput ? nameInput.value.trim() : '';
+    const defaultPhone = phoneInput ? phoneInput.value.trim() : '';
+
+    const name = prompt("أدخل اسم العميل / المنشأة الجديدة:", defaultName);
+    if (!name || !name.trim()) return;
+
+    const phone = prompt("أدخل رقم جوال العميل (اختياري، يمكن تركه فارغاً وتأكيده لاحقاً):", defaultPhone);
+
+    try {
+        const res = await fetch("{{ url_for('coffee.api_customers_new') }}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: name.trim(), phone: (phone || '').trim() })
+        });
+        const data = await res.json();
+        if (data.success && data.customer) {
+            coffeeCustomersData.push({ name: data.customer.name, phone: data.customer.phone || '' });
+            if (nameInput) nameInput.value = data.customer.name;
+            if (phoneInput) phoneInput.value = data.customer.phone || '';
+            onCustomerInput('name');
+            alert(`✅ تم حفظ وتأكيد العميل '${data.customer.name}' بنجاح`);
+        } else {
+            alert(data.error || 'تعذر إضافة العميل');
+        }
+    } catch (e) {
+        alert('حدث خطأ في الاتصال بالخادم');
+    }
+}
+
+function onShippingCompanyChange() {
+    const sel = document.getElementById("shippingCompanySelect");
+    const otherInp = document.getElementById("shippingCompanyOther");
+    if (sel && otherInp) {
+        otherInp.style.display = (sel.value === "other") ? "block" : "none";
+        if (sel.value === "other") otherInp.focus();
+    }
+}
+
+function onShippingDestinationChange() {
+    const sel = document.getElementById("shippingDestinationSelect");
+    const otherInp = document.getElementById("shippingDestinationOther");
+    const hiddenInp = document.getElementById("shippingDestination");
+    if (!sel) return;
+    if (sel.value === "other") {
+        if (otherInp) {
+            otherInp.style.display = "block";
+            otherInp.focus();
+            if (hiddenInp) hiddenInp.value = otherInp.value.trim();
+        }
+    } else {
+        if (otherInp) {
+            otherInp.style.display = "none";
+        }
+        if (hiddenInp) hiddenInp.value = sel.value;
+    }
+}
+
+// البحث التفاعلي في أصناف البن الأخضر
+const gSearch = document.getElementById("greenSearchInput");
+const gResults = document.getElementById("greenSearchResults");
+
+if (gSearch && gResults) {
+    gSearch.addEventListener("input", function() {
+        const q = this.value.trim().toLowerCase();
+        if (!q) {
+            gResults.style.display = "none";
+            return;
+        }
+
+        const matches = (typeof greenItems !== "undefined" ? greenItems : []).filter(g => {
+            return (g.code && g.code.toLowerCase().includes(q)) ||
+                   (g.name_ar && g.name_ar.toLowerCase().includes(q)) ||
+                   (g.name_en && g.name_en.toLowerCase().includes(q)) ||
+                   (g.base_code && g.base_code.toLowerCase().includes(q));
+        });
+
+        gResults.innerHTML = "";
+        if (matches.length === 0) {
+            gResults.innerHTML = '<div style="padding:10px; color:#64748b; font-size:12px;">لا توجد أصناف مطابقة</div>';
+            gResults.style.display = "block";
+            return;
+        }
+
+        matches.slice(0, 15).forEach(item => {
+            const div = document.createElement("div");
+            div.className = "search-result-item";
+            div.innerHTML = `<strong>[${item.code}]</strong> ${item.name_ar} ${item.name_en ? `<span style="color:#64748b;">- ${item.name_en}</span>` : ''} <span style="float:left; font-size:11px; color:#047857;">(${item.sack_weight} كجم/خيشة)</span>`;
+            div.addEventListener("click", () => {
+                selectItem(item);
+            });
+            gResults.appendChild(div);
+        });
+        gResults.style.display = "block";
+    });
+}
+
+document.addEventListener("click", function(e) {
+    if (gSearch && gResults && !gSearch.contains(e.target) && !gResults.contains(e.target)) {
+        gResults.style.display = "none";
+    }
+});
+
+function selectItem(item) {
+    const sel = document.getElementById("greenItemSelect");
+    if (sel) sel.value = item.id;
+    if (gSearch) gSearch.value = `[${item.code}] ${item.name_ar}`;
+    if (gResults) gResults.style.display = "none";
+    if (typeof onGreenSelectChange === "function") onGreenSelectChange();
+    const qInp = document.getElementById("inputQtyKg");
+    if (qInp) qInp.focus();
+}
+
+// مسح الباركود السريع
+const bInput = document.getElementById("barcodeScannerInput");
+if (bInput) {
+    bInput.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const code = this.value.trim().toLowerCase();
+            if (!code) return;
+
+            const found = (typeof greenItems !== "undefined" ? greenItems : []).find(g => 
+                (g.code && g.code.toLowerCase() === code) ||
+                (g.base_code && g.base_code.toLowerCase() === code) ||
+                (g.code && g.code.toLowerCase().replace(/[^a-z0-9]/g, '') === code.replace(/[^a-z0-9]/g, ''))
+            );
+            if (found) {
+                selectItem(found);
+                this.value = "";
+            } else {
+                alert("لم يتم العثور على صنف بالباركود: " + code);
+            }
+        }
+    });
+}
+        );
+
+        if (found) {
+            selectItem(found);
+            this.value = "";
+        } else {
+            alert(`لم يتم العثور على صنف بالباركود / الكود: ${code}`);
+        }
+    }
+});
+
+function onGreenSelectChange() {
+    const sel = document.getElementById("greenItemSelect");
+    const opt = sel.options[sel.selectedIndex];
+    if (!sel.value) return;
+
+    const sackWeight = parseFloat(opt.getAttribute("data-sack")) || 60;
+    const kg = parseFloat(document.getElementById("inputQtyKg").value) || 0;
+    if (kg > 0) {
+        document.getElementById("inputQtySacks").value = (kg / sackWeight).toFixed(2);
+    }
+}
+
+function onInputKgChanged() {
+    const kg = parseFloat(document.getElementById("inputQtyKg").value) || 0;
+    const sel = document.getElementById("greenItemSelect");
+    const opt = sel.options[sel.selectedIndex];
+    const sackWeight = opt ? (parseFloat(opt.getAttribute("data-sack")) || 60) : 60;
+    if (kg > 0) {
+        document.getElementById("inputQtySacks").value = (kg / sackWeight).toFixed(2);
+    } else {
+        document.getElementById("inputQtySacks").value = "";
+    }
+}
+
+function onInputSacksChanged() {
+    const sacks = parseFloat(document.getElementById("inputQtySacks").value) || 0;
+    const sel = document.getElementById("greenItemSelect");
+    const opt = sel.options[sel.selectedIndex];
+    const sackWeight = opt ? (parseFloat(opt.getAttribute("data-sack")) || 60) : 60;
+    if (sacks > 0) {
+        document.getElementById("inputQtyKg").value = (sacks * sackWeight).toFixed(2);
+    }
+}
+
+function addOrUpdateLine() {
+    const sel = document.getElementById("greenItemSelect");
+    const itemId = parseInt(sel.value);
+    const qtyKg = parseFloat(document.getElementById("inputQtyKg").value);
+    const qtySacks = parseFloat(document.getElementById("inputQtySacks").value) || 0;
+    const notes = document.getElementById("inputLineNotes").value.trim();
+
+    if (!itemId || isNaN(itemId)) {
+        alert("يرجى اختيار صنف البن الأخضر أولاً");
+        sel.focus();
+        return;
+    }
+    if (!qtyKg || isNaN(qtyKg) || qtyKg <= 0) {
+        alert("يرجى إدخال كمية صحيحة (كجم)");
+        document.getElementById("inputQtyKg").focus();
+        return;
+    }
+
+    const opt = sel.options[sel.selectedIndex];
+    const code = opt.getAttribute("data-code") || "";
+    const name = opt.text.replace(/\[.*?\]\s*/, '').split('(')[0].trim();
+    const sackWeight = parseFloat(opt.getAttribute("data-sack")) || 60;
+
+    const lineData = {
+        item_id: itemId,
+        code: code,
+        name: name,
+        qty_kg: qtyKg,
+        qty_sacks: qtySacks > 0 ? qtySacks : (qtyKg / sackWeight),
+        sack_weight: sackWeight,
+        price: 0,
+        notes: notes
+    };
+
+    if (editingLineIndex >= 0) {
+        issueLines[editingLineIndex] = lineData;
+        editingLineIndex = -1;
+        document.getElementById("btnAddLine").innerHTML = "➕ إضافة الصنف للسند";
+        document.getElementById("btnCancelEdit").style.display = "none";
+    } else {
+        const existingIdx = issueLines.findIndex(l => l.item_id === itemId);
+        if (existingIdx >= 0) {
+            if (confirm("هذا الصنف مضاف مسبقاً للسند. هل تريد جمع الكمية الجديدة مع السابقة؟")) {
+                issueLines[existingIdx].qty_kg += qtyKg;
+                issueLines[existingIdx].qty_sacks += lineData.qty_sacks;
+                if (notes) issueLines[existingIdx].notes = (issueLines[existingIdx].notes ? issueLines[existingIdx].notes + " - " : "") + notes;
+            } else {
+                return;
+            }
+        } else {
+            issueLines.push(lineData);
+        }
+    }
+
+    resetLineInputs();
+    renderLinesTable();
+}
+
+function editLine(idx) {
+    const l = issueLines[idx];
+    editingLineIndex = idx;
+
+    const sel = document.getElementById("greenItemSelect");
+    sel.value = l.item_id;
+    document.getElementById("greenSearchInput").value = `[${l.code}] ${l.name}`;
+    document.getElementById("inputQtyKg").value = l.qty_kg;
+    document.getElementById("inputQtySacks").value = l.qty_sacks;
+    document.getElementById("inputLineNotes").value = l.notes || "";
+
+    document.getElementById("btnAddLine").innerHTML = "💾 حفظ التعديل على الصنف";
+    document.getElementById("btnCancelEdit").style.display = "inline-block";
+    document.getElementById("inputQtyKg").focus();
+}
+
+function cancelEditLine() {
+    editingLineIndex = -1;
+    resetLineInputs();
+    document.getElementById("btnAddLine").innerHTML = "➕ إضافة الصنف للسند";
+    document.getElementById("btnCancelEdit").style.display = "none";
+}
+
+function removeLine(idx) {
+    if (confirm("هل أنت متأكد من حذف هذا الصنف من السند؟")) {
+        issueLines.splice(idx, 1);
+        if (editingLineIndex === idx) {
+            cancelEditLine();
+        }
+        renderLinesTable();
+    }
+}
+
+function resetLineInputs() {
+    document.getElementById("greenItemSelect").value = "";
+    document.getElementById("greenSearchInput").value = "";
+    document.getElementById("inputQtyKg").value = "";
+    document.getElementById("inputQtySacks").value = "";
+    document.getElementById("inputSalePrice").value = "0";
+    document.getElementById("inputLineNotes").value = "";
+}
+
+function renderLinesTable() {
+    const tbody = document.getElementById("linesTableBody");
+    const hiddenDiv = document.getElementById("hiddenFormInputs");
+
+    tbody.innerHTML = "";
+    hiddenDiv.innerHTML = "";
+
+    document.getElementById("lineCountBadge").innerText = issueLines.length;
+
+    if (issueLines.length === 0) {
+        tbody.innerHTML = `
+            <tr id="emptyRow">
+                <td colspan="6" style="text-align: center; padding: 20px; color: #94a3b8;">
+                    لم يتم إضافة أصناف بعد. اختر الصنف والكمية أعلاه واضغط على "إضافة الصنف للسند".
+                </td>
+            </tr>
+        `;
+        document.getElementById("tableFooter").style.display = "none";
+        return;
+    }
+
+    let totalKg = 0;
+    let totalSacks = 0;
+
+    issueLines.forEach((l, idx) => {
+        totalKg += l.qty_kg;
+        totalSacks += l.qty_sacks;
+
+        const tr = document.createElement("tr");
+        tr.style.borderBottom = "1px solid #e2e8f0";
+        tr.innerHTML = `
+            <td style="padding: 8px 12px; font-weight: 600;">${idx + 1}</td>
+            <td style="padding: 8px 12px;"><strong>[${l.code}]</strong> ${l.name}</td>
+            <td style="padding: 8px 12px; font-weight: 700; color: #047857;">${l.qty_kg.toFixed(2)} كجم</td>
+            <td style="padding: 8px 12px; font-weight: 600; color: #1e3a8a;">${l.qty_sacks.toFixed(2)} خيشة</td>
+            <td style="padding: 8px 12px; color: #64748b; font-size: 13px;">${l.notes || '-'}</td>
+            <td style="padding: 8px 12px; text-align: center;">
+                ${isCustomerSigned ? '<span style="color: #64748b; font-size: 11px; font-weight: 700; background: #f1f5f9; padding: 3px 8px; border-radius: 4px;">🔒 مقفل</span>' : `
+                <button type="button" onclick="editLine(${idx})" style="background: none; border: none; cursor: pointer; color: #2563eb; font-size: 15px; margin-left: 6px;" title="تعديل">✏️</button>
+                <button type="button" onclick="removeLine(${idx})" style="background: none; border: none; cursor: pointer; color: #ef4444; font-size: 15px;" title="حذف">🗑️</button>
+                `}
+            </td>
+        `;
+        tbody.appendChild(tr);
+
+        hiddenDiv.innerHTML += `
+            <input type="hidden" name="line_coffee_item_id[]" value="${l.item_id}">
+            <input type="hidden" name="coffee_item_id[]" value="${l.item_id}">
+            <input type="hidden" name="line_qty_kg[]" value="${l.qty_kg}">
+            <input type="hidden" name="qty_kg[]" value="${l.qty_kg}">
+            <input type="hidden" name="line_qty_sacks[]" value="${l.qty_sacks}">
+            <input type="hidden" name="line_sack_weight[]" value="${l.sack_weight}">
+            <input type="hidden" name="line_sale_price[]" value="${l.price || 0}">
+            <input type="hidden" name="sale_price_per_kg[]" value="${l.price || 0}">
+            <input type="hidden" name="line_notes[]" value="${l.notes || ''}">
+        `;
+    });
+
+    document.getElementById("tableFooter").style.display = "";
+    document.getElementById("footerTotalKg").innerText = totalKg.toFixed(2) + " كجم";
+    document.getElementById("footerTotalSacks").innerText = totalSacks.toFixed(2) + " خيشة";
+    autoUpdateShippingFee(totalKg);
+}
+
+function autoUpdateShippingFee(totalWeight) {
+    const feeInput = document.getElementById("shippingFeeInput");
+    if (!feeInput) return;
+    if (feeInput.dataset.manual === "true") return;
+    if (!totalWeight || totalWeight <= 0) {
+        if (!feeInput.value) feeInput.value = "";
+        return;
+    }
+    if (!feeInput.value || feeInput.dataset.autoFilled === "true") {
+        if (totalWeight <= 15) {
+            feeInput.value = "40.60";
+        } else if (totalWeight <= 25) {
+            feeInput.value = "52.20";
+        } else {
+            feeInput.value = "92.80";
+        }
+        feeInput.dataset.autoFilled = "true";
+    }
+}
+
+let clickedAction = "approve";
+document.querySelectorAll("button[type=submit]").forEach(btn => {
+    btn.addEventListener("click", function() {
+        clickedAction = this.value || "approve";
+    });
+});
+
+document.getElementById("greenIssueForm").addEventListener("submit", function(e) {
+    const sel = document.getElementById("greenItemSelect");
+    const qtyInput = document.getElementById("inputQtyKg");
+
+    if (issueLines.length === 0) {
+        const itemId = parseInt(sel.value);
+        const qty = parseFloat(qtyInput.value);
+        if (itemId && qty > 0) {
+            addOrUpdateLine();
+        }
+    }
+
+    if (issueLines.length === 0) {
+        e.preventDefault();
+        alert("يرجى اختيار صنف بن أخضر وتحديد الكمية قبل الحفظ");
+        qtyInput.focus();
+        return;
+    }
+
+    const itype = document.getElementById("issueTypeSelect").value;
+    if (itype === "sale") {
+        const cName = document.getElementById("customerName");
+        if (!cName.value.trim()) {
+            cName.value = "عميل نقدي بن أخضر";
+        }
+        saveSignatureToInput();
+        
+        if (clickedAction === "approve") {
+            const dMethod = document.getElementById("deliveryMethodSelect") ? document.getElementById("deliveryMethodSelect").value : "direct";
+            if (dMethod === "shipping") {
+                const sDest = document.getElementById("shippingDestination") ? document.getElementById("shippingDestination").value.trim() : "";
+                if (!sDest) {
+                    e.preventDefault();
+                    alert("⚠️ يرجى تحديد المدينة / الوجهة المشحون إليها البضاعة (مثل: الخبر أو الدمام).");
+                    document.getElementById("shippingDestination").focus();
+                    return;
+                }
+            } else {
+                const sigVal = document.getElementById("customerSignatureInput").value;
+                if (!sigVal || !hasSigned) {
+                    e.preventDefault();
+                    alert("يرجى توقيع العميل بالاستلام في أسفل الصفحة قبل اعتماد السند، أو اختيار طريقة التسليم 'شحن عبر شركة نقل' إذا تم شحن البضاعة.");
+                    document.getElementById("signatureSection").scrollIntoView({ behavior: 'smooth' });
+                    return;
+                }
+            }
+        }
+    }
+});
+
+// ─── منطق التوقيع الحي للعميل (Touch / Mouse Canvas) ───
+let sigCanvas = document.getElementById("signatureCanvas");
+let sigCtx = null;
+let isDrawing = false;
+let hasSigned = {% if issue.customer_signature %}true{% else %}false{% endif %};
+
+function initSignaturePad() {
+    sigCanvas = document.getElementById("signatureCanvas");
+    if (!sigCanvas) return;
+    sigCtx = sigCanvas.getContext("2d");
+    const rect = sigCanvas.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+        sigCanvas.width = rect.width;
+        sigCanvas.height = rect.height;
+    }
+    sigCtx.strokeStyle = "#0044cc";
+    sigCtx.lineWidth = 2.5;
+    sigCtx.lineCap = "round";
+    sigCtx.lineJoin = "round";
+
+    // استعادة التوقيع المحفوظ إن وجد
+    const existingSig = document.getElementById("customerSignatureInput").value;
+    if (existingSig && existingSig.startsWith("data:image")) {
+        const img = new Image();
+        img.onload = function() {
+            sigCtx.drawImage(img, 0, 0, sigCanvas.width, sigCanvas.height);
+            const pl = document.getElementById("signaturePlaceholder");
+            if (pl) pl.style.display = "none";
+            hasSigned = true;
+        };
+        img.src = existingSig;
+    }
+}
+
+function getCanvasPos(e) {
+    const rect = sigCanvas.getBoundingClientRect();
+    let clientX, clientY;
+    if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+    return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+    };
+}
+
+function startDrawing(e) {
+    if (!sigCtx) initSignaturePad();
+    isDrawing = true;
+    const pos = getCanvasPos(e);
+    sigCtx.beginPath();
+    sigCtx.moveTo(pos.x, pos.y);
+    const pl = document.getElementById("signaturePlaceholder");
+    if (pl) pl.style.display = "none";
+    if (e.type.startsWith("touch")) e.preventDefault();
+}
+
+function drawStroke(e) {
+    if (!isDrawing || !sigCtx) return;
+    const pos = getCanvasPos(e);
+    sigCtx.lineTo(pos.x, pos.y);
+    sigCtx.stroke();
+    hasSigned = true;
+    if (e.type.startsWith("touch")) e.preventDefault();
+}
+
+function stopDrawing() {
+    if (isDrawing) {
+        isDrawing = false;
+        saveSignatureToInput();
+    }
+}
+
+function clearSignaturePad() {
+    if (!sigCanvas || !sigCtx) return;
+    sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+    hasSigned = false;
+    const pl = document.getElementById("signaturePlaceholder");
+    if (pl) pl.style.display = "block";
+    const inp = document.getElementById("customerSignatureInput");
+    if (inp) inp.value = "";
+}
+
+function saveSignatureToInput() {
+    if (!hasSigned || !sigCanvas) return;
+    const inp = document.getElementById("customerSignatureInput");
+    if (inp) {
+        inp.value = sigCanvas.toDataURL("image/png");
+    }
+}
+
+if (sigCanvas) {
+    sigCanvas.addEventListener("mousedown", startDrawing);
+    sigCanvas.addEventListener("mousemove", drawStroke);
+    window.addEventListener("mouseup", stopDrawing);
+
+    sigCanvas.addEventListener("touchstart", startDrawing, { passive: false });
+    sigCanvas.addEventListener("touchmove", drawStroke, { passive: false });
+    window.addEventListener("touchend", stopDrawing);
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    renderLinesTable();
+    const itype = document.getElementById("issueTypeSelect").value;
+    const dMethod = document.getElementById("deliveryMethodSelect") ? document.getElementById("deliveryMethodSelect").value : "direct";
+    if (itype === "sale" && dMethod !== "shipping") {
+        setTimeout(initSignaturePad, 120);
+    }
+});
+</script>
+{% endblock %}

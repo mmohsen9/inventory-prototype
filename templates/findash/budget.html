@@ -1,0 +1,408 @@
+{% extends "findash/base.html" %}
+
+{% block findash_content %}
+<!-- ========================================================================= -->
+<!-- 1. قسم: ③ تحليل متقدم — توقعات الأشهر القادمة (مطابق تماماً للداشبورد التفاعلي) -->
+<!-- ========================================================================= -->
+<div class="fin-chart-card" style="margin-bottom: 28px; border-right: 4px solid #6366f1;">
+    <div class="fin-chart-header" style="border-bottom: none; margin-bottom: 6px;">
+        <div class="fin-chart-title" style="color: #4338ca; font-size: 17px;">
+            <span>🔮 ③ تحليل متقدم — توقعات الأشهر القادمة</span>
+        </div>
+        <span style="font-size: 11px; background: #e0e7ff; color: #3730a3; padding: 3px 10px; border-radius: 9999px; font-weight: 700;">
+            انحدار خطي + مؤشر الموسمية
+        </span>
+    </div>
+    <p style="font-size: 12px; color: #64748b; margin-top: 0; line-height: 1.6;">
+        نرسم خط اتجاه من كل الأشهر السابقة (انحدار خطي) ثم ندمجه في موسمية كل شهر (هل هذا الشهر عادة أعلى من المتوسط؟) مع مصفوفة الفصول. ويمكن تصفية حسب التصنيف أو الفرع.
+    </p>
+
+    <!-- صندوق الإعدادات والفلاتر التفاعلية -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px;">
+        <div style="font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 12px;">⚙️ الإعدادات</div>
+        <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+            <!-- تصفية حسب التصنيف -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 12px; font-weight: 700; color: #475569;">التصنيف:</label>
+                <select id="forecast-cat" onchange="updateForecastLive()" class="form-control form-control-sm" style="font-weight: 700; min-width: 190px; width: auto;">
+                    <option value="all" {% if cat_filter == 'all' %}selected{% endif %}>الكل (صافي الأرباح / Net Profit)</option>
+                    <option value="Trading Income" {% if cat_filter == 'Trading Income' %}selected{% endif %}>الإيرادات (Trading Income)</option>
+                    <option value="Cost of Sales" {% if cat_filter == 'Cost of Sales' %}selected{% endif %}>تكلفة المبيعات (Cost of Sales)</option>
+                    <option value="Operating Expenses" {% if cat_filter == 'Operating Expenses' %}selected{% endif %}>المصروفات (Expenses)</option>
+                </select>
+            </div>
+
+            <!-- تصفية حسب الفرع -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-size: 12px; font-weight: 700; color: #475569;">الفرع:</label>
+                <select id="forecast-branch" onchange="updateForecastLive()" class="form-control form-control-sm" style="font-weight: 700; min-width: 150px; width: auto;">
+                    <option value="all" {% if branch_filter == 'all' %}selected{% endif %}>كل الفروع</option>
+                    {% for br in available_branches %}
+                    {% if br != 'all' %}
+                    <option value="{{ br }}" {% if branch_filter == br %}selected{% endif %}>{{ br }}</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- سلايدر عدد الأشهر المتوقعة -->
+            <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 260px;">
+                <label style="font-size: 12px; font-weight: 700; color: #475569; white-space: nowrap;">عدد الأشهر المتوقعة:</label>
+                <input type="range" id="forecast-ahead" min="3" max="24" step="1" value="{{ forecast_ahead }}" 
+                       oninput="document.getElementById('forecast-ahead-val').innerText = this.value; updateForecastLive();" 
+                       style="flex: 1; accent-color: #4f46e5; cursor: pointer;">
+                <span id="forecast-ahead-val" style="font-weight: 800; color: #4338ca; font-size: 15px; min-width: 28px;">{{ forecast_ahead }}</span>
+                <span style="font-size: 12px; color: #64748b;">شهراً</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ترويسة بناء التوقعات على الأشهر السابقة -->
+    <div id="forecast-summary-header" style="margin-bottom: 14px; font-size: 13px; font-weight: 700; color: #334155;">
+        بناءً على <strong id="forecast-months-count">{{ forecast_trend.months_count }} شهراً مكتملاً</strong> — <span id="forecast-category-title">{{ forecast_trend.category_label }}</span> (<span id="forecast-branch-title">{{ forecast_trend.branch_label }}</span>):
+    </div>
+
+    <!-- بطاقات المؤشرات الثلاثية للتوقعات -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 22px;">
+        <div class="fin-kpi-card" style="--card-accent: #6366f1;">
+            <div class="kpi-label"><span>💰 إجمالي المتوقع</span><span style="font-size: 11px;">SAR</span></div>
+            <div id="card-forecast-total" class="kpi-val" style="color: #4338ca;">{{ "{:,.0f}".format(forecast_trend.total_forecast) }}</div>
+            <div class="kpi-sub">المجموع التقديري للفترة القادمة</div>
+        </div>
+        <div class="fin-kpi-card" style="--card-accent: #3b82f6;">
+            <div class="kpi-label"><span>📊 متوسط الشهر</span><span style="font-size: 11px;">SAR</span></div>
+            <div id="card-forecast-avg" class="kpi-val" style="color: #2563eb;">{{ "{:,.0f}".format(forecast_trend.avg_monthly) }}</div>
+            <div class="kpi-sub">المتوسط الشهري المتوقع</div>
+        </div>
+        <div class="fin-kpi-card" style="--card-accent: #10b981;">
+            <div class="kpi-label"><span>🚀 أعلى شهر متوقع</span><span style="font-size: 11px;">SAR</span></div>
+            <div id="card-forecast-max" class="kpi-val" style="color: #059669;">{{ "{:,.0f}".format(forecast_trend.max_monthly) }}</div>
+            <div class="kpi-sub">ذروة الموسم المتوقعة</div>
+        </div>
+    </div>
+
+    <!-- مخطط المنحنى البياني للتوقعات -->
+    <div style="position: relative; height: 340px; margin-bottom: 20px;">
+        <canvas id="forecastChart"></canvas>
+    </div>
+
+    <!-- تفاصيل جدول التوقعات القادمة -->
+    <details style="margin-top: 14px;">
+        <summary style="font-size: 13px; font-weight: 700; color: #4338ca; cursor: pointer;">
+            📋 عرض مصفوفة التوقعات الشهرية التفصيلية (الأرقام والنسب الموسمية)
+        </summary>
+        <div style="overflow-x: auto; margin-top: 12px;">
+            <table class="fin-table" style="font-size: 12px;">
+                <thead>
+                    <tr>
+                        <th>السنة</th>
+                        <th>الشهر</th>
+                        <th style="text-align: left;">التوقع الاتجاهي (SAR)</th>
+                        <th style="text-align: center;">مؤشر الموسمية</th>
+                        <th style="text-align: center;">حصة الفرع</th>
+                        <th style="text-align: left;">خط الاتجاه العام</th>
+                    </tr>
+                </thead>
+                <tbody id="forecast-tbody">
+                    {% for row in forecast_trend.lines %}
+                    <tr>
+                        <td style="font-weight: 700;">{{ row.year }}</td>
+                        <td>{{ row.month }} - {{ row.month_name }}</td>
+                        <td style="text-align: left; font-family: monospace; font-weight: 800; color: #4338ca;">{{ "{:,.2f}".format(row.forecast_amount) }}</td>
+                        <td style="text-align: center;"><span class="badge-reconciled">{{ row.season_index }}x</span></td>
+                        <td style="text-align: center;"><span class="badge-diff">{{ "{:.1f}%".format((row.branch_share or 1.0) * 100) }}</span></td>
+                        <td style="text-align: left; font-family: monospace; color: #64748b;">{{ "{:,.2f}".format(row.trend_amount) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </details>
+</div>
+
+<!-- ========================================================================= -->
+<!-- 2. قسم: الموازنة التقديرية ومقارنة الفعلي بالمستهدف ورصد الانحرافات -->
+<!-- ========================================================================= -->
+<form method="GET" action="{{ url_for('findash.budget') }}" class="fin-filter-bar">
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="font-size: 13px; font-weight: 700; color: #475569;">سنة الأساس:</label>
+        <select name="base_year" onchange="onBaseYearChange(this)" class="form-control form-control-sm" style="font-weight: 700; width: 120px;">
+            {% for y in available_base_years %}
+            <option value="{{ y }}" {% if base_year == y %}selected{% endif %}>
+                {{ y }} {% if y == 2026 %}(سنة حالية){% endif %}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="font-size: 13px; font-weight: 700; color: #475569;">سنة الموازنة المستهدفة:</label>
+        <select name="budget_year" onchange="this.form.submit()" class="form-control form-control-sm" style="font-weight: 700; width: 120px;">
+            {% for y in available_budget_years %}
+            <option value="{{ y }}" {% if budget_year == y %}selected{% endif %}>
+                {{ y }} {% if y > 2026 %}(مستقبلية){% endif %}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="font-size: 13px; font-weight: 700; color: #475569;">نسبة النمو السنوية المقترحة %:</label>
+        <input type="number" name="growth" value="{{ growth_pct }}" step="1.0" min="-50" max="100" 
+               onchange="this.form.submit()" class="form-control form-control-sm" style="width: 85px; font-weight: 700;">
+        <span style="font-weight: 700; color: #475569;">%</span>
+    </div>
+
+    <div style="margin-right: auto;">
+        <button type="submit" class="btn btn-primary btn-sm" style="font-weight: 700;">🔄 إعادة احتساب الموازنة</button>
+    </div>
+</form>
+
+<!-- بطاقات مؤشرات الموازنة KPI Cards -->
+<div class="fin-kpi-grid">
+    <div class="fin-kpi-card" style="--card-accent: #64748b;">
+        <div class="kpi-label"><span>📅 إجمالي إيرادات سنة الأساس ({{ base_year }})</span><span>فعلي</span></div>
+        <div class="kpi-val">{{ "{:,.2f}".format(budget_data.kpis.total_base_rev) }}</div>
+        <div class="kpi-sub">الأساس الفعلي قبل احتساب نسبة النمو</div>
+    </div>
+
+    <div class="fin-kpi-card" style="--card-accent: #3b82f6;">
+        <div class="kpi-label"><span>🎯 إجمالي الموازنة المستهدفة ({{ budget_year }})</span><span>نمو {{ growth_pct }}%</span></div>
+        <div class="kpi-val" style="color: #2563eb;">{{ "{:,.2f}".format(budget_data.kpis.total_budget_rev) }}</div>
+        <div class="kpi-sub">المبيعات المخططة للعام الجديد</div>
+    </div>
+
+    <div class="fin-kpi-card" style="--card-accent: #10b981;">
+        <div class="kpi-label"><span>✨ الفعلي المحقق ({{ budget_year }})</span><span>زيرو وفوديكس</span></div>
+        <div class="kpi-val" style="color: #059669;">{{ "{:,.2f}".format(budget_data.kpis.total_actual_rev) }}</div>
+        <div class="kpi-sub">المبيعات الفعلية المسجلة حتى الآن</div>
+    </div>
+
+    <div class="fin-kpi-card" style="--card-accent: #8b5cf6;">
+        <div class="kpi-label"><span>📊 نسبة إنجاز الموازنة</span><span>المتحقق</span></div>
+        <div class="kpi-val" style="color: #6d28d9;">{{ budget_data.kpis.completion_rate }}%</div>
+        <div class="kpi-sub">الفعلي المحقق / المستهدف المخطط</div>
+    </div>
+</div>
+
+<!-- جدول مقارنة الفعلي بالموازنة ورصد الانحرافات مع صف التجميع الإجمالي -->
+<div class="fin-chart-card" style="padding: 0; overflow: hidden;">
+    <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; font-size: 15px; font-weight: 800; color: #0f172a;">🎯 جدول مقارنة الفعلي بالموازنة ورصد الانحرافات (Variance Analysis)</h3>
+        <span style="font-size: 12px; color: #64748b;">الانحراف = الفعلي المحقق - الموازنة المقترحة</span>
+    </div>
+
+    <div style="width: 100%; overflow-x: auto;">
+        <table class="fin-table">
+            <thead>
+                <tr>
+                    <th style="width: 11%;">كود الحساب</th>
+                    <th>اسم الحساب / البند</th>
+                    <th style="text-align: left; width: 13%;">الفعلي ({{ base_year }})</th>
+                    <th style="text-align: left; width: 14%;">الموازنة ({{ budget_year }})</th>
+                    <th style="text-align: left; width: 14%;">الفعلي ({{ budget_year }})</th>
+                    <th style="text-align: left; width: 14%;">الانحراف (SAR)</th>
+                    <th style="text-align: center; width: 11%;">نسبة الانحراف %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in budget_data.lines %}
+                <tr>
+                    <td><span class="fin-code-badge">{{ row.account_code }}</span></td>
+                    <td><div class="cell-name-wrap" style="color: #0f172a;">{{ row.account_name }}</div></td>
+                    <td style="text-align: left;">
+                        <span class="fin-num" style="color: #475569;">{{ "{:,.2f}".format(row.base_actual) }}</span>
+                    </td>
+                    <td style="text-align: left;">
+                        <span class="fin-num" style="font-weight: 700; color: #2563eb;">{{ "{:,.2f}".format(row.proposed) }}</span>
+                    </td>
+                    <td style="text-align: left;">
+                        <span class="fin-num" style="font-weight: 700; color: #0f172a;">{{ "{:,.2f}".format(row.actual) }}</span>
+                    </td>
+                    <td style="text-align: left;">
+                        <span class="fin-num" style="font-weight: 800; color: {% if row.variance >= 0 %}#059669{% else %}#dc2626{% endif %};">
+                            {{ "{:,.2f}".format(row.variance) }}
+                        </span>
+                    </td>
+                    <td style="text-align: center;">
+                        <span dir="ltr" class="fin-num" style="font-size: 10.5px; padding: 2px 6px; border-radius: 4px; font-weight: 800; {% if row.variance >= 0 %}background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;{% else %}background: #fee2e2; color: #991b1b; border: 1px solid #fecaca;{% endif %}">
+                            {{ "{:+.1f}%".format(row.var_pct) }}
+                        </span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 30px; color: #64748b;">لا توجد بيانات حسابات مسجلة لسنة الأساس.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="tfoot-totals">
+                <tr>
+                    <td colspan="2" style="text-align: right; font-weight: 800;">المجموع الإجمالي:</td>
+                    <td style="text-align: left;"><span class="fin-num" style="font-weight: 800;">{{ "{:,.2f}".format(budget_data.lines|sum(attribute='base_actual')) }}</span></td>
+                    <td style="text-align: left;"><span class="fin-num" style="font-weight: 800; color: #2563eb;">{{ "{:,.2f}".format(budget_data.lines|sum(attribute='proposed')) }}</span></td>
+                    <td style="text-align: left;"><span class="fin-num" style="font-weight: 800; color: #0f172a;">{{ "{:,.2f}".format(budget_data.lines|sum(attribute='actual')) }}</span></td>
+                    <td style="text-align: left;"><span class="fin-num" style="font-weight: 800; color: #dc2626;">{{ "{:,.2f}".format(budget_data.lines|sum(attribute='variance')) }}</span></td>
+                    <td style="text-align: center;">-</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<script>
+let forecastChartInstance = null;
+
+document.addEventListener("DOMContentLoaded", function() {
+    initForecastChart({{ forecast_trend | tojson }});
+});
+
+function initForecastChart(trendData) {
+    const ctx = document.getElementById('forecastChart').getContext('2d');
+    if (forecastChartInstance) forecastChartInstance.destroy();
+
+    forecastChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: trendData.chart_labels,
+            datasets: [
+                {
+                    label: 'الفعلي التاريخي (' + (trendData.months_count || '34') + ' شهراً مكتملاً)',
+                    data: trendData.historical_data,
+                    borderColor: '#38bdf8',
+                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                    borderWidth: 2.5,
+                    pointRadius: 3,
+                    fill: true,
+                    tension: 0.25,
+                },
+                {
+                    label: 'التوقعات المستقبلية (انحدار + موسمية)',
+                    data: trendData.forecast_data,
+                    borderColor: '#ec4899',
+                    backgroundColor: 'rgba(236, 72, 153, 0.1)',
+                    borderWidth: 3,
+                    borderDash: [6, 6],
+                    pointRadius: 4,
+                    pointBackgroundColor: '#ec4899',
+                    fill: false,
+                    tension: 0.25,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            locale: 'en-US',
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', rtl: true, labels: { font: { family: "'Readex Pro', 'Tajawal', sans-serif", weight: 'bold' } } },
+                tooltip: {
+                    rtl: false,
+                    callbacks: {
+                        label: function(context) {
+                            if (context.raw === null || context.raw === undefined) return '';
+                            const val = Number(context.raw);
+                            const formatted = val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            return context.dataset.label + ': ' + formatted + ' SAR';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            const val = Number(value);
+                            if (Math.abs(val) >= 1000000) {
+                                return (val / 1000000).toLocaleString('en-US', { maximumFractionDigits: 1 }) + 'M';
+                            }
+                            if (Math.abs(val) >= 1000) {
+                                return (val / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 }) + 'k';
+                            }
+                            return val.toLocaleString('en-US');
+                        },
+                        font: { family: "'Readex Pro', sans-serif" }
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: { family: "'Readex Pro', sans-serif" }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// تحديث فوري وسريع للتوقعات عبر AJAX عند تحريك السلايدر أو تغيير الفلاتر
+function updateForecastLive() {
+    const ahead = document.getElementById('forecast-ahead').value;
+    const cat = document.getElementById('forecast-cat').value;
+    const branch = document.getElementById('forecast-branch').value;
+
+    fetch(`{{ url_for('findash.api_forecast') }}?ahead=${ahead}&cat=${encodeURIComponent(cat)}&branch=${encodeURIComponent(branch)}`)
+        .then(r => r.json())
+        .then(data => {
+            // تحديث البطاقات
+            document.getElementById('card-forecast-total').innerText = new Intl.NumberFormat('en-US').format(Math.round(data.total_forecast || 0));
+            document.getElementById('card-forecast-avg').innerText = new Intl.NumberFormat('en-US').format(Math.round(data.avg_monthly || 0));
+            document.getElementById('card-forecast-max').innerText = new Intl.NumberFormat('en-US').format(Math.round(data.max_monthly || 0));
+
+            // تحديث عنوان التوقعات الديناميكي
+            if (data.category_label && document.getElementById('forecast-category-title')) {
+                document.getElementById('forecast-category-title').innerText = data.category_label;
+            }
+            if (data.branch_label && document.getElementById('forecast-branch-title')) {
+                document.getElementById('forecast-branch-title').innerText = data.branch_label;
+            }
+            if (data.months_count && document.getElementById('forecast-months-count')) {
+                document.getElementById('forecast-months-count').innerText = `${data.months_count} شهراً مكتملاً`;
+            }
+
+            // تحديث شارة الفرع
+            const branchBadge = document.getElementById('forecast-branch-badge');
+            if (branchBadge) {
+                if (branch !== 'all' && data.branch_share) {
+                    branchBadge.innerText = `حصة الفرع (${branch}): ${(data.branch_share * 100).toFixed(1)}% من الإجمالي`;
+                    branchBadge.style.display = 'inline-block';
+                } else {
+                    branchBadge.style.display = 'none';
+                }
+            }
+
+            // تحديث الرسم البياني
+            initForecastChart(data);
+
+            // تحديث جدول التفاصيل
+            const tbody = document.getElementById('forecast-tbody');
+            if (tbody && data.lines) {
+                tbody.innerHTML = data.lines.map(row => `
+                    <tr>
+                        <td style="font-weight: 700;">${row.year}</td>
+                        <td>${row.month} - ${row.month_name}</td>
+                        <td style="text-align: left; font-family: monospace; font-weight: 800; color: #4338ca;">${new Intl.NumberFormat('en-US', {minimumFractionDigits: 2}).format(row.forecast_amount)}</td>
+                        <td style="text-align: center;"><span class="badge-reconciled">${row.season_index}x</span></td>
+                        <td style="text-align: center;"><span class="badge-diff">${((row.branch_share || 1.0) * 100).toFixed(1)}%</span></td>
+                        <td style="text-align: left; font-family: monospace; color: #64748b;">${new Intl.NumberFormat('en-US', {minimumFractionDigits: 2}).format(row.trend_amount)}</td>
+                    </tr>
+                `).join('');
+            }
+        })
+        .catch(err => console.error('Error fetching live forecast:', err));
+}
+
+function onBaseYearChange(select) {
+    const baseVal = parseInt(select.value, 10);
+    const budgetSelect = document.querySelector('select[name="budget_year"]');
+    if (budgetSelect) {
+        const currentBudgetVal = parseInt(budgetSelect.value, 10);
+        if (currentBudgetVal <= baseVal) {
+            budgetSelect.value = baseVal + 1;
+        }
+    }
+    select.form.submit();
+}
+</script>
+{% endblock %}

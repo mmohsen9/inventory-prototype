@@ -1,0 +1,443 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}إعدادات واستيراد بيانات القهوة{% endblock %}
+
+{% block coffee_extra_css %}
+<style>
+    .coffee-settings-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    .settings-card {
+        background: #fff;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+    .settings-card-header {
+        border-bottom: 1px solid var(--gray-200);
+        padding-bottom: 14px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .settings-card-header h3 {
+        font-size: 17px;
+        font-weight: 800;
+        color: var(--gray-900);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .nav-subtabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        border-bottom: 2px solid var(--gray-200);
+    }
+    .subtab-item {
+        padding: 8px 16px;
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        color: var(--gray-600);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 13px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+    }
+    .subtab-item:hover { color: #78350f; }
+    .subtab-item.active {
+        color: #78350f;
+        border-bottom-color: #b45309;
+        font-weight: 800;
+        background: #fffbeb;
+    }
+    .form-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--gray-700);
+        margin-bottom: 6px;
+    }
+    .form-control {
+        width: 100%;
+        padding: 9px 12px;
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-sm);
+        font-size: 13px;
+        background: #fff;
+        font-family: inherit;
+    }
+</style>
+{% endblock %}
+
+{% block coffee_content %}
+<div class="content-container coffee-settings-container">
+
+    <div class="nav-subtabs">
+        <a href="{{ url_for('coffee.dashboard') }}" class="subtab-item">📊 لوحة التحكم</a>
+        <a href="{{ url_for('coffee.green_stock') }}" class="subtab-item">🌱 مخزون الأخضر (GB)</a>
+        <a href="{{ url_for('coffee.roasting_list') }}" class="subtab-item">🔥 أوامر التحميص</a>
+        <a href="{{ url_for('coffee.green_issues_list') }}" class="subtab-item">📤 صرف البن الأخضر</a>
+        <a href="{{ url_for('coffee.roasted_stock') }}" class="subtab-item">☕ مخزون المحمص (RB)</a>
+        <a href="{{ url_for('coffee.dispatches_list') }}" class="subtab-item">🚚 صرف المحمص للفروع</a>
+        <a href="{{ url_for('coffee.xero_status') }}" class="subtab-item">📈 ترحيل زيرو (Xero)</a>
+        <a href="{{ url_for('coffee.reports') }}" class="subtab-item">📑 التقارير</a>
+        <a href="{{ url_for('coffee.settings') }}" class="subtab-item active">⚙️ الإعدادات والاستيراد</a>
+        <a href="{{ url_for('coffee.audit_log') }}" class="subtab-item">🛡️ سجل التدقيق</a>
+    </div>
+
+    <!-- بطاقة تثبيت أصناف القهوة الدائمة في قاعدة البيانات -->
+    <div class="settings-card" style="border: 1px solid #86efac; background: #f0fdf4;">
+        <div class="settings-card-header" style="border-bottom: 1px solid #bbf7d0;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 22px;">📌</span>
+                <div>
+                    <h3 style="color: #166534; margin: 0; font-size: 16px;">أصناف البن الأخضر والمحمص المثبتة بقاعدة البيانات (حفظ دائم)</h3>
+                    <p style="font-size: 12px; color: #15803d; margin: 4px 0 0 0;">
+                        الأصناف مثبتة ومحفوظة دائماً داخل قاعدة البيانات ولا تتطلب منك إعادة الاستيراد في كل مرة.
+                    </p>
+                </div>
+            </div>
+            <div>
+                <span style="background: #dcfce7; color: #166534; padding: 5px 12px; border-radius: 20px; font-weight: 700; font-size: 12px; border: 1px solid #86efac;">
+                    ✅ مثبت حالياً: {{ coffee_items_count or 0 }} صنفاً ({{ green_count or 0 }} أخضر + {{ roasted_count or 0 }} محمص) | {{ links_count or 0 }} روابط
+                </span>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 14px;">
+            <p style="font-size: 13px; color: #166534; margin: 0; flex-grow: 1;">
+                النظام يقوم تلقائياً بالتحقق من وجود كافة أصناف البن (21 صنفاً) وروابط التحميص وتثبيتها عند إقلاع البرنامج. يمكنك أيضاً إعادة تأكيد التثبيت بنقرة واحدة أدناه.
+            </p>
+            <form method="POST" action="{{ url_for('coffee.seed_defaults') }}" style="margin: 0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-primary" style="background: #15803d; border: none; padding: 10px 22px; font-weight: 700; border-radius: var(--radius-sm); color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                    🔄 إعادة تأكيد وتثبيت الأصناف الافتراضية في قاعدة البيانات
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- بطاقة فحص ومزامنة أصناف القهوة من Xero -->
+    <div class="settings-card" style="border: 1px solid #bfdbfe; background: #f8fafc;">
+        <div class="settings-card-header" style="border-bottom: 1px solid #e2e8f0;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 24px;">🔄</span>
+                <div>
+                    <h3 style="color: #1e3a8a; margin: 0; font-size: 16px;">مزامنة واكتشاف أصناف القهوة الجديدة من Xero تلقائياً</h3>
+                    <p style="font-size: 12px; color: var(--gray-600); margin: 4px 0 0 0;">
+                        يكتشف النظام تلقائياً أي أصناف بن خضراء (GB) أو محمصة (RB) مضافة حديثاً في زيرو ويتيح لك مراجعتها وتثبيتها بنقرة واحدة.
+                    </p>
+                </div>
+            </div>
+            <div>
+                <a href="{{ url_for('coffee.xero_items_sync') }}" class="btn-primary" style="background: #2563eb; color: #fff; padding: 9px 20px; border-radius: 6px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">
+                    🔍 فحص الأصناف الجديدة في Xero (معاينة وإضافة)
+                </a>
+            </div>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 13px; color: #1e40af; background: #eff6ff; padding: 12px 16px; border-radius: 6px;">
+            <span>💡 عند الضغط على الزر، سيتم جلب قائمة بالأصناف الجديدة مع خيار تحديد كل أو بعض الأصناف وربط الأخضر بالمحمص تلقائياً.</span>
+        </div>
+    </div>
+
+    <!-- بطاقة استيراد أصناف إضافية من ملف Excel (اختياري) -->
+    <div class="settings-card">
+        <div class="settings-card-header">
+            <h3>📥 استيراد أصناف بن إضافية جديدة من ملف Excel (اختياري)</h3>
+        </div>
+        <p style="font-size: 13px; color: var(--gray-600); margin-bottom: 16px;">
+            <strong>ملاحظة:</strong> الأصناف الأساسية (21 صنفاً) مثبتة مسبقاً في قاعدة البيانات تلقائياً. استخدم هذا النموذج فقط إذا كان لديك ملف Excel يحتوي على أصناف بن جديدة تماماً ترغب في إضافتها إلى النظام.
+        </p>
+
+        <form method="POST" action="{{ url_for('coffee.import_excel') }}" enctype="multipart/form-data" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="file" name="excel_file" accept=".xlsx, .xls" class="form-control" style="width: auto; flex-grow: 1;" required>
+            <button type="submit" class="btn-secondary" style="border: 1px solid var(--gray-300); padding: 10px 24px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer;">
+                🚀 استيراد أصناف إضافية
+            </button>
+        </form>
+    </div>
+
+    <!-- بطاقة إعدادات تكامل Xero API -->
+    <div class="settings-card">
+        <div class="settings-card-header">
+            <h3>🔗 إعدادات التكامل والترحيل المحاسبي لنظام Xero API</h3>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <form method="POST" style="margin: 0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="test_xero">
+                    <button type="submit" class="btn-sm" style="background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; padding: 6px 14px; border-radius: 4px; font-weight: 700; cursor: pointer;">
+                        ⚡ فحص الاتصال بـ Xero
+                    </button>
+                </form>
+                {% if all_settings.get('xero_refresh_token') %}
+                <form method="POST" style="margin: 0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="refresh_xero">
+                    <button type="submit" class="btn-sm" style="background: #f0fdf4; color: #166534; border: 1px solid #86efac; padding: 6px 14px; border-radius: 4px; font-weight: 700; cursor: pointer;">
+                        🔄 تجديد الرمز اللحظي
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- حالة التوثيق التلقائي الدائم -->
+        {% if all_settings.get('xero_refresh_token') %}
+        <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 26px;">🟢</span>
+                <div>
+                    <strong style="color: #166534; font-size: 15px;">الربط السحابي التلقائي الدائم (OAuth 2.0) نشط ومفعل</strong>
+                    <p style="margin: 3px 0 0; font-size: 12px; color: #15803d;">
+                        المنشأة المرتبطة: <strong>{{ all_settings.get('xero_tenant_name', all_settings.get('xero_tenant_id', '—')) }}</strong>
+                        | <span style="background: #dcfce7; padding: 2px 8px; border-radius: 12px; font-weight: bold;">التجديد التلقائي المستمر 24/7 شغال بدون انتهاء</span>
+                    </p>
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <a href="{{ url_for('coffee.xero_connect') }}" class="btn-sm" style="background: #15803d; color: #fff; padding: 8px 16px; border-radius: 4px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                    🔄 إعادة التفويض / تبديل المنظمة
+                </a>
+            </div>
+        </div>
+        {% elif all_settings.get('xero_client_id') and all_settings.get('xero_client_secret') %}
+        <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 28px;">⏳</span>
+                <div>
+                    <strong style="color: #92400e; font-size: 15px;">البيانات محفوظة بنجاح — خطوة واحدة متبقية للتفعيل التلقائي الدائم</strong>
+                    <p style="margin: 3px 0 0; font-size: 13px; color: #b45309;">
+                        تم حفظ معرف التطبيق والسر السري. اضغط الآن على زر التفويض لمرة واحدة لمنح النظام صلاحية التجديد التلقائي الدائم (Refresh Token).
+                    </p>
+                </div>
+            </div>
+            <a href="{{ url_for('coffee.xero_connect') }}" class="btn-primary" style="background: #d97706; hover: background: #b45309; color: #fff; padding: 10px 22px; border-radius: 6px; font-weight: 800; font-size: 14px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(217,119,6,0.3);">
+                🔗 اضغط هنا لتفويض Xero والربط التلقائي الآن
+            </a>
+        </div>
+        {% else %}
+        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 26px;">🔐</span>
+                <div>
+                    <strong style="color: #1e40af; font-size: 15px;">تفعيل الربط السحابي الدائم بـ Xero (OAuth 2.0)</strong>
+                    <p style="margin: 3px 0 0; font-size: 12px; color: #1e3a8a;">
+                        أدخل الـ Client ID و Client Secret أدناه واحفظهما، ثم انقر على زر الربط لتفويض الحساب لمرة واحدة فقط.
+                    </p>
+                </div>
+            </div>
+            <a href="{{ url_for('coffee.xero_connect') }}" class="btn-primary" style="background: #2563eb; color: #fff; padding: 9px 20px; border-radius: 6px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(37,99,235,0.2);">
+                🔗 تسجيل الدخول والربط التلقائي بـ Xero
+            </a>
+        </div>
+        {% endif %}
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="save_xero">
+
+            <!-- بيانات تطبيق Xero OAuth -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <h4 style="margin: 0 0 12px 0; color: #334155; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                    <span>⚙️</span> بيانات تطبيق زيرو (Xero App Credentials)
+                </h4>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label>معرف التطبيق في زيرو (Client ID)</label>
+                        <input type="text" name="xero_client_id" class="form-control" value="{{ all_settings.get('xero_client_id', '') }}" placeholder="مثال: 19087603F59749338B4314B4640CCDDA">
+                    </div>
+                    <div class="form-group">
+                        <label>الرمز السري للتطبيق (Client Secret)</label>
+                        <input type="password" name="xero_client_secret" class="form-control" value="{{ all_settings.get('xero_client_secret', '') }}" placeholder="أدخل رمز Client Secret هنا...">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 10px;">
+                    <label>رابط إعادة التوجيه المعتمد (Redirect URI)</label>
+                    <input type="text" name="xero_redirect_uri" class="form-control" value="{{ all_settings.get('xero_redirect_uri', 'http://localhost:5000/coffee/xero/callback') }}" style="background: #fff; font-family: monospace;">
+                    <small style="color: var(--gray-500); font-size: 11px;">يجب أن يتطابق مع ما وضعته في Xero Developer App Configuration.</small>
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>معرف المنشأة في Xero (Tenant ID)</label>
+                    <input type="text" name="xero_tenant_id" class="form-control" value="{{ all_settings.get('xero_tenant_id', '') }}" placeholder="مثال: c95e13d9-...">
+                </div>
+                <div class="form-group">
+                    <label>رمز الدخول اللحظي (Bearer Token - يُجدد تلقائياً)</label>
+                    <input type="password" name="xero_bearer_token" class="form-control" value="{{ all_settings.get('xero_bearer_token', '') }}" placeholder="يتم تجديده تلقائياً في الخلفية">
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>رقم حساب مخزون البن الأخضر (Credit Note Account)</label>
+                    <input type="text" name="xero_green_account" class="form-control" value="{{ all_settings.get('xero_green_account', '635') }}">
+                </div>
+                <div class="form-group">
+                    <label>رقم حساب مخزون البن المحمص (Bill Account)</label>
+                    <input type="text" name="xero_roasted_account" class="form-control" value="{{ all_settings.get('xero_roasted_account', '636') }}">
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>اسم جهة الاتصال لأمر التحميص (صرف الأخضر)</label>
+                    <input type="text" name="xero_green_contact" class="form-control" value="{{ all_settings.get('xero_green_contact', 'امر تحميص مستودع البن الاخضر') }}">
+                </div>
+                <div class="form-group">
+                    <label>اسم جهة الاتصال لناتج التحميص (توريد المحمص)</label>
+                    <input type="text" name="xero_roasted_contact" class="form-control" value="{{ all_settings.get('xero_roasted_contact', 'تحميص وارد لمستودع البن المحمص') }}">
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>رقم حساب مبيعات القهوة الخضراء في زيرو (سلسلة GB)</label>
+                    <input type="text" name="xero_green_sales_account" class="form-control" value="{{ all_settings.get('xero_green_sales_account', '201') }}" placeholder="201 - مبيعات القهوة الخضراء">
+                </div>
+                <div class="form-group">
+                    <label>رقم حساب مبيعات القهوة المحمصة في زيرو (سلسلة RB)</label>
+                    <input type="text" name="xero_roasted_sales_account" class="form-control" value="{{ all_settings.get('xero_roasted_sales_account', '202') }}" placeholder="202 - مبيعات القهوة المحمصة">
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>فئة التتبع في Xero (Tracking Category)</label>
+                    <input type="text" name="xero_tracking_category" class="form-control" value="{{ all_settings.get('xero_tracking_category', 'Branches') }}">
+                </div>
+                <div class="form-group">
+                    <label>اسم جهة الاتصال لسند صرف قهوة محموصة للفرع</label>
+                    <input type="text" name="xero_dispatch_contact_name" class="form-control" value="{{ all_settings.get('xero_dispatch_contact_name', 'سند صرف قهوة محموصة للفرع') }}">
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>خيار تتبع البن المحمص في زيرو (Tracking Option - Roasted)</label>
+                    <input type="text" name="xero_roasted_tracking_val" class="form-control" value="{{ all_settings.get('xero_roasted_tracking_val', 'Roasted Coffee') }}" placeholder="Roasted Coffee">
+                </div>
+                <div class="form-group">
+                    <label>خيار تتبع البن الأخضر في زيرو (Tracking Option - Green)</label>
+                    <input type="text" name="xero_green_tracking_val" class="form-control" value="{{ all_settings.get('xero_green_tracking_val', 'Green Coffee') }}" placeholder="Green Coffee">
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>الحساب الوسيط لتسوية الأوامر (حساب التصنيع المؤقت)</label>
+                    <input type="text" name="xero_clearing_account" class="form-control" value="{{ all_settings.get('xero_clearing_account', '851') }}" placeholder="851 - حساب التصنيع المؤقت">
+                </div>
+                <div class="form-group">
+                    <label>حساب مخزون فودكس لسداد إشعارات دائن الفروع (Cash Refund Account)</label>
+                    <input type="text" name="xero_foodics_inventory_account" class="form-control" value="{{ all_settings.get('xero_foodics_inventory_account', '631') }}" placeholder="631 - مخزون فودكس">
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>حساب عينات القهوة لسداد إشعارات دائن الأخضر (Cash Refund Account)</label>
+                    <input type="text" name="xero_samples_account" class="form-control" value="{{ all_settings.get('xero_samples_account', '345') }}" placeholder="345 - عينات قهوة">
+                </div>
+                <div class="form-group">
+                    <label>كود ضريبة القيمة المضافة لفواتير المبيعات (Sales Tax Type)</label>
+                    <input type="text" name="xero_sales_tax_type" class="form-control" value="{{ all_settings.get('xero_sales_tax_type', 'OUTPUT') }}" placeholder="OUTPUT (Tax on Sales 15%)">
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>اسم جهة الاتصال لإشعار دائن عينات فحص وتذوق</label>
+                    <input type="text" name="xero_green_sample_contact" class="form-control" value="{{ all_settings.get('xero_green_sample_contact', 'عينات فحص وتذوق') }}">
+                </div>
+                <div class="form-group">
+                    <label>اسم جهة الاتصال لإشعار دائن استخدام داخلي تجارب</label>
+                    <input type="text" name="xero_green_internal_contact" class="form-control" value="{{ all_settings.get('xero_green_internal_contact', 'استخدام داخلي تجارب') }}">
+                </div>
+            </div>
+
+            <!-- إعدادات مصاريف الشحن والتوصيل في زيرو -->
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px; margin-top: 14px; margin-bottom: 14px;">
+                <h4 style="margin: 0 0 10px 0; color: #1e40af; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+                    <span>🚚</span> إعدادات بند مصاريف الشحن في Xero (للسندات المشحونة عبر شركات النقل)
+                </h4>
+                <div class="form-grid-2">
+                    <div class="form-group">
+                        <label>رقم حساب إيرادات الشحن والتوصيل (Sales Account)</label>
+                        <input type="text" name="xero_shipping_account" class="form-control" value="{{ all_settings.get('xero_shipping_account', '261') }}" placeholder="261 - ايرادات شحن وتوصيل">
+                        <small style="color: #64748b; font-size: 11px;">الحساب المعرف في زيرو لإيرادات الشحن</small>
+                    </div>
+                    <div class="form-group">
+                        <label>كود بند مصاريف الشحن في Xero (Item Code)</label>
+                        <input type="text" name="xero_shipping_item_code" class="form-control" value="{{ all_settings.get('xero_shipping_item_code', 'مصاريف شحن') }}" placeholder="مصاريف شحن">
+                        <small style="color: #64748b; font-size: 11px;">كود الصنف المعرف في زيرو (Code: مصاريف شحن)</small>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+                <button type="submit" class="btn-primary" style="background: #1e3a8a; border: none; padding: 10px 24px; font-weight: 700; border-radius: var(--radius-sm); color: #fff; cursor: pointer;">
+                    💾 حفظ إعدادات Xero
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- بطاقة الإعدادات العامة وتسلسل الأرقام -->
+    <div class="settings-card">
+        <div class="settings-card-header">
+            <h3>🔢 تسلسل الأرقام والإعدادات العامة</h3>
+        </div>
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="save_general">
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>آخر رقم تسلسلي لأوامر التحميص (سلسلة RB-XXXX)</label>
+                    <input type="number" name="roasting_order_seq" class="form-control" value="{{ all_settings.get('roasting_order_seq', '7000') }}">
+                </div>
+                <div class="form-group">
+                    <label>آخر رقم تسلسلي لسندات صرف المحمص للفروع (سلسلة MP - السند القادم سيكون +1)</label>
+                    <input type="number" name="roasted_branch_issue_seq" class="form-control" value="{{ all_settings.get('roasted_branch_issue_seq', '3592') }}" placeholder="3592">
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>آخر رقم تسلسلي لسندات صرف المحمص للمبيعات (سلسلة RB - السند القادم سيكون +1)</label>
+                    <input type="number" name="roasted_issue_seq" class="form-control" value="{{ all_settings.get('roasted_issue_seq', '0') }}" placeholder="0">
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+                <button type="submit" class="btn-primary" style="background: #b45309; border: none; padding: 10px 24px; font-weight: 700; border-radius: var(--radius-sm); color: #fff; cursor: pointer;">
+                    💾 حفظ الإعدادات العامة
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% import "coffee/_ui.html" as ui %}
+
+{% block extra_css %}
+{{ super() }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='coffee/coffee-ui.css') }}">
+<script>
+  /* تطبيق فوري للثيم قبل اكتمال الرندر لتجنب وميض الصفحة الفاتحة */
+  (function() {
+    try {
+      var saved = localStorage.getItem('kf-theme');
+      var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var theme = saved || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch(e) {}
+  })();
+</script>
+<style>
+  /* تحسين تمدد الحاوية الخارجية في صفحات القهوة لتناسب الشاشات الحديثة */
+  .main-wrapper:has(.kf) {
+    max-width: 1400px;
+    padding: 0 16px;
+    margin: 16px auto;
+  }
+</style>
+{% block coffee_extra_css %}{% endblock %}
+{% endblock %}
+
+{% block content %}
+<div class="kf" id="kfRoot">
+  <!-- خلفية القائمة الجانبية للشاشات الصغيرة -->
+  <div class="kf-sidebar-backdrop" id="kfBackdrop" onclick="kfToggleSidebar()"></div>
+
+  <!-- زر فتح القائمة الجانبية للموبايل -->
+  <button type="button" class="kf-mobile-toggle" onclick="kfToggleSidebar()" aria-label="فتح قائمة القهوة">
+    {{ ui.icon_menu() }}
+    <span>قائمة وحدة القهوة</span>
+  </button>
+
+  <div class="kf-shell">
+    <!-- الشريط الجانبي لوحدة القهوة (Kraken Sidebar) -->
+    <aside class="kf-sidebar" id="kfSidebar">
+      <a href="{{ url_for('coffee.dashboard') }}" class="kf-sidebar-brand" title="نوفمبر كفي">
+        <div class="kf-sidebar-brand-icon">
+          {{ ui.icon_coffee() }}
+        </div>
+        <span>نوفمبر كفي</span>
+      </a>
+
+      <!-- محوّل الأقسام الرئيسية -->
+      <div class="kf-nav-group kf-division-group">
+        <div class="kf-nav-label">أقسام المنظومة</div>
+        <div class="kf-division-switcher">
+          <a href="{{ url_for('dashboard') }}" class="kf-division-pill" title="الانتقال إلى قسم الكافيهات والفروع">
+            <span class="kf-division-pill-text">
+              <span class="kf-division-icon">🏪</span>
+              <span>قسم الكافيهات</span>
+            </span>
+            {% if user and user.role == 'branch_staff' and branch_incoming_count > 0 %}
+            <span class="kf-counter-pill">{{ branch_incoming_count }}</span>
+            {% endif %}
+          </a>
+          <a href="{{ url_for('coffee.dashboard') }}" class="kf-division-pill {% if 'coffee' in request.endpoint and request.endpoint != 'users_list' %}active coffee{% endif %}" title="إدارة البن الأخضر والمحمص والتحميص وسندات الصرف">
+            <span class="kf-division-pill-text">
+              <span class="kf-division-icon">☕</span>
+              <span>قسم القهوة</span>
+            </span>
+          </a>
+          {% if user and user.role in ['admin', 'accountant'] %}
+          <a href="{{ url_for('users_list') }}" class="kf-division-pill {% if request.endpoint == 'users_list' %}active users{% endif %}" title="إدارة المستخدمين والصلاحيات">
+            <span class="kf-division-pill-text">
+              <span class="kf-division-icon">👥</span>
+              <span>إدارة المستخدمين</span>
+            </span>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- مجموعة: الرئيسة -->
+      <div class="kf-nav-group">
+        <div class="kf-nav-label">الرئيسة</div>
+        <a href="{{ url_for('coffee.dashboard') }}"
+           class="kf-nav-item {% if request.endpoint == 'coffee.dashboard' %}active{% endif %}"
+           title="لوحة التحكم">
+          {{ ui.icon_chart() }}
+          <span>لوحة التحكم</span>
+        </a>
+      </div>
+
+      <!-- مجموعة: المخزون -->
+      <div class="kf-nav-group">
+        <div class="kf-nav-label">المخزون</div>
+        <a href="{{ url_for('coffee.green_stock') }}"
+           class="kf-nav-item {% if request.endpoint == 'coffee.green_stock' %}active{% endif %}"
+           title="مخزون البن الأخضر">
+          {{ ui.icon_leaf() }}
+          <span>البن الأخضر</span>
+        </a>
+        <a href="{{ url_for('coffee.roasted_stock') }}"
+           class="kf-nav-item {% if request.endpoint == 'coffee.roasted_stock' %}active{% endif %}"
+           title="مخزون البن المحمص">
+          {{ ui.icon_coffee() }}
+          <span>البن المحمص</span>
+        </a>
+      </div>
+
+      <!-- مجموعة: العمليات -->
+      <div class="kf-nav-group">
+        <div class="kf-nav-label">العمليات اليومية</div>
+        <a href="{{ url_for('coffee.roasting_list') }}"
+           class="kf-nav-item {% if 'roasting' in request.endpoint %}active{% endif %}"
+           title="أوامر التحميص">
+          {{ ui.icon_flame() }}
+          <span>أوامر التحميص</span>
+        </a>
+        <a href="{{ url_for('coffee.green_issues_list') }}"
+           class="kf-nav-item {% if 'green_issue' in request.endpoint %}active{% endif %}"
+           title="سندات صرف الأخضر">
+          {{ ui.icon_send() }}
+          <span>سندات الصرف</span>
+        </a>
+        <a href="{{ url_for('coffee.dispatches_list') }}"
+           class="kf-nav-item {% if 'dispatch' in request.endpoint %}active{% endif %}"
+           title="صرف المحمص للفروع">
+          {{ ui.icon_truck() }}
+          <span>شحنات الفروع</span>
+        </a>
+      </div>
+
+      <!-- مجموعة: الإدارة والربط -->
+      <div class="kf-nav-group">
+        <div class="kf-nav-label">الإدارة والربط</div>
+        <a href="{{ url_for('coffee.xero_status') }}"
+           class="kf-nav-item {% if request.endpoint == 'coffee.xero_status' %}active{% endif %}"
+           title="ترحيل Xero">
+          {{ ui.icon_zap() }}
+          <span>ترحيل Xero</span>
+        </a>
+        <a href="{{ url_for('coffee.xero_items_sync') }}"
+           class="kf-nav-item {% if request.endpoint == 'coffee.xero_items_sync' %}active{% endif %}"
+           title="مزامنة أصناف Xero">
+          {{ ui.icon_cloud() }}
+          <span>أصناف Xero</span>
+        </a>
+        <a href="{{ url_for('coffee.reports') }}"
+           class="kf-nav-item {% if 'report' in request.endpoint and 'coffee' in request.endpoint %}active{% endif %}"
+           title="التقارير">
+          {{ ui.icon_clipboard() }}
+          <span>التقارير</span>
+        </a>
+        <a href="{{ url_for('coffee.audit_log') }}"
+           class="kf-nav-item {% if request.endpoint == 'coffee.audit_log' %}active{% endif %}"
+           title="سجل التدقيق">
+          {{ ui.icon_shield() }}
+          <span>سجل التدقيق</span>
+        </a>
+        <a href="{{ url_for('coffee.settings') }}"
+           class="kf-nav-item {% if request.endpoint == 'coffee.settings' %}active{% endif %}"
+           title="الإعدادات">
+          {{ ui.icon_settings() }}
+          <span>الإعدادات</span>
+        </a>
+      </div>
+
+      <!-- ذيل القائمة: تبديل الثيم -->
+      <div class="kf-sidebar-footer">
+        <button type="button" class="kf-theme-toggle" id="kfThemeBtn" onclick="kfToggleTheme()" title="تبديل المظهر">
+          <span id="kfThemeIcon">{{ ui.icon_moon() }}</span>
+          <span id="kfThemeLabel">الوضع الداكن</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- منطقة المحتوى الرئيسية لوحدة القهوة -->
+    <main class="kf-main">
+      {% block coffee_content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<!-- كود تفعيل ومزامنة الوضع الداكن والشريط الجانبي -->
+<script>
+(function() {
+  function applyKfTheme(theme) {
+    var root = document.getElementById('kfRoot');
+    if (root) {
+      root.setAttribute('data-theme', theme);
+    }
+    document.documentElement.setAttribute('data-theme', theme);
+    if (document.body) {
+      document.body.setAttribute('data-theme', theme);
+    }
+    kfUpdateThemeUI(theme);
+  }
+
+  // تطبيق الثيم المحفوظ فوراً عند تحميل الصفحة
+  try {
+    var saved = localStorage.getItem('kf-theme');
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var theme = saved || (prefersDark ? 'dark' : 'light');
+    applyKfTheme(theme);
+  } catch (e) {
+    console.error('Failed reading kf-theme', e);
+  }
+
+  window.kfToggleTheme = function() {
+    try {
+      var root = document.getElementById('kfRoot');
+      var cur = document.documentElement.getAttribute('data-theme') === 'dark' ||
+                (root && root.getAttribute('data-theme') === 'dark') ||
+                (document.body && document.body.getAttribute('data-theme') === 'dark') ? 'dark' : 'light';
+      var next = cur === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('kf-theme', next);
+      applyKfTheme(next);
+    } catch (e) {
+      console.error('Failed updating kf-theme', e);
+    }
+  };
+
+  window.kfUpdateThemeUI = function(theme) {
+    var lbl = document.getElementById('kfThemeLabel');
+    var icon = document.getElementById('kfThemeIcon');
+    if (lbl) {
+      lbl.textContent = theme === 'dark' ? 'الوضع الفاتح' : 'الوضع الداكن';
+    }
+    if (icon) {
+      if (theme === 'dark') {
+        icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M6.34 17.66l-1.41 1.41"/><path d="M19.07 4.93l-1.41 1.41"/></svg>';
+      } else {
+        icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
+      }
+    }
+  };
+
+  window.kfToggleSidebar = function() {
+    var sb = document.getElementById('kfSidebar');
+    var bd = document.getElementById('kfBackdrop');
+    if (sb) sb.classList.toggle('kf-sidebar--open');
+    if (bd) bd.classList.toggle('kf-sidebar--open');
+  };
+})();
+</script>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+{% block coffee_scripts %}{% endblock %}
+{% endblock %}

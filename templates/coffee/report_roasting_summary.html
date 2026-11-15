@@ -1,0 +1,192 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}تقرير ملخص أوامر التحميص{% endblock %}
+
+{% block coffee_extra_css %}
+<style>
+    .coffee-page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 24px;
+        background: #fff;
+        padding: 20px 24px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+    }
+    .coffee-page-title h2 {
+        font-size: 20px;
+        font-weight: 800;
+        color: var(--gray-900);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .filter-card {
+        background: #fff;
+        padding: 16px 20px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+    .filter-form {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .filter-form label {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--gray-700);
+    }
+    .filter-input {
+        padding: 7px 12px;
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-sm);
+        font-size: 13px;
+    }
+</style>
+{% endblock %}
+
+{% block coffee_content %}
+<div class="content-container">
+
+    <div class="coffee-page-header">
+        <div class="coffee-page-title">
+            <h2>🔥 تقرير ملخص أوامر التحميص المكتملة</h2>
+            <p style="color: var(--gray-500); font-size: 13px; margin-top: 4px;">
+                ملخص التشغيلات، الكميات الداخلة والخارجة، نسب الفاقد والتكاليف
+            </p>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <a href="{{ url_for('coffee.reports') }}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-weight: 700; border-radius: var(--radius-sm); text-decoration: none; border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700); box-shadow: var(--shadow-sm);">
+                ⬅️ رجوع للخلف
+            </a>
+            <a href="{{ url_for('coffee.report_roasting_summary') }}?date_from={{ date_from }}&date_to={{ date_to }}&export=csv" class="btn-primary" style="background: #047857; border: none; text-decoration: none; padding: 9px 16px; font-weight: 700; border-radius: var(--radius-sm); color: #fff; display: inline-flex; align-items: center; gap: 6px;">
+                📥 تصدير كملف CSV
+            </a>
+            <button onclick="window.print()" class="btn-sm" style="background: var(--gray-100); color: var(--gray-700); font-weight: 700; border: 1px solid var(--gray-300); padding: 8px 14px; border-radius: var(--radius-sm); cursor: pointer;">
+                🖨️ طباعة
+            </button>
+        </div>
+    </div>
+
+    <!-- ترويسة البيان الرسمي عند الطباعة المتوازنة والشعار في المنتصف -->
+    <div class="print-header" style="display: none;">
+        <div style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; gap: 16px;">
+            <!-- اليمين: بيانات المنشأة وعنوان التقرير -->
+            <div style="text-align: right;">
+                <div style="font-size: 15px; font-weight: 900; color: #0f172a;">شركة ومحمصة نوفمبر للقهوة المختصة</div>
+                <div style="font-size: 11px; color: #64748b; margin-top: 2px;">س.ت: 1010642921 | الرقم الضريبي: 310452367800003</div>
+                <div style="font-size: 13px; font-weight: 800; color: #b45309; margin-top: 5px;">
+                    📋 كشف ملخص أوامر التحميص المكتملة
+                </div>
+            </div>
+            <!-- الوسط: الشعار الرسمي متناسق في المنتصف -->
+            <div style="text-align: center; display: flex; align-items: center; justify-content: center;">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="نوفمبر" style="height: 60px; max-width: 180px; width: auto; object-fit: contain; margin: 0 auto;">
+            </div>
+            <!-- اليسار: بيانات الفترة والتوثيق -->
+            <div style="text-align: left; font-size: 11px; color: #334155; line-height: 1.6;">
+                <div><strong>الفترة:</strong> {{ date_from or 'من البداية' }} إلى {{ date_to or 'اليوم' }}</div>
+                <div><strong>عدد الأوامر المنجزة:</strong> {{ orders|length }} أمر</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- فلتر التاريخ -->
+    <div class="filter-card">
+        <form method="GET" class="filter-form">
+            <label>من تاريخ:</label>
+            <input type="date" name="date_from" class="filter-input" value="{{ date_from }}">
+
+            <label>إلى تاريخ:</label>
+            <input type="date" name="date_to" class="filter-input" value="{{ date_to }}">
+
+            <button type="submit" class="btn-primary" style="background: #b45309; border: none; padding: 7px 16px; font-weight: 700; border-radius: var(--radius-sm); color: #fff; cursor: pointer;">
+                تطبيق الفلتر
+            </button>
+            {% if date_from or date_to %}
+            <a href="{{ url_for('coffee.report_roasting_summary') }}" class="btn-sm" style="color: var(--gray-600); text-decoration: none; font-weight: 600;">
+                إلغاء الفلتر
+            </a>
+            {% endif %}
+        </form>
+        <div style="font-size: 13px; color: var(--gray-600);">
+            عدد الأوامر: <strong>{{ orders|length }}</strong>
+        </div>
+    </div>
+
+    <div class="card" style="padding: 0; overflow: hidden; border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm); border-radius: var(--radius-md);">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>رقم الأمر</th>
+                        <th>التاريخ</th>
+                        <th>كمية الأخضر (كجم)</th>
+                        <th>الناتج المحمص (كجم)</th>
+                        <th>كمية الفاقد (كجم)</th>
+                        <th>نسبة الفاقد %</th>
+                        <th>إجمالي التكلفة</th>
+                        <th>حالة Xero</th>
+                        <th class="action-col">الإجراء</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for o in orders %}
+                    <tr>
+                        <td><strong>{{ o.order_number }}</strong></td>
+                        <td>{{ o.order_date }}</td>
+                        <td>{{ "{:,.2f}".format(o.total_green_kg) }} كجم</td>
+                        <td><strong>{{ "{:,.2f}".format(o.total_roasted_kg) }} كجم</strong></td>
+                        <td>{{ "{:,.2f}".format(o.total_loss_kg) }} كجم</td>
+                        <td>
+                            <strong style="color: {% if o.avg_loss_pct > 17 %}#b91c1c{% else %}#047857{% endif %};">
+                                {{ "{:,.1f}".format(o.avg_loss_pct) }}%
+                            </strong>
+                        </td>
+                        <td><strong>{{ "{:,.2f}".format(o.total_green_cost) }} ريال</strong></td>
+                        <td>
+                            <span style="font-size: 11px; font-weight: 700;">{{ o.xero_status_label_ar }}</span>
+                        </td>
+                        <td class="action-col">
+                            <a href="{{ url_for('coffee.roasting_edit', order_id=o.id) }}" class="btn-sm btn-primary" style="padding: 4px 10px; font-size: 11px; text-decoration: none;">
+                                التفاصيل
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 40px; color: var(--gray-500);">
+                            لا توجد أوامر تحميص مكتملة للفترة المحددة.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- تذييل البيان الرسمي والتوقيعات عند الطباعة -->
+    <div class="print-footer" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 10px; border-top: 1.5px solid #64748b; font-size: 11px;">
+            <div><strong>كبير الحماصين:</strong> _______________________</div>
+            <div><strong>مسؤول الجودة:</strong> _______________________</div>
+            <div><strong>مراجعة الحسابات:</strong> _______________________</div>
+            <div><strong>اعتماد الإدارة:</strong> _______________________</div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

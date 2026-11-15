@@ -1,175 +1,703 @@
 {% extends "base.html" %}
 
-{% block title %}إدارة المستخدمين والصلاحيات{% endblock %}
+{% block title %}إدارة المستخدمين والأدوار | فوديكس RBAC{% endblock %}
 
 {% block content %}
+<style>
+/* تبويبات نمط فوديكس المتطورة */
+.fd-nav-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 2px solid var(--gray-200, #e2e8f0);
+    margin-bottom: 24px;
+    padding-bottom: 2px;
+}
+.fd-tab-btn {
+    background: transparent;
+    border: none;
+    padding: 10px 20px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gray-600, #475569);
+    cursor: pointer;
+    border-radius: 8px 8px 0 0;
+    position: relative;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.fd-tab-btn:hover {
+    color: var(--primary, #7132f5);
+    background: rgba(113, 50, 245, 0.04);
+}
+.fd-tab-btn.active {
+    color: var(--primary, #7132f5);
+    font-weight: 700;
+}
+.fd-tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--primary, #7132f5);
+    border-radius: 3px 3px 0 0;
+}
+.fd-tab-badge {
+    background: var(--gray-100, #f1f5f9);
+    color: var(--gray-700, #334155);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-weight: 700;
+}
+.fd-tab-btn.active .fd-tab-badge {
+    background: rgba(113, 50, 245, 0.12);
+    color: var(--primary, #7132f5);
+}
+
+/* بطاقات الأدوار (Roles Grid) */
+.roles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    margin-top: 16px;
+}
+.role-card {
+    background: var(--card-bg, #ffffff);
+    border: 1px solid var(--gray-200, #e2e8f0);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.role-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    border-color: rgba(113, 50, 245, 0.3);
+}
+.role-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+.role-card-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--gray-900, #0f172a);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.role-card-subtitle {
+    font-size: 12px;
+    color: var(--gray-500, #64748b);
+    margin-top: 2px;
+}
+.role-card-desc {
+    font-size: 13px;
+    color: var(--gray-600, #475569);
+    line-height: 1.5;
+    margin-bottom: 16px;
+    min-height: 40px;
+}
+.role-stats {
+    background: var(--gray-50, #f8fafc);
+    border: 1px solid var(--gray-100, #f1f5f9);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    margin-bottom: 16px;
+}
+.role-perms-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+.perm-mini-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: #eef2ff;
+    color: #4338ca;
+    font-weight: 600;
+    border: 1px solid #e0e7ff;
+}
+.role-card-footer {
+    border-top: 1px solid var(--gray-100, #f1f5f9);
+    padding-top: 14px;
+    display: flex;
+    gap: 8px;
+}
+
+/* تصميم شجرة ومصفوفة الصلاحيات بالنافذة المنبثقة */
+.perm-group-box {
+    border: 1px solid var(--gray-200, #e2e8f0);
+    border-radius: 10px;
+    margin-bottom: 16px;
+    overflow: hidden;
+    background: #ffffff;
+}
+.perm-group-header {
+    background: #f8fafc;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--gray-200, #e2e8f0);
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--gray-800, #1e293b);
+}
+.perm-items-grid {
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
+}
+.perm-item-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--gray-800, #1e293b);
+    cursor: pointer;
+    user-select: none;
+    line-height: 1.4;
+}
+.perm-item-label input[type="checkbox"] {
+    margin-top: 3px;
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary, #7132f5);
+    cursor: pointer;
+}
+.perm-item-desc {
+    font-size: 11px;
+    color: var(--gray-500, #64748b);
+    display: block;
+    margin-top: 2px;
+}
+
+/* حقول النموذج المتقدمة */
+.form-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+@media (max-width: 640px) {
+    .form-row-2 {
+        grid-template-columns: 1fr;
+    }
+}
+.foodics-btn-purple {
+    background: #7132f5 !important;
+    color: #ffffff !important;
+    border: none !important;
+    font-weight: 600;
+}
+.foodics-btn-purple:hover {
+    background: #5b21b6 !important;
+}
+.role-pill.admin { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.role-pill.warehouse { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.role-pill.branch_staff { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+.role-pill.accountant { background: #e0f2fe; color: #075985; border: 1px solid #bae6fd; }
+.role-pill.custom { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+
+/* شريط التنقل والعودة للأقسام الرئيسية */
+.users-division-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 10px 16px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    flex-wrap: wrap;
+}
+.users-division-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #64748b;
+}
+.users-division-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.users-division-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 15px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+.users-division-btn.cafe {
+    background: #ecfdf5;
+    color: #065f46;
+    border-color: #a7f3d0;
+}
+.users-division-btn.cafe:hover {
+    background: #059669;
+    color: #ffffff;
+    border-color: #047857;
+    box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
+    transform: translateY(-1px);
+}
+.users-division-btn.coffee {
+    background: #fef3c7;
+    color: #78350f;
+    border-color: #fde68a;
+}
+.users-division-btn.coffee:hover {
+    background: #b45309;
+    color: #ffffff;
+    border-color: #78350f;
+    box-shadow: 0 2px 8px rgba(180, 83, 9, 0.25);
+    transform: translateY(-1px);
+}
+.users-division-btn.current {
+    background: #f5f3ff;
+    color: #5b21b6;
+    border-color: #ddd6fe;
+    cursor: default;
+}
+[data-theme="dark"] .users-division-nav {
+    background: #1e293b;
+    border-color: #334155;
+}
+[data-theme="dark"] .users-division-title {
+    color: #94a3b8;
+}
+[data-theme="dark"] .users-division-btn.cafe {
+    background: rgba(16, 185, 129, 0.18);
+    color: #6ee7b7;
+    border-color: rgba(16, 185, 129, 0.35);
+}
+[data-theme="dark"] .users-division-btn.coffee {
+    background: rgba(217, 119, 6, 0.18);
+    color: #fde68a;
+    border-color: rgba(245, 158, 11, 0.35);
+}
+[data-theme="dark"] .users-division-btn.current {
+    background: rgba(124, 58, 237, 0.2);
+    color: #c4b5fd;
+    border-color: rgba(139, 92, 246, 0.4);
+}
+</style>
+
+<!-- شريط العودة السريع للأقسام الرئيسية -->
+<div class="users-division-nav">
+    <div class="users-division-title">
+        <span>🏢 أقسام المنظومة الرئيسية:</span>
+    </div>
+    <div class="users-division-group">
+        <a href="{{ url_for('dashboard') }}" class="users-division-btn cafe" title="العودة إلى لوحة تحكم قسم الكافيهات والفروع">
+            <span style="font-size: 15px;">🏪</span>
+            <span>العودة لقسم الكافيهات</span>
+            <span style="font-size: 11px; opacity: 0.8;">↖</span>
+        </a>
+        <a href="{{ url_for('coffee.dashboard') }}" class="users-division-btn coffee" title="العودة إلى قسم القهوة والمحمصة">
+            <span style="font-size: 15px;">☕</span>
+            <span>العودة لقسم القهوة والمحمصة</span>
+            <span style="font-size: 11px; opacity: 0.8;">↖</span>
+        </a>
+        <div class="users-division-btn current" title="القسم الحالي">
+            <span style="font-size: 15px;">👥</span>
+            <span>إدارة المستخدمين والصلاحيات (القسم الحالي)</span>
+        </div>
+    </div>
+</div>
+
 <div class="page-header">
     <div class="page-title">
-        <h2>👥 إدارة المستخدمين وصلاحيات النظام</h2>
-        <p>إضافة مستخدمين جدد، تعيين الأدوار والمواقع، وإدارة الصلاحيات التشغيلية</p>
+        <h2>👥 إدارة المستخدمين والصلاحيات</h2>
+        <p>نمط فوديكس المعتمد: إدارة الأدوار والصلاحيات المستقلة، وتعيين الموظفين للفروع والمستودعات</p>
     </div>
-    <div class="page-actions">
-        <button type="button" class="btn btn-primary" data-modal-target="addUserModal">
+    <div class="page-actions" id="headerActions">
+        <button type="button" class="btn foodics-btn-purple" id="addUserTopBtn" onclick="openAddUserModal()">
             ➕ إضافة مستخدم جديد
+        </button>
+        <button type="button" class="btn btn-secondary" id="addRoleTopBtn" style="display:none;" onclick="openAddRoleModal()">
+            🛡️ إنشاء دور جديد
         </button>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header">
-        <div class="card-title">قائمة مستخدمي النظام ({{ users|length }})</div>
+<!-- تبويبات نمط فوديكس (المستخدمين | الأدوار) -->
+<div class="fd-nav-tabs">
+    <button type="button" class="fd-tab-btn {% if active_tab != 'roles' %}active{% endif %}" id="tabBtnUsers" onclick="switchFdTab('users')">
+        👥 المستخدمين
+        <span class="fd-tab-badge">{{ users|length }}</span>
+    </button>
+    <button type="button" class="fd-tab-btn {% if active_tab == 'roles' %}active{% endif %}" id="tabBtnRoles" onclick="switchFdTab('roles')">
+        🛡️ الأدوار والصلاحيات
+        <span class="fd-tab-badge">{{ roles|length }}</span>
+    </button>
+</div>
+
+<!-- ======================================================== -->
+<!-- التبويب الأول: قائمة المستخدمين (Users Table) -->
+<!-- ======================================================== -->
+<div id="tabContentUsers" style="{% if active_tab == 'roles' %}display: none;{% endif %}">
+    <div class="card" style="margin-bottom: 20px;">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 12px 16px;">
+            <div style="flex: 1; min-width: 220px; position: relative;">
+                <input type="text" id="userTableSearch" class="form-control" placeholder="🔍 ابحث بالاسم، البريد، أو الفرع..." onkeyup="filterUsersTable()">
+            </div>
+            <div style="min-width: 160px;">
+                <select id="userRoleFilter" class="form-control" onchange="filterUsersTable()">
+                    <option value="">-- تصفية بالدور --</option>
+                    {% for r in roles %}
+                    <option value="{{ r.name }}">{{ r.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="min-width: 160px;">
+                <select id="userStatusFilter" class="form-control" onchange="filterUsersTable()">
+                    <option value="">-- تصفية بالحالة --</option>
+                    <option value="نشط">نشط</option>
+                    <option value="معطل">معطل</option>
+                </select>
+            </div>
+        </div>
     </div>
-    <div class="table-responsive">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>اسم المستخدم</th>
-                    <th>الدور / الصلاحية</th>
-                    <th>الموقع / الفرع المرتبط</th>
-                    <th>البريد الإلكتروني</th>
-                    <th>الحالة</th>
-                    <th>تاريخ التسجيل</th>
-                    <th>الإجراءات</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for u in users %}
-                <tr>
-                    <td><strong>{{ u.id }}</strong></td>
-                    <td>
-                        <strong style="font-size: 15px;">{{ u.name }}</strong>
-                    </td>
-                    <td>
-                        <span class="role-pill {{ u.role }}">{{ u.role_label_ar }}</span>
-                    </td>
-                    <td>
-                        {% if u.location %}
-                        <span style="font-weight: 600; color: #1e3a8a;">
-                            {% if u.location.type == 'warehouse' %}🏭{% else %}🏪{% endif %} {{ u.location.name_ar }}
-                        </span>
-                        <div style="font-size: 11px; color: var(--gray-500);">{{ u.location.type_label_ar }}</div>
-                        {% else %}
-                            {% if u.role == 'branch_staff' %}
-                            <span class="badge badge-danger" style="font-size: 11px;">⚠️ غير مرتبط بفرع</span>
+
+    <div class="card">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="card-title">قائمة مستخدمي النظام (<span id="visibleUserCount">{{ users|length }}</span>)</div>
+            <button type="button" class="btn btn-sm foodics-btn-purple" onclick="openAddUserModal()">
+                ➕ مستخدم جديد
+            </button>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table" id="usersTable">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>الاسم والبيانات</th>
+                        <th>الدور المسند</th>
+                        <th>الموقع / الفرع المرتبط</th>
+                        <th>رمز الدخول (PIN)</th>
+                        <th>الحالة</th>
+                        <th>تاريخ التسجيل</th>
+                        <th style="text-align: center; width: 180px;">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr class="user-row" data-name="{{ u.name|lower }}" data-role="{{ u.display_role_name|lower }}" data-loc="{{ (u.location.name_ar if u.location else '')|lower }}" data-status="{{ 'نشط' if u.active else 'معطل' }}">
+                        <td><strong>{{ u.id }}</strong></td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 36px; height: 36px; border-radius: 50%; background: #eef2ff; color: #4338ca; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">
+                                    {{ u.name[:1] }}
+                                </div>
+                                <div>
+                                    <strong style="font-size: 14px; color: var(--gray-900);">{{ u.name }}</strong>
+                                    {% if u.email or u.phone %}
+                                    <div style="font-size: 11px; color: var(--gray-500); margin-top: 2px;">
+                                        {% if u.email %}{{ u.email }}{% endif %}
+                                        {% if u.email and u.phone %} • {% endif %}
+                                        {% if u.phone %}📞 {{ u.phone }}{% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="role-pill {{ u.role if u.role in ['admin', 'warehouse', 'branch_staff', 'accountant'] else 'custom' }}">
+                                {% if u.role == 'admin' %}👑{% elif u.role == 'warehouse' %}🏭{% elif u.role == 'branch_staff' %}🏪{% elif u.role == 'accountant' %}💼{% else %}🛡️{% endif %}
+                                {{ u.display_role_name }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if u.is_roving %}
+                            <span class="badge" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 11px; padding: 4px 8px; font-weight: 700;">
+                                🌐 موظف متنقل (كافة الفروع)
+                            </span>
+                            {% elif u.user_locations and u.user_locations|length > 0 %}
+                            <div style="font-weight: 700; color: #1e3a8a; font-size: 12px;">
+                                🏪 {{ u.location.name_ar if u.location else 'متعدد الفروع' }}
+                            </div>
+                            <span class="badge" style="background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; font-size: 10px; padding: 2px 6px; font-weight: 600;">
+                                + {{ u.user_locations|length }} فروع إضافية
+                            </span>
+                            {% elif u.location %}
+                            <span style="font-weight: 600; color: #1e3a8a;">
+                                {% if u.location.type == 'warehouse' %}🏭{% else %}🏪{% endif %} {{ u.location.name_ar }}
+                            </span>
+                            <div style="font-size: 11px; color: var(--gray-500);">{{ u.location.type_label_ar }}</div>
                             {% else %}
-                            <span style="color: var(--gray-400);">عام (كافة المواقع)</span>
+                                {% if u.role == 'branch_staff' or (u.role_rel and 'فرع' in u.role_rel.name) %}
+                                <span class="badge badge-danger" style="font-size: 11px;">⚠️ غير مرتبط بفرع</span>
+                                {% else %}
+                                <span style="color: var(--gray-400); font-size: 13px;">🌐 عام (كافة المواقع)</span>
+                                {% endif %}
                             {% endif %}
-                        {% endif %}
-                    </td>
-                    <td>{{ u.email or '-' }}</td>
-                    <td>
-                        {% if u.active %}
-                        <span class="badge badge-success">نشط</span>
-                        {% else %}
-                        <span class="badge badge-danger">معطل</span>
-                        {% endif %}
-                    </td>
-                    <td style="color: var(--gray-500); font-size: 13px;">
-                        {{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '-' }}
-                    </td>
-                    <td>
-                        <div style="display: flex; gap: 6px;">
-                            <button type="button" class="btn btn-secondary btn-sm"
-                                    onclick="openEditUserModal({{ u.id }}, '{{ u.name }}', '{{ u.role }}', '{{ u.location_id or '' }}', '{{ u.email or '' }}')">
-                                ✏️ تعديل
-                            </button>
-                            {% if u.id != user.id %}
-                            <form method="POST" action="{{ url_for('user_toggle_status', user_id=u.id) }}" style="display:inline;">
-                                <button type="submit" class="btn {% if u.active %}btn-danger{% else %}btn-success{% endif %} btn-sm"
-                                        onclick="return confirm('هل أنت متأكد من تغيير حالة هذا المستخدم؟')">
-                                    {% if u.active %}تعطيل{% else %}تفعيل{% endif %}
+                        </td>
+                        <td>
+                            {% if u.pin_code %}
+                            <span class="badge" style="background: #f1f5f9; color: #334155; font-family: monospace; letter-spacing: 2px; font-weight: 700;">
+                                🔒 {{ u.pin_code }}
+                            </span>
+                            {% else %}
+                            <span style="color: var(--gray-400); font-size: 12px;">غير محدد</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if u.active %}
+                            <span class="badge badge-success">نشط</span>
+                            {% else %}
+                            <span class="badge badge-danger">معطل</span>
+                            {% endif %}
+                        </td>
+                        <td style="color: var(--gray-500); font-size: 12px;">
+                            {{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '-' }}
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 4px; justify-content: center;">
+                                <button type="button" class="btn btn-secondary btn-sm" title="تعديل المستخدم"
+                                        onclick="openEditUserModal({{ u.id }}, '{{ u.name|replace("'", "\\'") }}', '{{ u.role_id or '' }}', '{{ u.role }}', '{{ u.location_id or '' }}', '{{ u.email or '' }}', '{{ u.phone or '' }}', '{{ u.pin_code or '' }}', {{ 'true' if u.is_roving else 'false' }}, {{ u.user_locations|map(attribute='location_id')|list|tojson }})">
+                                    ✏️
                                 </button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- مصفوفة الصلاحيات للتوضيح -->
-<div class="card" style="background: #f8fafc; border: 1px dashed var(--gray-300);">
-    <h3 style="font-size: 16px; margin-bottom: 12px; color: var(--gray-800);">📋 دليل مصفوفة الصلاحيات والأدوار:</h3>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; font-size: 13px;">
-        <div style="background: white; padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--gray-200);">
-            <strong style="color: #e11d48;">👑 مدير النظام (Admin):</strong>
-            <p style="color: var(--gray-600); margin-top: 4px;">صلاحيات كاملة للوصول لكافة الشاشات، إدارة المستخدمين، الاعتماد المالي، التحويلات، إعدادات الربط، والتقارير.</p>
-        </div>
-        <div style="background: white; padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--gray-200);">
-            <strong style="color: #0284c7;">💼 المحاسب (Accountant):</strong>
-            <p style="color: var(--gray-600); margin-top: 4px;">مراجعة واعتماد فواتير الشراء، اعتماد فروقات التحويلات، اعتماد طلبات الأصناف، معالجة طابور مزامنة Foodics، وإدارة المستخدمين والتقارير.</p>
-        </div>
-        <div style="background: white; padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--gray-200);">
-            <strong style="color: #059669;">🏭 أمين المستودع (Warehouse):</strong>
-            <p style="color: var(--gray-600); margin-top: 4px;">إدخال فواتير المشتريات المستلمة في المستودع، إنشاء تحويلات وصرف البضائع للفروع، وإجراء الجرد المخزني للمستودع.</p>
-        </div>
-        <div style="background: white; padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--gray-200);">
-            <strong style="color: #d97706;">🏪 موظف الفرع (Branch Staff):</strong>
-            <p style="color: var(--gray-600); margin-top: 4px;">استلام التحويلات الواردة للفرع وتأكيد الكميات أو إثبات الفروقات، إجراء الجرد الدوري للفرع، وطلب إضافة أصناف جديدة.</p>
+                                <button type="button" class="btn btn-secondary btn-sm" title="إعادة تعيين كلمة المرور أو PIN"
+                                        onclick="openResetPasswordModal({{ u.id }}, '{{ u.name|replace("'", "\\'") }}')">
+                                    🔑
+                                </button>
+                                {% if u.id != current_user.id %}
+                                <form method="POST" action="{{ url_for('user_toggle_status', user_id=u.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn {% if u.active %}btn-danger{% else %}btn-success{% endif %} btn-sm"
+                                            title="{% if u.active %}تعطيل الحساب{% else %}تفعيل الحساب{% endif %}"
+                                            onclick="return confirm('هل أنت متأكد من تغيير حالة المستخدم {{ u.name }}؟')">
+                                        {% if u.active %}🚫{% else %}✅{% endif %}
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('user_delete', user_id=u.id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-danger btn-sm" title="حذف نهائي"
+                                            onclick="return confirm('تحذير: هل أنت متأكد من حذف المستخدم ({{ u.name }}) نهائياً؟')">
+                                        🗑️
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
-<!-- Modal: إضافة مستخدم جديد -->
+<!-- ======================================================== -->
+<!-- التبويب الثاني: شبكة الأدوار والصلاحيات (Roles Grid) -->
+<!-- ======================================================== -->
+<div id="tabContentRoles" style="{% if active_tab != 'roles' %}display: none;{% endif %}">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div>
+            <h3 style="font-size: 16px; margin: 0; color: var(--gray-800);">🛡️ مصفوفة الأدوار والصلاحيات المعتمدة</h3>
+            <p style="font-size: 13px; color: var(--gray-500); margin: 2px 0 0 0;">يمكنك إنشاء أدوار مخصصة وتحديد الصلاحيات الدقيقة لكل قسم كما في فوديكس</p>
+        </div>
+        <button type="button" class="btn foodics-btn-purple" onclick="openAddRoleModal()">
+            ➕ إنشاء دور جديد
+        </button>
+    </div>
+
+    <div class="roles-grid">
+        {% for r in roles %}
+        {% set role_users_count = r.users.count() %}
+        {% set perm_list = r.permissions_list %}
+        <div class="role-card">
+            <div>
+                <div class="role-card-header">
+                    <div>
+                        <h4 class="role-card-title">
+                            {% if 'admin' in (r.name_en or '')|lower or 'مدير' in r.name %}👑
+                            {% elif 'warehouse' in (r.name_en or '')|lower or 'مستودع' in r.name %}🏭
+                            {% elif 'branch' in (r.name_en or '')|lower or 'فرع' in r.name %}🏪
+                            {% elif 'accountant' in (r.name_en or '')|lower or 'محاسب' in r.name %}💼
+                            {% else %}🛡️{% endif %}
+                            {{ r.name }}
+                        </h4>
+                        {% if r.name_en %}
+                        <div class="role-card-subtitle">{{ r.name_en }}</div>
+                        {% endif %}
+                    </div>
+                    {% if r.is_system %}
+                    <span class="badge" style="background: #ede9fe; color: #6d28d9; font-weight: 700; font-size: 11px;">أساسي للنظام</span>
+                    {% else %}
+                    <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 11px;">دور مخصص</span>
+                    {% endif %}
+                </div>
+
+                <div class="role-card-desc">
+                    {{ r.description or 'لا يوجد وصف محدد لهذا الدور' }}
+                </div>
+
+                <div class="role-stats">
+                    <span>👥 المستخدمين المسندين:</span>
+                    <strong style="color: var(--primary, #7132f5); font-size: 13px;">{{ role_users_count }} مستخدم</strong>
+                </div>
+
+                <div class="role-perms-summary">
+                    <span class="perm-mini-badge">
+                        🔑 إجمالي الصلاحيات: {{ perm_list|length }}
+                    </span>
+                    {% if 'admin' in (r.name_en or '')|lower or 'مدير' in r.name %}
+                    <span class="perm-mini-badge" style="background: #fef2f2; color: #991b1b; border-color: #fee2e2;">
+                        ⭐ وصول شامل لكافة الشاشات
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="role-card-footer">
+                <button type="button" class="btn btn-secondary btn-sm" style="flex: 1;"
+                        onclick="openEditRoleModal({{ r.id }}, '{{ r.name|replace("'", "\\'") }}', '{{ (r.name_en or '')|replace("'", "\\'") }}', '{{ (r.description or '')|replace("'", "\\'") }}', {{ perm_list|tojson }}, {{ 'true' if r.is_system else 'false' }})">
+                    ✏️ تعديل الصلاحيات
+                </button>
+                {% if not r.is_system %}
+                <form method="POST" action="{{ url_for('role_delete', role_id=r.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-danger btn-sm" title="حذف الدور"
+                            onclick="return confirm('هل أنت متأكد من حذف دور ({{ r.name }}) نهائياً؟')">
+                        🗑️
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- MODAL: إضافة مستخدم جديد (مطابق للصورة 4 من فوديكس) -->
+<!-- ======================================================== -->
 <div class="modal-backdrop" id="addUserModal">
-    <div class="modal-box">
+    <div class="modal-box" style="max-width: 580px;">
         <div class="modal-header">
-            <h3>➕ إضافة مستخدم جديد للنظام</h3>
+            <h3>➕ إضافة مستخدم جديد</h3>
             <button type="button" class="modal-close" data-modal-close>&times;</button>
         </div>
         <form method="POST" action="{{ url_for('user_new') }}">
             <div class="modal-body">
                 <div class="form-group">
-                    <label>اسم المستخدم الكامل *</label>
+                    <label>الاسم الكامل للمستخدم *</label>
                     <input type="text" name="name" class="form-control" placeholder="مثال: خالد العتيبي" required>
                 </div>
-                <div class="form-group">
-                    <label>الدور / الصلاحية *</label>
-                    <select name="role" id="new_user_role" class="form-control" onchange="toggleBranchRequirement('new')" required>
-                        <option value="branch_staff" selected>موظف فرع (Branch Staff)</option>
-                        <option value="warehouse">أمين مستودع (Warehouse)</option>
-                        <option value="accountant">محاسب (Accountant)</option>
-                        <option value="admin">مدير النظام (Admin)</option>
-                    </select>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label>رقم الهاتف</label>
+                        <input type="text" name="phone" class="form-control" placeholder="05XXXXXXXX" dir="ltr">
+                    </div>
+                    <div class="form-group">
+                        <label>البريد الإلكتروني</label>
+                        <input type="email" name="email" class="form-control" placeholder="user@rafa.com" dir="ltr">
+                    </div>
                 </div>
-                <div class="form-group" id="new_user_location_group">
-                    <label id="new_user_location_label">
-                        الموقع / الفرع التابع له <span id="new_branch_badge" style="color: #dc2626; font-weight: 700;">* (إلزامي لموظف الفرع)</span>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label>الدور / الصلاحية *</label>
+                        <select name="role_id" id="new_user_role_id" class="form-control" onchange="handleUserRoleChange('new')" required>
+                            <option value="">-- اختر الدور --</option>
+                            {% for r in roles %}
+                            <option value="{{ r.id }}" data-is-branch="{{ '1' if 'branch' in (r.name_en or '')|lower or 'فرع' in r.name else '0' }}">
+                                {{ r.name }} {% if r.name_en %}({{ r.name_en }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" id="new_user_loc_group">
+                        <label id="new_user_loc_label">
+                            الموقع / الفرع التابع له <span id="new_branch_badge" style="color: #dc2626; font-weight: 700; display: none;">* (إلزامي لموظف الفرع)</span>
+                        </label>
+                        <select name="location_id" id="new_user_location_id" class="form-control">
+                            <option value="">🌐 عام (كافة الفروع والمواقع)</option>
+                            {% for loc in locations %}
+                            <option value="{{ loc.id }}">
+                                {% if loc.type == 'warehouse' %}🏭{% else %}🏪{% endif %} {{ loc.name_ar }} ({{ loc.type_label_ar }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="new_is_roving" name="is_roving" value="1" onchange="toggleRovingMode('new')">
+                            <label for="new_is_roving" style="font-weight: 700; color: #1e3a8a; cursor: pointer; margin-bottom: 0; font-size: 12px;">🌐 موظف متنقل بين كافة الفروع (Roving)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- خيار الفروع الإضافية المصرح بها -->
+                <div id="new_multi_branches_container" style="margin-bottom: 16px; padding: 12px 14px; background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 8px;">
+                    <label style="font-size: 12px; font-weight: 800; color: #334155; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                        <span>🏢</span> تحديد فروع إضافية مصرح للموظف بالعمل بها (اختياري):
                     </label>
-                    <select name="location_id" id="new_user_location_id" class="form-control" required>
-                        <option value="">-- اختر الفرع المسند إليه الموظف --</option>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; max-height: 120px; overflow-y: auto;">
                         {% for loc in locations %}
-                        <option value="{{ loc.id }}">{{ loc.name_ar }} ({{ loc.type_label_ar }})</option>
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; margin-bottom: 0; color: #1e293b;">
+                            <input type="checkbox" name="assigned_location_ids" value="{{ loc.id }}" class="new-assigned-loc">
+                            <span>{% if loc.type == 'warehouse' %}🏭{% else %}🏪{% endif %} {{ loc.name_ar }}</span>
+                        </label>
                         {% endfor %}
-                    </select>
-                    <small id="new_branch_hint" style="color: #b91c1c; font-size: 12px; margin-top: 4px; display: block;">
-                        ⚠️ تنبيه: موظف الفرع يجب ربطه بفرعه لمنحه صلاحية استلام التحويلات وتنفيذ الجرد الخاص بفرعه فقط.
-                    </small>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>البريد الإلكتروني</label>
-                    <input type="email" name="email" class="form-control" placeholder="user@rafa.com">
-                </div>
-                <div class="form-group">
-                    <label>كلمة المرور *</label>
-                    <input type="password" name="password" class="form-control" placeholder="كلمة المرور" required>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label>كلمة المرور *</label>
+                        <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+                    </div>
+                    <div class="form-group">
+                        <label>رمز تسجيل الدخول السريع (PIN)</label>
+                        <div style="display: flex; gap: 6px;">
+                            <input type="text" name="pin_code" id="new_user_pin" class="form-control" placeholder="4 إلى 6 أرقام" maxlength="6" dir="ltr">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="generateRandomPin('new_user_pin')" title="توليد رمز PIN تلقائي">
+                                🎲 توليد
+                            </button>
+                        </div>
+                        <small style="color: var(--gray-500); font-size: 11px;">لتسجيل الدخول السريع عبر شاشات ونقاط البيع</small>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-modal-close>إلغاء</button>
-                <button type="submit" class="btn btn-primary">✅ حفظ المستخدم</button>
+                <button type="submit" class="btn foodics-btn-purple">✅ حفظ المستخدم</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Modal: تعديل مستخدم -->
+<!-- ======================================================== -->
+<!-- MODAL: تعديل بيانات مستخدم -->
+<!-- ======================================================== -->
 <div class="modal-backdrop" id="editUserModal">
-    <div class="modal-box">
+    <div class="modal-box" style="max-width: 580px;">
         <div class="modal-header">
             <h3>✏️ تعديل بيانات المستخدم</h3>
             <button type="button" class="modal-close" data-modal-close>&times;</button>
@@ -177,81 +705,468 @@
         <form method="POST" id="editUserForm">
             <div class="modal-body">
                 <div class="form-group">
-                    <label>اسم المستخدم *</label>
-                    <input type="text" id="edit_name" name="name" class="form-control" required>
+                    <label>الاسم الكامل للمستخدم *</label>
+                    <input type="text" id="edit_user_name" name="name" class="form-control" required>
                 </div>
-                <div class="form-group">
-                    <label>الدور / الصلاحية *</label>
-                    <select id="edit_role" name="role" class="form-control" onchange="toggleBranchRequirement('edit')" required>
-                        <option value="branch_staff">موظف فرع (Branch Staff)</option>
-                        <option value="warehouse">أمين مستودع (Warehouse)</option>
-                        <option value="accountant">محاسب (Accountant)</option>
-                        <option value="admin">مدير النظام (Admin)</option>
-                    </select>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label>رقم الهاتف</label>
+                        <input type="text" id="edit_user_phone" name="phone" class="form-control" dir="ltr">
+                    </div>
+                    <div class="form-group">
+                        <label>البريد الإلكتروني</label>
+                        <input type="email" id="edit_user_email" name="email" class="form-control" dir="ltr">
+                    </div>
                 </div>
-                <div class="form-group" id="edit_user_location_group">
-                    <label id="edit_user_location_label">
-                        الموقع / الفرع التابع له <span id="edit_branch_badge" style="color: #dc2626; font-weight: 700;">* (إلزامي لموظف الفرع)</span>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label>الدور / الصلاحية *</label>
+                        <select name="role_id" id="edit_user_role_id" class="form-control" onchange="handleUserRoleChange('edit')" required>
+                            {% for r in roles %}
+                            <option value="{{ r.id }}" data-is-branch="{{ '1' if 'branch' in (r.name_en or '')|lower or 'فرع' in r.name else '0' }}">
+                                {{ r.name }} {% if r.name_en %}({{ r.name_en }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" id="edit_user_loc_group">
+                        <label id="edit_user_loc_label">
+                            الموقع / الفرع التابع له <span id="edit_branch_badge" style="color: #dc2626; font-weight: 700; display: none;">* (إلزامي لموظف الفرع)</span>
+                        </label>
+                        <select name="location_id" id="edit_user_location_id" class="form-control">
+                            <option value="">🌐 عام (كافة الفروع والمواقع)</option>
+                            {% for loc in locations %}
+                            <option value="{{ loc.id }}">
+                                {% if loc.type == 'warehouse' %}🏭{% else %}🏪{% endif %} {{ loc.name_ar }} ({{ loc.type_label_ar }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="edit_is_roving" name="is_roving" value="1" onchange="toggleRovingMode('edit')">
+                            <label for="edit_is_roving" style="font-weight: 700; color: #1e3a8a; cursor: pointer; margin-bottom: 0; font-size: 12px;">🌐 موظف متنقل بين كافة الفروع (Roving)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- خيار الفروع الإضافية المصرح بها -->
+                <div id="edit_multi_branches_container" style="margin-bottom: 16px; padding: 12px 14px; background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 8px;">
+                    <label style="font-size: 12px; font-weight: 800; color: #334155; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                        <span>🏢</span> تحديد فروع إضافية مصرح للموظف بالعمل بها (اختياري):
                     </label>
-                    <select id="edit_location_id" name="location_id" class="form-control" required>
-                        <option value="">-- اختر الفرع / الموقع --</option>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; max-height: 120px; overflow-y: auto;">
                         {% for loc in locations %}
-                        <option value="{{ loc.id }}">{{ loc.name_ar }} ({{ loc.type_label_ar }})</option>
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; margin-bottom: 0; color: #1e293b;">
+                            <input type="checkbox" name="assigned_location_ids" value="{{ loc.id }}" class="edit-assigned-loc" id="edit_loc_cb_{{ loc.id }}">
+                            <span>{% if loc.type == 'warehouse' %}🏭{% else %}🏪{% endif %} {{ loc.name_ar }}</span>
+                        </label>
                         {% endfor %}
-                    </select>
-                    <small id="edit_branch_hint" style="color: #b91c1c; font-size: 12px; margin-top: 4px; display: block;">
-                        ⚠️ تنبيه: موظف الفرع يجب ربطه بفرعه لعزله عن الفروع الأخرى.
-                    </small>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>البريد الإلكتروني</label>
-                    <input type="email" id="edit_email" name="email" class="form-control">
-                </div>
-                <div class="form-group">
-                    <label>كلمة المرور الجديدة (اتركها فارغة إذا لم ترغب في التغيير)</label>
-                    <input type="password" name="password" class="form-control" placeholder="••••••••">
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label>كلمة المرور الجديدة (اختياري)</label>
+                        <input type="password" name="password" class="form-control" placeholder="اتركها فارغة إذا لم ترغب في التغيير">
+                    </div>
+                    <div class="form-group">
+                        <label>رمز تسجيل الدخول السريع (PIN)</label>
+                        <div style="display: flex; gap: 6px;">
+                            <input type="text" name="pin_code" id="edit_user_pin" class="form-control" placeholder="4 إلى 6 أرقام" maxlength="6" dir="ltr">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="generateRandomPin('edit_user_pin')">
+                                🎲 توليد
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-modal-close>إلغاء</button>
-                <button type="submit" class="btn btn-primary">💾 حفظ التعديلات</button>
+                <button type="submit" class="btn foodics-btn-purple">💾 حفظ التعديلات</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- MODAL: إعادة تعيين كلمة المرور السريعة -->
+<!-- ======================================================== -->
+<div class="modal-backdrop" id="resetPasswordModal">
+    <div class="modal-box" style="max-width: 440px;">
+        <div class="modal-header">
+            <h3>🔑 إعادة تعيين بيانات الدخول</h3>
+            <button type="button" class="modal-close" data-modal-close>&times;</button>
+        </div>
+        <form method="POST" id="resetPasswordForm">
+            <div class="modal-body">
+                <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 14px;">
+                    المستخدم: <strong id="reset_user_display_name" style="color: var(--primary);"></strong>
+                </div>
+                <div class="form-group">
+                    <label>كلمة المرور الجديدة</label>
+                    <input type="password" name="password" class="form-control" placeholder="أدخل كلمة المرور الجديدة">
+                </div>
+                <div class="form-group">
+                    <label>رمز تسجيل الدخول السريع (PIN)</label>
+                    <div style="display: flex; gap: 6px;">
+                        <input type="text" name="pin_code" id="reset_user_pin" class="form-control" placeholder="4 أرقام (مثال: 1234)" maxlength="6" dir="ltr">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="generateRandomPin('reset_user_pin')">
+                            🎲
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-modal-close>إلغاء</button>
+                <button type="submit" class="btn foodics-btn-purple">تحديث كلمة المرور</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- MODAL: إضافة / تعديل دور ومصفوفة الصلاحيات (مطابق للصورة 1 و 2 من فوديكس) -->
+<!-- ======================================================== -->
+<div class="modal-backdrop" id="roleModal">
+    <div class="modal-box" style="max-width: 760px; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+            <h3 id="roleModalTitle">تعديل الدور</h3>
+            <button type="button" class="modal-close" data-modal-close>&times;</button>
+        </div>
+        <form method="POST" id="roleModalForm" style="display: flex; flex-direction: column; overflow: hidden; flex: 1;">
+            <div class="modal-body" style="overflow-y: auto; padding: 20px;">
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label>الاسم *</label>
+                        <input type="text" id="role_input_name" name="name" class="form-control" placeholder="مثال: مسؤول مشتريات" required>
+                    </div>
+                    <div class="form-group">
+                        <label>الاسم الثانوي (English)</label>
+                        <input type="text" id="role_input_name_en" name="name_en" class="form-control" placeholder="Example: Purchasing Officer" dir="ltr">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>الوصف / ملاحظات الدور</label>
+                    <input type="text" id="role_input_desc" name="description" class="form-control" placeholder="نبذة مختصرة عن مهام هذا الدور">
+                </div>
+
+                <!-- شريط تحديد الكل العام مثل فوديكس -->
+                <div style="background: #f1f5f9; padding: 12px 16px; border-radius: 8px; margin: 18px 0 16px 0; display: flex; justify-content: space-between; align-items: center;">
+                    <label style="display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; margin: 0; cursor: pointer;">
+                        <input type="checkbox" id="masterSelectAllPerms" onchange="toggleAllPermissions(this.checked)" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        تحديد الكل (منح كافة الصلاحيات)
+                    </label>
+                    <span style="font-size: 12px; color: var(--gray-500);">التحكم السريع في الصلاحيات</span>
+                </div>
+
+                <!-- مجموعات الصلاحيات الخمس المقسمة بنمط فوديكس -->
+                {% for group in permission_groups %}
+                <div class="perm-group-box">
+                    <div class="perm-group-header">
+                        <label style="display: flex; align-items: center; gap: 8px; margin: 0; cursor: pointer;">
+                            <input type="checkbox" class="group-select-all" data-group="{{ group.key }}" onchange="toggleGroupPermissions('{{ group.key }}', this.checked)">
+                            <span>{{ group.icon }} {{ group.title_ar }}</span>
+                        </label>
+                        <span style="font-size: 11px; color: var(--gray-500); font-weight: normal;">{{ group.title_en }}</span>
+                    </div>
+                    <div class="perm-items-grid">
+                        {% for perm_code, perm_title, perm_hint in group.permissions %}
+                        <label class="perm-item-label">
+                            <input type="checkbox" name="permissions" value="{{ perm_code }}" class="role-perm-checkbox perm-group-{{ group.key }}" onchange="syncGroupMasterCheckbox('{{ group.key }}')">
+                            <div>
+                                <span style="font-weight: 600;">{{ perm_title }}</span>
+                                <span class="perm-item-desc">{{ perm_hint }}</span>
+                            </div>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+                <div id="roleModalDeleteContainer">
+                    <!-- زر حذف الدور للمخصص فقط -->
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="btn btn-secondary" data-modal-close>إغلاق</button>
+                    <button type="submit" class="btn foodics-btn-purple" id="roleModalSubmitBtn">حفظ الدور</button>
+                </div>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-function toggleBranchRequirement(mode) {
-    var roleSelect = document.getElementById(mode === 'new' ? 'new_user_role' : 'edit_role');
-    var locSelect = document.getElementById(mode === 'new' ? 'new_user_location_id' : 'edit_location_id');
-    var badge = document.getElementById(mode === 'new' ? 'new_branch_badge' : 'edit_branch_badge');
-    var hint = document.getElementById(mode === 'new' ? 'new_branch_hint' : 'edit_branch_hint');
-    var isBranch = (roleSelect.value === 'branch_staff');
+// تبديل التبويبات بنمط فوديكس
+function switchFdTab(tab) {
+    var usersTab = document.getElementById('tabContentUsers');
+    var rolesTab = document.getElementById('tabContentRoles');
+    var btnUsers = document.getElementById('tabBtnUsers');
+    var btnRoles = document.getElementById('tabBtnRoles');
+    var topAddUser = document.getElementById('addUserTopBtn');
+    var topAddRole = document.getElementById('addRoleTopBtn');
 
-    if (isBranch) {
-        locSelect.required = true;
-        if (badge) badge.style.display = 'inline';
-        if (hint) hint.style.display = 'block';
+    if (tab === 'roles') {
+        usersTab.style.display = 'none';
+        rolesTab.style.display = 'block';
+        btnUsers.classList.remove('active');
+        btnRoles.classList.add('active');
+        topAddUser.style.display = 'none';
+        topAddRole.style.display = 'inline-block';
+        window.history.replaceState(null, null, '?tab=roles');
     } else {
-        locSelect.required = false;
-        if (badge) badge.style.display = 'none';
-        if (hint) hint.style.display = 'none';
+        usersTab.style.display = 'block';
+        rolesTab.style.display = 'none';
+        btnUsers.classList.add('active');
+        btnRoles.classList.remove('active');
+        topAddUser.style.display = 'inline-block';
+        topAddRole.style.display = 'none';
+        window.history.replaceState(null, null, '?tab=users');
     }
 }
 
-function openEditUserModal(id, name, role, locationId, email) {
+// تصفية وبحث جدول المستخدمين
+function filterUsersTable() {
+    var search = (document.getElementById('userTableSearch').value || '').toLowerCase().trim();
+    var roleFilter = (document.getElementById('userRoleFilter').value || '').toLowerCase().trim();
+    var statusFilter = (document.getElementById('userStatusFilter').value || '').trim();
+
+    var rows = document.querySelectorAll('#usersTable tbody tr.user-row');
+    var visible = 0;
+
+    rows.forEach(function(row) {
+        var name = row.getAttribute('data-name') || '';
+        var role = row.getAttribute('data-role') || '';
+        var loc = row.getAttribute('data-loc') || '';
+        var status = row.getAttribute('data-status') || '';
+
+        var matchSearch = !search || name.indexOf(search) !== -1 || role.indexOf(search) !== -1 || loc.indexOf(search) !== -1;
+        var matchRole = !roleFilter || role.indexOf(roleFilter) !== -1;
+        var matchStatus = !statusFilter || status === statusFilter;
+
+        if (matchSearch && matchRole && matchStatus) {
+            row.style.display = '';
+            visible++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    document.getElementById('visibleUserCount').textContent = visible;
+}
+
+// التحكم بوضع الموظف المتنقل
+function toggleRovingMode(mode) {
+    var cb = document.getElementById(mode === 'new' ? 'new_is_roving' : 'edit_is_roving');
+    var locSelect = document.getElementById(mode === 'new' ? 'new_user_location_id' : 'edit_user_location_id');
+    var multiContainer = document.getElementById(mode === 'new' ? 'new_multi_branches_container' : 'edit_multi_branches_container');
+    var badge = document.getElementById(mode === 'new' ? 'new_branch_badge' : 'edit_branch_badge');
+
+    if (cb && cb.checked) {
+        locSelect.required = false;
+        if (badge) badge.style.display = 'none';
+        if (multiContainer) multiContainer.style.opacity = '0.5';
+    } else {
+        if (multiContainer) multiContainer.style.opacity = '1';
+        handleUserRoleChange(mode);
+    }
+}
+
+// التحكم بإلزامية الفرع عند اختيار الدور
+function handleUserRoleChange(mode) {
+    var select = document.getElementById(mode === 'new' ? 'new_user_role_id' : 'edit_user_role_id');
+    var locSelect = document.getElementById(mode === 'new' ? 'new_user_location_id' : 'edit_user_location_id');
+    var badge = document.getElementById(mode === 'new' ? 'new_branch_badge' : 'edit_branch_badge');
+    var rovingCb = document.getElementById(mode === 'new' ? 'new_is_roving' : 'edit_is_roving');
+
+    var opt = select.options[select.selectedIndex];
+    var isBranch = opt && opt.getAttribute('data-is-branch') === '1';
+
+    if (isBranch && !(rovingCb && rovingCb.checked)) {
+        locSelect.required = true;
+        if (badge) badge.style.display = 'inline';
+    } else {
+        locSelect.required = false;
+        if (badge) badge.style.display = 'none';
+    }
+}
+
+// توليد رمز PIN عشوائي
+function generateRandomPin(targetId) {
+    var pin = Math.floor(1000 + Math.random() * 9000);
+    var input = document.getElementById(targetId);
+    if (input) {
+        input.value = pin;
+        input.focus();
+    }
+}
+
+// فتح نافذة إضافة مستخدم
+function openAddUserModal() {
+    var rovingCb = document.getElementById('new_is_roving');
+    if (rovingCb) rovingCb.checked = false;
+    document.querySelectorAll('.new-assigned-loc').forEach(function(cb) { cb.checked = false; });
+    toggleRovingMode('new');
+    handleUserRoleChange('new');
+    document.getElementById('addUserModal').classList.add('show');
+}
+
+// فتح نافذة تعديل مستخدم
+function openEditUserModal(id, name, roleId, legacyRole, locId, email, phone, pin, isRoving, assignedLocIds) {
     document.getElementById('editUserForm').action = '/users/' + id + '/edit';
-    document.getElementById('edit_name').value = name;
-    document.getElementById('edit_role').value = role;
-    document.getElementById('edit_location_id').value = locationId;
-    document.getElementById('edit_email').value = email;
-    toggleBranchRequirement('edit');
+    document.getElementById('edit_user_name').value = name;
+    document.getElementById('edit_user_email').value = email;
+    document.getElementById('edit_user_phone').value = phone;
+    document.getElementById('edit_user_pin').value = pin;
+
+    var roleSelect = document.getElementById('edit_user_role_id');
+    if (roleId) {
+        roleSelect.value = roleId;
+    }
+
+    var locSelect = document.getElementById('edit_user_location_id');
+    locSelect.value = locId || '';
+
+    var rovingCb = document.getElementById('edit_is_roving');
+    if (rovingCb) rovingCb.checked = !!isRoving;
+
+    var assignedSet = {};
+    (assignedLocIds || []).forEach(function(lid) { assignedSet[lid] = true; });
+    document.querySelectorAll('.edit-assigned-loc').forEach(function(cb) {
+        cb.checked = !!assignedSet[cb.value];
+    });
+
+    toggleRovingMode('edit');
+    handleUserRoleChange('edit');
     document.getElementById('editUserModal').classList.add('show');
 }
 
-// Initial trigger on page load
+// فتح نافذة إعادة تعيين كلمة المرور
+function openResetPasswordModal(id, name) {
+    document.getElementById('resetPasswordForm').action = '/users/' + id + '/reset-password';
+    document.getElementById('reset_user_display_name').textContent = name;
+    document.getElementById('reset_user_pin').value = '';
+    document.getElementById('resetPasswordModal').classList.add('show');
+}
+
+// ==========================================
+// وظائف إدارة الأدوار ومصفوفة الصلاحيات
+// ==========================================
+function openAddRoleModal() {
+    document.getElementById('roleModalTitle').textContent = '➕ إنشاء دور جديد';
+    document.getElementById('roleModalForm').action = '/roles/new';
+    document.getElementById('role_input_name').value = '';
+    document.getElementById('role_input_name').readOnly = false;
+    document.getElementById('role_input_name_en').value = '';
+    document.getElementById('role_input_desc').value = '';
+    document.getElementById('roleModalDeleteContainer').innerHTML = '';
+
+    // إلغاء تحديد كافة الصلاحيات
+    document.querySelectorAll('.role-perm-checkbox').forEach(function(cb) {
+        cb.checked = false;
+    });
+    document.querySelectorAll('.group-select-all').forEach(function(cb) {
+        cb.checked = false;
+    });
+    document.getElementById('masterSelectAllPerms').checked = false;
+
+    document.getElementById('roleModal').classList.add('show');
+}
+
+function openEditRoleModal(id, name, nameEn, desc, permissionsList, isSystem) {
+    document.getElementById('roleModalTitle').textContent = '✏️ تعديل الدور: ' + name;
+    document.getElementById('roleModalForm').action = '/roles/' + id + '/edit';
+    document.getElementById('role_input_name').value = name;
+    document.getElementById('role_input_name').readOnly = isSystem;
+    document.getElementById('role_input_name_en').value = nameEn;
+    document.getElementById('role_input_desc').value = desc;
+
+    // تفعيل الصلاحيات الخاصة بهذا الدور
+    var permSet = {};
+    (permissionsList || []).forEach(function(p) {
+        permSet[p] = true;
+    });
+
+    var allChecked = true;
+    document.querySelectorAll('.role-perm-checkbox').forEach(function(cb) {
+        var hasIt = !!permSet[cb.value];
+        cb.checked = hasIt;
+        if (!hasIt) allChecked = false;
+    });
+
+    // تحديث أزرار تحديد المجموعات
+    ['purchases', 'transfers', 'counts', 'coffee', 'reports_admin'].forEach(function(gKey) {
+        syncGroupMasterCheckbox(gKey);
+    });
+    document.getElementById('masterSelectAllPerms').checked = allChecked;
+
+    // زر الحذف إذا كان دوراً غير أساسي
+    var delContainer = document.getElementById('roleModalDeleteContainer');
+    if (!isSystem) {
+        delContainer.innerHTML = '<button type="button" class="btn btn-danger btn-sm" onclick="submitDeleteRole(' + id + ', \'' + name.replace(/'/g, "\\'") + '\')">🗑️ حذف الدور</button>';
+    } else {
+        delContainer.innerHTML = '<span style="font-size: 11px; color: var(--gray-400);">🛡️ دور أساسي للنظام (لا يحذف)</span>';
+    }
+
+    document.getElementById('roleModal').classList.add('show');
+}
+
+function submitDeleteRole(id, name) {
+    if (confirm('هل أنت متأكد من حذف الدور (' + name + ') نهائياً؟')) {
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/roles/' + id + '/delete';
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// تحديد أو إلغاء تحديد الكل العام
+function toggleAllPermissions(checked) {
+    document.querySelectorAll('.role-perm-checkbox').forEach(function(cb) {
+        cb.checked = checked;
+    });
+    document.querySelectorAll('.group-select-all').forEach(function(cb) {
+        cb.checked = checked;
+    });
+}
+
+// تحديد أو إلغاء تحديد مجموعة كاملة
+function toggleGroupPermissions(groupKey, checked) {
+    document.querySelectorAll('.perm-group-' + groupKey).forEach(function(cb) {
+        cb.checked = checked;
+    });
+    checkMasterAllState();
+}
+
+function syncGroupMasterCheckbox(groupKey) {
+    var cbs = document.querySelectorAll('.perm-group-' + groupKey);
+    var all = true;
+    cbs.forEach(function(cb) {
+        if (!cb.checked) all = false;
+    });
+    var groupMaster = document.querySelector('.group-select-all[data-group="' + groupKey + '"]');
+    if (groupMaster) groupMaster.checked = all;
+    checkMasterAllState();
+}
+
+function checkMasterAllState() {
+    var cbs = document.querySelectorAll('.role-perm-checkbox');
+    var all = true;
+    cbs.forEach(function(cb) {
+        if (!cb.checked) all = false;
+    });
+    document.getElementById('masterSelectAllPerms').checked = all;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    toggleBranchRequirement('new');
+    var urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('tab') === 'roles' || window.location.hash === '#roles') {
+        switchFdTab('roles');
+    }
 });
 </script>
 {% endblock %}

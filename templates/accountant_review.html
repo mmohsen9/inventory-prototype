@@ -51,6 +51,14 @@
         </div>
         <div class="kpi-icon icon-green">✨</div>
     </div>
+    <div class="kpi-card" style="border-right: 4px solid #0284c7;">
+        <div class="kpi-content">
+            <h4>{{ t('queued_sync_kpi', 'طابور الترحيل لـ Foodics') }}</h4>
+            <div class="kpi-value" style="color: #0284c7;">{{ queued_jobs|length }}</div>
+            <div class="kpi-desc">{{ t('queued_sync_desc', 'معاملات معتمدة بانتظار الإرسال') }}</div>
+        </div>
+        <div class="kpi-icon icon-blue">⚡</div>
+    </div>
     <div class="kpi-card" style="border-right: 4px solid var(--danger);">
         <div class="kpi-content">
             <h4>{{ t('sync_errors_kpi') }}</h4>
@@ -65,11 +73,24 @@
 <div class="card">
     <div class="card-header">
         <div class="card-title">📦 {{ t('pending_receipts_section') }} ({{ purchases|length }})</div>
+        {% if purchases|length > 0 %}
+        <div>
+            <button type="submit" form="bulkReviewApproveForm" class="btn btn-success btn-sm" style="font-weight: 800; padding: 6px 14px;" onclick="return confirm('هل أنت متأكد من اعتماد كافة سندات الاستلام المحددة لفروعها في ضغطة واحدة؟');">
+                ✅ {{ 'اعتماد السندات المحددة دفعة واحدة' if lang == 'ar' else 'Bulk Approve Selected' }}
+            </button>
+        </div>
+        {% endif %}
     </div>
+    {% if purchases|length > 0 %}
+    <form id="bulkReviewApproveForm" method="POST" action="{{ url_for('purchase_bulk_approve') }}">
+    {% endif %}
     <div class="table-responsive">
         <table class="data-table">
             <thead>
                 <tr>
+                    <th style="width: 36px; text-align: center;">
+                        <input type="checkbox" id="selectAllReviewVouchers" title="تحديد الكل" style="cursor: pointer; width: 16px; height: 16px;">
+                    </th>
                     <th>#</th>
                     <th>{{ t('supplier') }}</th>
                     <th>{{ t('receiving_location_short') }}</th>
@@ -82,18 +103,33 @@
             </thead>
             <tbody>
                 {% for p in purchases %}
-                <tr>
-                    <td><strong>#{{ p.id }}</strong></td>
+                <tr class="clickable-row" data-href="{{ url_for('purchase_edit', purchase_id=p.id) }}" onclick="handleVoucherRowClick(event, '{{ url_for('purchase_edit', purchase_id=p.id) }}')" style="cursor: pointer;" title="انقر لفتح السند">
+                    <td style="text-align: center;" class="voucher-checkbox-cell" onclick="event.stopPropagation();">
+                        <input type="checkbox" name="purchase_ids" value="{{ p.id }}" class="review-check-item" style="cursor: pointer; width: 16px; height: 16px;">
+                    </td>
+                    <td>
+                        <a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="doc-link" title="فتح السند">
+                            <strong>#{{ p.id }}</strong>
+                        </a>
+                    </td>
                     <td><strong>{{ p.supplier_name }}</strong></td>
                     <td>{{ loc_name(p.location) }}</td>
-                    <td>{{ p.invoice_number or '-' }}</td>
+                    <td>
+                        {% if p.invoice_number %}
+                        <a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="doc-link" style="color: #0f172a;" title="فتح السند">
+                            <strong>{{ p.invoice_number }}</strong>
+                        </a>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
                     <td style="color: var(--gray-600); font-size: 13px;">{{ p.invoice_date or
                         p.created_at.strftime('%Y-%m-%d') }}</td>
                     <td style="font-weight: 700; color: #1e1b4b;">{{ "{:,.2f}".format(p.total_amount) }} {{ currency }}
                     </td>
                     <td><a href="{{ url_for('purchase_edit', purchase_id=p.id) }}" class="btn btn-secondary btn-sm">{{
                             p.lines|length }} ({{ t('preview_edit') }})</a></td>
-                    <td>
+                    <td onclick="event.stopPropagation();">
                         <div style="display: flex; gap: 6px; align-items: center;">
                             <form method="POST" action="{{ url_for('purchase_review', purchase_id=p.id) }}">
                                 <input type="hidden" name="action" value="approve">
@@ -114,7 +150,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="8" style="text-align: center; color: var(--gray-400); padding: 24px;">
+                    <td colspan="9" style="text-align: center; color: var(--gray-400); padding: 24px;">
                         {{ t('no_pending_receipts') }}
                     </td>
                 </tr>
@@ -122,6 +158,20 @@
             </tbody>
         </table>
     </div>
+    {% if purchases|length > 0 %}
+    </form>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAllReview = document.getElementById('selectAllReviewVouchers');
+        const reviewCheckboxes = document.querySelectorAll('.review-check-item');
+        if (selectAllReview) {
+            selectAllReview.addEventListener('change', function() {
+                reviewCheckboxes.forEach(cb => { cb.checked = selectAllReview.checked; });
+            });
+        }
+    });
+    </script>
+    {% endif %}
 </div>
 
 <!-- 2. Disbursement Vouchers with Variances -->
@@ -144,8 +194,12 @@
             </thead>
             <tbody>
                 {% for tr in transfers %}
-                <tr>
-                    <td><strong>#{{ tr.id }}</strong></td>
+                <tr class="clickable-row" data-href="{{ url_for('transfer_edit', transfer_id=tr.id) }}" onclick="handleVoucherRowClick(event, '{{ url_for('transfer_edit', transfer_id=tr.id) }}')" style="cursor: pointer;" title="انقر لفتح وتعديل السند">
+                    <td>
+                        <a href="{{ url_for('transfer_edit', transfer_id=tr.id) }}" class="doc-link" title="فتح السند">
+                            <strong>#{{ tr.id }}</strong>
+                        </a>
+                    </td>
                     <td>{{ loc_name(tr.from_location) }}</td>
                     <td>{{ loc_name(tr.to_location) }}</td>
                     <td style="color: var(--gray-600); font-size: 13px;">{{ tr.created_at.strftime('%Y-%m-%d') }}</td>
@@ -211,8 +265,12 @@
             </thead>
             <tbody>
                 {% for s in pending_counts %}
-                <tr>
-                    <td><strong>#{{ s.id }}</strong></td>
+                <tr class="clickable-row" data-href="{{ url_for('count_edit', session_id=s.id) }}" onclick="handleVoucherRowClick(event, '{{ url_for('count_edit', session_id=s.id) }}')" style="cursor: pointer;" title="انقر لفتح جلسة الجرد">
+                    <td>
+                        <a href="{{ url_for('count_edit', session_id=s.id) }}" class="doc-link" title="فتح جلسة الجرد">
+                            <strong>#{{ s.id }}</strong>
+                        </a>
+                    </td>
                     <td>{{ loc_name(s.location) }}</td>
                     <td style="color: var(--gray-600); font-size: 13px;">{{ s.count_date }}</td>
                     <td>{{ s.creator.name if s.creator else '-' }}</td>
@@ -315,7 +373,96 @@
     </div>
 </div>
 
-<!-- 5. Sync Queue & Error Log -->
+<!-- 5. Queued Transactions for Foodics -->
+<div class="card" style="border-top: 3px solid #0284c7; margin-bottom: 24px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+            <span>⚡ {{ t('queued_sync_section', 'طابور المعاملات المعتمدة والمعدّة للترحيل إلى Foodics') }} ({{ queued_jobs|length }})</span>
+            {% if queued_jobs|length > 0 %}
+            <span style="font-size: 11px; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 4px; font-weight: 700;">جاهزة للإرسال والمزامنة</span>
+            {% endif %}
+        </div>
+        {% if queued_jobs|length > 0 %}
+        <form method="POST" action="{{ url_for('sync_process') }}" style="display:inline; margin: 0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-primary btn-sm" style="background: #0284c7; border: none; font-weight: 700;">
+                ⚡ ترحيل وإرسال طابور فوديكس الآن
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th># مهمة الطابور</th>
+                    <th>نوع المعاملة</th>
+                    <th>رقم السند المرجعي</th>
+                    <th>التفاصيل والموقع</th>
+                    <th>المبلغ / القيمة</th>
+                    <th>وقت الإدراج</th>
+                    <th>الحالة</th>
+                    <th>الإجراء</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in queued_jobs %}
+                <tr>
+                    <td><strong>#{{ item.job.id }}</strong></td>
+                    <td>
+                        <span class="badge" style="background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; font-weight: 700;">
+                            {% if item.job.source_type == 'purchase' %}📦 استلام مشتريات
+                            {% elif item.job.source_type == 'transfer' %}🚚 تحويل مخزني
+                            {% elif item.job.source_type == 'count' %}📝 جرد مخزني
+                            {% elif item.job.source_type == 'new_item' %}✨ صنف جديد
+                            {% else %}{{ item.job.source_type }}{% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        {% if item.edit_url %}
+                        <a href="{{ item.edit_url }}" class="doc-link" style="color: #0284c7; font-weight: 700;" title="فتح السند">
+                            <strong>{{ item.ref_number }} ↗</strong>
+                        </a>
+                        {% else %}
+                        <strong>{{ item.ref_number }}</strong>
+                        {% endif %}
+                    </td>
+                    <td style="font-weight: 600; color: var(--gray-700);">{{ item.details }}</td>
+                    <td style="font-weight: 700; color: #1e1b4b;">
+                        {% if item.amount is not none %}
+                        {{ "{:,.2f}".format(item.amount) }} {{ currency }}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    <td style="color: var(--gray-600); font-size: 13px;">{{ item.date }}</td>
+                    <td>
+                        <span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-weight: 700;">
+                            ⏳ بانتظار الترحيل ({{ item.job.status }})
+                        </span>
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('sync_retry', job_id=item.job.id) }}" style="display:inline; margin: 0;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-secondary btn-sm" style="font-weight: 700;" title="ترحيل هذا السند الآن">
+                                ⚡ إرسال الآن
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align: center; color: var(--gray-400); padding: 24px;">
+                        لا توجد عمليات معلقة في طابور الترحيل حالياً — كافة العمليات المعتمدة تم ترحيلها بنجاح إلى فوديكس ✓
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 6. Sync Queue & Error Log -->
 <div class="card">
     <div class="card-header">
         <div class="card-title">⚙️ {{ t('sync_queue_section') }} ({{ failed_jobs|length }})</div>
@@ -345,9 +492,42 @@
                             {% else %}{{ job.source_type }}{% endif %}
                         </span>
                     </td>
-                    <td>#{{ job.source_id }}</td>
+                    <td>
+                        {% if job.source_type == 'purchase' %}
+                            <a href="{{ url_for('purchase_edit', purchase_id=job.source_id) }}" style="color: #4f46e5; font-weight: 700; text-decoration: underline;" title="فتح سند الاستلام">
+                                #{{ job.source_id }} ↗
+                            </a>
+                        {% elif job.source_type == 'transfer' %}
+                            <a href="{{ url_for('transfer_edit', transfer_id=job.source_id) }}" style="color: #4f46e5; font-weight: 700; text-decoration: underline;" title="فتح سند التحويل">
+                                #{{ job.source_id }} ↗
+                            </a>
+                        {% elif job.source_type == 'count' %}
+                            <a href="{{ url_for('count_edit', session_id=job.source_id) }}" style="color: #4f46e5; font-weight: 700; text-decoration: underline;" title="فتح جلسة الجرد">
+                                #{{ job.source_id }} ↗
+                            </a>
+                        {% else %}
+                            #{{ job.source_id }}
+                        {% endif %}
+                    </td>
                     <td style="color: var(--danger); font-weight: 600;">
-                        {{ log.translated_error_ar or (t('error_msg') + ': N/A') }}
+                        {% if job.source_type == 'purchase' %}
+                            <a href="{{ url_for('purchase_edit', purchase_id=job.source_id) }}" style="color: var(--danger); font-weight: 700; text-decoration: underline; display: inline-flex; align-items: center; gap: 4px;" title="فتح سند الاستلام وتصحيح الخطأ">
+                                <span>{{ log.translated_error_ar or (t('error_msg') + ': N/A') }}</span>
+                                <span style="background: #fee2e2; color: #b91c1c; padding: 1px 6px; border-radius: 4px; font-size: 10px; white-space: nowrap;">فتح السند ↗</span>
+                            </a>
+                        {% elif job.source_type == 'transfer' %}
+                            <a href="{{ url_for('transfer_edit', transfer_id=job.source_id) }}" style="color: var(--danger); font-weight: 700; text-decoration: underline; display: inline-flex; align-items: center; gap: 4px;" title="فتح سند التحويل وتصحيح الخطأ">
+                                <span>{{ log.translated_error_ar or (t('error_msg') + ': N/A') }}</span>
+                                <span style="background: #fee2e2; color: #b91c1c; padding: 1px 6px; border-radius: 4px; font-size: 10px; white-space: nowrap;">فتح السند ↗</span>
+                            </a>
+                        {% elif job.source_type == 'count' %}
+                            <a href="{{ url_for('count_edit', session_id=job.source_id) }}" style="color: var(--danger); font-weight: 700; text-decoration: underline; display: inline-flex; align-items: center; gap: 4px;" title="فتح جلسة الجرد وتصحيح الخطأ">
+                                <span>{{ log.translated_error_ar or (t('error_msg') + ': N/A') }}</span>
+                                <span style="background: #fee2e2; color: #b91c1c; padding: 1px 6px; border-radius: 4px; font-size: 10px; white-space: nowrap;">فتح الجرد ↗</span>
+                            </a>
+                        {% else %}
+                            {{ log.translated_error_ar or (t('error_msg') + ': N/A') }}
+                        {% endif %}
                     </td>
                     <td><code>{{ log.raw_error or '-' }}</code></td>
                     <td>
@@ -386,12 +566,12 @@
                     <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">
                         {{ t('foodics_base_url_label') }}
                     </label>
-                    <select name="foodics_base_url" class="form-control">
-                        <option value="https://api-sandbox.foodics.com/v5">🧪 بيئة الاختبار (Sandbox) -
-                            api-sandbox.foodics.com</option>
-                        <option value="https://api.foodics.com/v5">🚀 بيئة الإنتاج (Production) - api.foodics.com
-                        </option>
-                    </select>
+                    <input type="text" name="foodics_base_url" class="form-control"
+                           value="https://api.foodics.com/v5" readonly
+                           style="background: #f8fafc; font-weight: 700; color: #047857; border-color: #86efac;">
+                    <small style="color: #047857; display: block; margin-top: 4px;">
+                        🚀 بيئة الإنتاج الفعلي (Production) - api.foodics.com
+                    </small>
                 </div>
                 <div>
                     <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px;">
@@ -413,4 +593,24 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll("form").forEach(function(form) {
+        if (form.action && (form.action.includes("/sync/process") || form.action.includes("/sync/retry"))) {
+            form.addEventListener("submit", function(e) {
+                var btn = form.querySelector("button[type='submit']");
+                if (btn && !btn.disabled) {
+                    btn.dataset.originalHtml = btn.innerHTML;
+                    btn.innerHTML = '⏳ جاري الترحيل... يرجى الانتظار';
+                    btn.style.opacity = '0.75';
+                    btn.style.cursor = 'wait';
+                }
+            });
+        }
+    });
+});
+</script>
 {% endblock %}

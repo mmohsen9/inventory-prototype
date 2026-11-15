@@ -1,0 +1,1360 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}إنشاء سند صرف بن محمص{% endblock %}
+
+{% block coffee_extra_css %}
+<style>
+    .coffee-form-container {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    .form-card {
+        background: #fff;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+        padding: 28px;
+        margin-bottom: 24px;
+    }
+    .form-header-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--gray-200);
+        padding-bottom: 16px;
+        margin-bottom: 22px;
+    }
+    .form-header-title h2 {
+        font-size: 19px;
+        font-weight: 800;
+        color: var(--gray-900);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .form-row-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        margin-bottom: 16px;
+    }
+    .form-group {
+        margin-bottom: 16px;
+    }
+    .form-group label {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--gray-700);
+        margin-bottom: 6px;
+    }
+    .form-control {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-sm);
+        font-size: 13px;
+        background: #fff;
+        font-family: inherit;
+        box-sizing: border-box;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-control:focus {
+        border-color: #b45309;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.15);
+    }
+    .sale-section {
+        background: #f0fdf4;
+        border: 1px dashed #86efac;
+        border-radius: var(--radius-md);
+        padding: 16px 20px;
+        margin-bottom: 18px;
+        display: none;
+    }
+
+    /* صندوق إضافة الصنف المتناسق هندسياً */
+    .item-add-box {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: var(--radius-md);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .item-add-title {
+        font-weight: 800;
+        color: #b45309;
+        margin-bottom: 14px;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .search-wrap {
+        position: relative;
+        margin-bottom: 14px;
+    }
+    .search-wrap input {
+        background: #fff;
+        padding-right: 36px;
+    }
+    .search-icon-inside {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #92400e;
+        pointer-events: none;
+    }
+    .search-results-dropdown {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        left: 0;
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        z-index: 1000;
+        box-shadow: var(--shadow-lg);
+        max-height: 240px;
+        overflow-y: auto;
+    }
+    .search-result-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 13px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .search-result-item:hover {
+        background: #fffbeb;
+        color: #78350f;
+    }
+
+    /* شبكة مدخلات الصنف المتناسقة */
+    .line-inputs-grid {
+        display: grid;
+        grid-template-columns: 1.8fr 1.3fr 1.1fr 1.4fr;
+        gap: 14px;
+        align-items: flex-end;
+    }
+    @media (max-width: 900px) {
+        .line-inputs-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+    @media (max-width: 600px) {
+        .line-inputs-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .barcode-box {
+        margin-bottom: 18px;
+        background: #faf5ff;
+        padding: 12px 18px;
+        border-radius: var(--radius-md);
+        border: 1px dashed #d8b4fe;
+    }
+    .barcode-box label {
+        font-size: 12px;
+        font-weight: 700;
+        color: #6b21a8;
+        display: block;
+        margin-bottom: 6px;
+    }
+</style>
+{% endblock %}
+
+{% block coffee_content %}
+<div class="content-container coffee-form-container">
+
+    <div class="form-card">
+        <div class="form-header-title">
+            <h2>☕ إنشاء سند صرف بن محمص</h2>
+            <a href="{{ url_for('coffee.dispatches_list') }}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; font-weight: 700; font-size: 13px; border-radius: var(--radius-sm); text-decoration: none; border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700); box-shadow: var(--shadow-sm); transition: all 0.2s;">
+                ⬅️ رجوع للخلف
+            </a>
+        </div>
+
+        <form method="POST" id="dispatchForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- معلومات السند والتاريخ والوقت -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>رقم السند</label>
+                    <input type="text" name="doc_number" id="docNumberInput" class="form-control" style="font-weight: 800; font-size: 14px; color: #b45309; background: var(--gray-100);" placeholder="توليد تلقائي..." readonly>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>تاريخ السند *</label>
+                    <input type="date" name="dispatch_date" class="form-control" value="{{ today }}" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>الوقت</label>
+                    <input type="time" name="dispatch_time" class="form-control" value="11:00">
+                </div>
+            </div>
+
+            <!-- معلومات المستودع ونوع الصرف -->
+            <div class="form-row-2">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>مستودع المصدر (المحمص)</label>
+                    <input type="text" class="form-control" value="{{ rw.name_ar }}" readonly style="background: var(--gray-100); font-weight: 600;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>نوع وغرض الصرف *</label>
+                    <select name="dispatch_type" id="dispatchTypeSelect" class="form-control" onchange="onDispatchTypeChange()" required>
+                        <option value="branch" selected>🏢 صرف لفرع</option>
+                        <option value="sale">💰 صرف للبيع</option>
+                        <option value="sample">🧪 صرف عينات فحص وتذوق</option>
+                        <option value="internal_use">☕ استخدام داخلي وتجارب</option>
+                        <option value="damaged">🗑️ صرف تالف / هالك</option>
+                        <option value="other">📌 صرف آخر</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- الفرع المستلم: يظهر عند الصرف لفرع -->
+            <div class="form-group" id="branchSelectGroup">
+                <label>الفرع المستلم *</label>
+                <select name="branch_location_id" id="branchLocationId" class="form-control" onchange="updateAutoDocNumber()">
+                    <option value="">-- اختر الفرع المستلم --</option>
+                    {% for b in branches %}
+                    <option value="{{ b.id }}">🏢 {{ b.name_ar }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- تنبيه المسودة المفتوحة للفرع لمنع تراكم وتكرار المسودات -->
+            <div id="branchDraftBanner" style="display: none; background: #fffbeb; border: 1.5px solid #f59e0b; border-radius: 8px; padding: 14px 18px; margin-bottom: 16px; color: #92400e;">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <div style="font-weight: 800; font-size: 13.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                            <span>⚠️ تنبيه: توجد مسودة سند صرف مفتوحة بالفعل لهذا الفرع ولم تعتمد بعد!</span>
+                        </div>
+                        <div style="font-size: 12.5px; color: #78350f;">
+                            رقم المسودة: <strong id="draftBannerDocNum" style="color: #b45309; font-family: monospace;"></strong> | 
+                            الفرع: <strong id="draftBannerBranch"></strong> | 
+                            التاريخ: <span id="draftBannerDate"></span> | 
+                            الكمية: <span id="draftBannerQty"></span>
+                        </div>
+                        <div style="font-size: 12px; margin-top: 4px; color: #b45309;">
+                            نظامياً، لا يتم الانتقال لمسودة جديدة لنفس الفرع حتى يتم استكمال المسودة الحالية أو إلغاؤها لتجنب تكرار الأرقام وتشتت القيود.
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <a id="draftBannerEditBtn" href="#" class="btn btn-warning" style="background: #f59e0b; color: #fff; font-weight: 700; font-size: 13px; text-decoration: none; padding: 8px 16px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                            <span>✏️ فتح واستكمال المسودة</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- تفاصيل البيع: تظهر عند اختيار بيع -->
+            <div class="sale-section" id="saleSection" style="display: none; background: #f8fafc; border: 1.5px solid #bbf7d0; border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px;">
+                <div style="font-weight: 800; color: #15803d; margin-bottom: 12px; font-size: 13px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>💰 بيانات العميل والتسليم (سند صرف للبيع)</span>
+                </div>
+                <div class="form-row-3" style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #166534; display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px;">
+                            <span>اسم العميل / الجهة المشترية * <button type="button" onclick="promptAddNewCustomer()" style="background:none; border:none; color:#15803d; text-decoration:underline; font-size:11px; cursor:pointer; padding:0 4px;" title="إضافة عميل جديد فوراً">+ إضافة عميل</button></span>
+                            <span id="customerMatchBadge" style="display:none; font-size:10px; padding:1px 6px; border-radius:4px; font-weight:700;"></span>
+                        </label>
+                        <input type="text" name="customer_name" id="customerName" class="form-control" list="customerNamesList" placeholder="اسم العميل أو الكافيه..." autocomplete="off" oninput="onCustomerInput('name')" value="">
+                        <datalist id="customerNamesList">
+                            {% for c in customers %}
+                            <option value="{{ c.name }}" data-phone="{{ c.phone or '' }}">{{ c.name }}{% if c.phone %} ({{ c.phone }}){% endif %}</option>
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #166534; display: block; margin-bottom: 5px;">رقم جوال العميل</label>
+                        <input type="text" name="customer_phone" id="customerPhone" class="form-control" list="customerPhonesList" placeholder="05xxxxxxxx" dir="ltr" style="text-align: right;" autocomplete="off" oninput="onCustomerInput('phone')" value="">
+                        <datalist id="customerPhonesList">
+                            {% for c in customers %}
+                            {% if c.phone %}
+                            <option value="{{ c.phone }}" data-name="{{ c.name }}">{{ c.phone }} - {{ c.name }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </datalist>
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; font-weight: 700; color: #166534; display: block; margin-bottom: 5px;">طريقة تسليم البضاعة *</label>
+                        <select name="delivery_method" id="deliveryMethodSelect" class="form-control" onchange="onDeliveryMethodChange()" style="font-weight: 700;">
+                            <option value="direct" selected>👤 تسليم يدوي مباشر للعميل (يتطلب توقيع العميل)</option>
+                            <option value="shipping">🚚 شحن عبر شركة نقل (سمسا / ناقل / أخرى - بدون توقيع)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- صندوق تفاصيل الشحن: يظهر فقط عند اختيار شحن عبر شركة نقل -->
+                <div id="shippingDetailsBox" style="display: none; background: #eff6ff; border: 1.5px dashed #93c5fd; border-radius: 8px; padding: 14px; margin-top: 10px;">
+                    <div style="font-weight: 800; font-size: 12px; color: #1e40af; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                        <span>📦 بيانات الشحن والناقل:</span>
+                        <small style="color: #64748b; font-weight: normal;">(لا يطلب توقيع العميل بالاستلام ويكتفى ببيانات الشحن)</small>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #1e3a8a; display: block; margin-bottom: 4px;">شركة الشحن / الناقل *</label>
+                            <select name="shipping_company" id="shippingCompanySelect" class="form-control" onchange="onShippingCompanyChange()">
+                                <option value="سمسا">سمسا (SMSA Express)</option>
+                                <option value="ناقل">ناقل (Naqel Express)</option>
+                                <option value="أرامكس">أرامكس (Aramex)</option>
+                                <option value="سبل">سبل (SPL - البريد السعودي)</option>
+                                <option value="دي اتش ال">دي إتش إل (DHL)</option>
+                                <option value="other">شركة شحن أخرى / ناقل خاص...</option>
+                            </select>
+                            <input type="text" name="shipping_company_other" id="shippingCompanyOther" class="form-control" placeholder="اكتب اسم شركة النقل..." style="display: none; margin-top: 6px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #1e3a8a; display: block; margin-bottom: 4px;">المدينة / وجهة الشحن *</label>
+                            <select name="shipping_destination_select" id="shippingDestinationSelect" class="form-control" onchange="onShippingDestinationChange()">
+                                <option value="">-- اختر وجهة الشحن أو أضف مدينة جديدة --</option>
+                                <option value="الخبر">الخبر</option>
+                                <option value="الدمام">الدمام</option>
+                                <option value="الرياض">الرياض</option>
+                                <option value="جدة">جدة</option>
+                                <option value="مكة المكرمة">مكة المكرمة</option>
+                                <option value="المدينة المنورة">المدينة المنورة</option>
+                                <option value="الأحساء">الأحساء</option>
+                                <option value="الجبيل">الجبيل</option>
+                                <option value="الهفوف">الهفوف</option>
+                                <option value="القطيف">القطيف</option>
+                                <option value="الطائف">الطائف</option>
+                                <option value="ينبع">ينبع</option>
+                                <option value="تبوك">تبوك</option>
+                                <option value="حائل">حائل</option>
+                                <option value="بريدة">بريدة</option>
+                                <option value="عنيزة">عنيزة</option>
+                                <option value="دخنه">دخنه</option>
+                                <option value="أبها">أبها</option>
+                                <option value="خميس مشيط">خميس مشيط</option>
+                                <option value="جازان">جازان</option>
+                                <option value="نجران">نجران</option>
+                                <option value="الخرج">الخرج</option>
+                                <option value="حفر الباطن">حفر الباطن</option>
+                                <option value="عرعر">عرعر</option>
+                                <option value="سكاكا">سكاكا</option>
+                                <option value="بيشة">بيشة</option>
+                                <option value="دوادمي">دوادمي</option>
+                                <option value="وادي الدواسر">وادي الدواسر</option>
+                                <option value="شرورة">شرورة</option>
+                                <option value="القنفذة">القنفذة</option>
+                                <option value="other">➕ إضافة مدينة / وجهة أخرى غير موجودة بالقائمة...</option>
+                            </select>
+                            <input type="text" name="shipping_destination_other" id="shippingDestinationOther" class="form-control" placeholder="اكتب اسم المدينة أو الوجهة الجديدة هنا..." style="display: none; margin-top: 6px;">
+                            <input type="hidden" name="shipping_destination" id="shippingDestination">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #1e3a8a; display: block; margin-bottom: 4px;">رقم بوليصة الشحن (Waybill) <small style="color: #64748b;">(اختياري)</small></label>
+                            <input type="text" name="shipping_tracking_number" id="shippingTrackingNumber" class="form-control" placeholder="رقم التتبع / البوليصة...">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; font-weight: 700; color: #1e3a8a; display: block; margin-bottom: 4px;">تكلفة الشحن لـ Xero (ر.س قبل الضريبة)</label>
+                            <input type="number" step="0.01" min="0" name="shipping_fee" id="shippingFeeInput" class="form-control" placeholder="تلقائي حسب الوزن" style="font-weight: 700; color: #1e40af;">
+                            <small style="color: #64748b; font-size: 10px; display: block; margin-top: 3px;">حساب 261 (ايرادات شحن وتوصيل) + 15% ضريبة</small>
+                        </div>
+                    </div>
+                </div>
+
+                <input type="hidden" name="sale_price_per_kg" id="salePricePerKg" value="0">
+            </div>
+
+            <!-- سبب الصرف في الحالات الأخرى -->
+            <div class="form-group" id="reasonGroup" style="display: none;">
+                <label>سبب وتفاصيل الصرف *</label>
+                <input type="text" name="issue_reason" id="issueReason" class="form-control" placeholder="وضح سبب الصرف...">
+            </div>
+
+            <!-- 📷 قارئ الباركود الموحد السريع -->
+            <div class="barcode-box">
+                <label>📷 قارئ الباركود / Barcode Scanner (مسح متتابع وسريع):</label>
+                <input type="text" id="barcodeScannerInput" class="form-control" placeholder="امسح الباركود بجهاز المسح واضغط Enter للاختيار المباشر..." autocomplete="off">
+            </div>
+
+            <!-- صندوق إضافة وتعديل صنف محمص بتناسق تام -->
+            <div class="item-add-box">
+                <div class="item-add-title">
+                    <span>➕ إضافة / تعديل صنف في سند الصرف:</span>
+                </div>
+
+                <!-- حقل البحث التفاعلي العريض -->
+                <div class="search-wrap">
+                    <span class="search-icon-inside">🔍</span>
+                    <input type="text" id="roastedSearchInput" class="form-control" placeholder="ابحث بكود الصنف [RB] أو اسمه بالعربي أو الإنجليزي واضغط عليه للاختيار..." autocomplete="off">
+                    <div id="roastedSearchResults" class="search-results-dropdown"></div>
+                </div>
+
+                <!-- شبكة بيانات الصنف المتناسقة (عرض الكميات والتعبئة دون أسعار) -->
+                <div class="line-inputs-grid" id="lineInputsGrid">
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 700; color: var(--gray-700); margin-bottom: 5px;">الصنف المحمص المختار (RB) *</label>
+                        <select name="coffee_item_id" id="roastedItemSelect" class="form-control" onchange="onRoastedSelectChange()">
+                            <option value="">-- اختر الصنف المحمص --</option>
+                            {% for r in roasted_items %}
+                            <option value="{{ r.id }}" data-code="{{ r.xero_item_code }}" data-sale="{{ r.sale_price_per_kg or 0 }}">
+                                [{{ r.xero_item_code }}] {{ r.name_ar or r.xero_item_code }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 700; color: var(--gray-700); margin-bottom: 5px;">نوع التعبئة والتجزئة *</label>
+                        <select id="inputPackageType" class="form-control" onchange="onPackageTypeChange()" style="font-weight: 700;">
+                            <option value="bulk" data-weight="1.0">📦 حبوب بالكيلو (عام / فرع)</option>
+                            <option value="250g" data-weight="0.25">🛍️ أكياس ربع كيلو (250g) - فوديكس</option>
+                            <option value="1kg" data-weight="1.0">🛍️ أكياس 1 كيلو (1kg) - فوديكس</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label id="lblQtyKg" style="display: block; font-size: 11px; font-weight: 700; color: var(--gray-700); margin-bottom: 5px;">الكمية المصروفة (كجم) *</label>
+                        <input type="number" step="0.01" min="0.01" name="qty_kg" id="inputQtyKg" class="form-control" placeholder="0.00" oninput="onQtyInputChange()" style="font-weight: 700; color: #b45309;">
+                        <div id="pkgWeightHint" style="display: none; font-size: 11px; color: #0284c7; font-weight: 700; margin-top: 4px;"></div>
+                    </div>
+
+                    <div>
+                        <label style="display: block; font-size: 11px; font-weight: 700; color: var(--gray-700); margin-bottom: 5px;">ملاحظة على الصنف</label>
+                        <input type="text" id="inputLineNotes" class="form-control" placeholder="ملاحظات الصنف...">
+                    </div>
+                    <input type="hidden" name="line_sale_price_single" id="inputSalePrice" value="0">
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px;">
+                    <button type="button" id="btnCancelEdit" onclick="cancelEditLine()" class="btn-secondary" style="display: none; padding: 8px 18px; font-weight: 700;">
+                        إلغاء التعديل
+                    </button>
+                    <button type="button" id="btnAddLine" onclick="addOrUpdateLine()" class="btn-primary" style="background: #b45309; border: none; padding: 8px 24px; font-weight: 700; color: #fff; border-radius: var(--radius-sm); cursor: pointer;">
+                        ➕ إضافة الصنف للسند
+                    </button>
+                </div>
+            </div>
+
+            <!-- جدول الأصناف المضافة للسند (عرض الكميات فقط) -->
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="font-weight: 800; font-size: 14px; color: var(--navy-dark);">
+                        📋 الأصناف المضافة في هذا السند (<span id="lineCountBadge">0</span> أصناف):
+                    </label>
+                </div>
+
+                <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                    <table class="data-table" style="width: 100%; border-collapse: collapse; margin-bottom: 0;">
+                        <thead>
+                            <tr style="background: #f8fafc; text-align: right;">
+                                <th style="padding: 10px 14px; width: 40px;">#</th>
+                                <th style="padding: 10px 14px;">كود واسم الصنف المحمص</th>
+                                <th style="padding: 10px 14px; width: 150px;">نوع التعبئة</th>
+                                <th style="padding: 10px 14px; width: 160px;">الكمية الإجمالية (كجم)</th>
+                                <th style="padding: 10px 14px;">ملاحظات</th>
+                                <th style="padding: 10px 14px; width: 110px; text-align: center;">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="linesTableBody">
+                            <tr id="emptyRow">
+                                <td colspan="6" style="text-align: center; padding: 24px; color: #94a3b8;">
+                                    لم يتم إضافة أصناف بعد. اختر الصنف والكمية أعلاه واضغط على "إضافة الصنف للسند".
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot id="tableFooter" style="background: #f1f5f9; font-weight: 700; display: none;">
+                            <tr>
+                                <td colspan="3" style="padding: 12px 14px;">الإجمالي الكلي للسند:</td>
+                                <td id="footerTotalQty" style="padding: 12px 14px; color: #b45309; font-size: 14px;">0.00 كجم</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- حاوية الحقول المخفية للنموذج -->
+                <div id="hiddenFormInputs"></div>
+            </div>
+
+            <div class="form-group">
+                <label>ملاحظات عامة على السند</label>
+                <textarea name="notes" class="form-control" rows="2" placeholder="ملاحظات اختيارية حول السند أو التسليم..."></textarea>
+            </div>
+
+            <!-- ✍️ خانة التوقيع الحي بالاستلام - في آخر الصفحة للسندات (تظهر عند الصرف للبيع وإلزامية للاعتماد) -->
+            <div id="signatureSection" style="display: none; margin-top: 24px; background: #f0fdf4; border: 2px dashed #86efac; border-radius: 8px; padding: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <label style="font-size: 13px; font-weight: 800; color: #166534; display: flex; align-items: center; gap: 6px; margin: 0;">
+                        ✍️ توقيع العميل بالاستلام (إلزامي لاعتماد السند) *
+                    </label>
+                    <button type="button" class="btn-sm" onclick="clearSignaturePad()" style="background: #ffffff; color: #15803d; border: 1px solid #86efac; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: 700;">
+                        🔄 مسح وإعادة التوقيع
+                    </button>
+                </div>
+                <p style="font-size: 11px; color: #475569; margin: 0 0 10px 0;">
+                    يرجى توقيع العميل الحي بالإصبع مباشرة على شاشة الجوال أو بالماوس. <strong>لا يمكن اعتماد السند بدون التوقيع.</strong>
+                </p>
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 6px 12px; margin-bottom: 10px; font-size: 11px; color: #1e40af; display: flex; align-items: center; gap: 6px;">
+                    <span>ℹ️</span>
+                    <span><strong>ملاحظة:</strong> توقيع العميل مخصص للاعتماد والتسليم النهائي فقط؛ عند حفظ السند كمسودة لا يُقبل التوقيع.</span>
+                </div>
+                <div id="signatureWrapper" style="border: 2px solid #93c5fd; border-radius: 6px; background: #ffffff; position: relative; touch-action: none; width: 100%; max-width: 520px; height: 160px;">
+                    <canvas id="signatureCanvas" width="520" height="160" style="width: 100%; height: 100%; display: block; cursor: crosshair;"></canvas>
+                    <div id="signaturePlaceholder" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #94a3b8; font-size: 13px; pointer-events: none; user-select: none;">
+                        وقع هنا باللمس أو القلم ✍️
+                    </div>
+                </div>
+                <input type="hidden" name="customer_signature" id="customerSignatureInput">
+            </div>
+
+            <!-- أزرار الإجراءات: حفظ كمسودة / اعتماد السند -->
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                <a href="{{ url_for('coffee.dispatches_list') }}" class="btn-secondary" style="padding: 11px 22px; font-weight: 700; text-decoration: none; border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px;">
+                    ⬅️ رجوع للخلف
+                </a>
+                <button type="submit" name="form_action" value="draft" onclick="if(document.getElementById('customerSignatureInput')) document.getElementById('customerSignatureInput').value='';" class="btn-secondary" style="background: #f8fafc; border: 1.5px solid #cbd5e1; padding: 11px 24px; font-size: 14px; font-weight: 800; border-radius: var(--radius-sm); color: #334155; cursor: pointer;">
+                    📝 حفظ كمسودة
+                </button>
+                <button type="submit" name="form_action" value="approve" class="btn-primary" style="background: #b45309; border: none; padding: 11px 32px; font-size: 14px; font-weight: 800; border-radius: var(--radius-sm); color: #fff; cursor: pointer;">
+                    ✅ اعتماد سند الصرف
+                </button>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+<script>
+const roastedItems = [
+    {% for r in roasted_items %}
+    {
+        "id": {{ r.id }},
+        "code": {{ r.xero_item_code|tojson }},
+        "name_ar": {{ (r.name_ar or r.xero_item_code)|tojson }},
+        "name_en": {{ (r.name_en or '')|tojson }},
+        "sale_price": {{ (r.sale_price_per_kg or 0)|float }},
+        "packages": [
+            {% for p in r.retail_packages %}
+            {
+                "type": {{ p.package_type|tojson }},
+                "name": {{ p.package_name_ar|tojson }},
+                "weight_kg": {{ p.weight_kg or 0.0 }},
+                "foodics_item_id": {{ p.foodics_item_id or 'null' }}
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ]
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+let dispatchLines = [];
+let editingLineIndex = -1;
+
+window.onPackageTypeChange = function onPackageTypeChange() {
+    const pkgType = document.getElementById("inputPackageType") ? document.getElementById("inputPackageType").value : "bulk";
+    const lbl = document.getElementById("lblQtyKg");
+    const inp = document.getElementById("inputQtyKg");
+
+    if (pkgType === "250g") {
+        if (lbl) lbl.innerText = "عدد أكياس الربع كيلو (250g) *";
+        if (inp) {
+            inp.placeholder = "مثال: 20 كيس";
+            inp.step = "1";
+        }
+    } else if (pkgType === "1kg") {
+        if (lbl) lbl.innerText = "عدد أكياس الكيلو (1 كجم) *";
+        if (inp) {
+            inp.placeholder = "مثال: 5 أكياس";
+            inp.step = "1";
+        }
+    } else {
+        if (lbl) lbl.innerText = "الكمية المصروفة (كجم) *";
+        if (inp) {
+            inp.placeholder = "0.00";
+            inp.step = "0.01";
+        }
+    }
+    if (typeof window.onQtyInputChange === "function") {
+        window.onQtyInputChange();
+    }
+};
+
+window.onQtyInputChange = function onQtyInputChange() {
+    const pkgType = document.getElementById("inputPackageType") ? document.getElementById("inputPackageType").value : "bulk";
+    const inp = document.getElementById("inputQtyKg");
+    const hint = document.getElementById("pkgWeightHint");
+    if (!inp || !hint) return;
+
+    const val = parseFloat(inp.value) || 0;
+    if (pkgType === "250g" && val > 0) {
+        const totalKg = (val * 0.25).toFixed(2);
+        hint.style.display = "block";
+        hint.innerHTML = `⚖️ الوزن الإجمالي: <strong>${totalKg} كجم</strong> (خصم المحمصة: ${totalKg} كجم | استلام فوديكس: ${parseInt(val)} كيس)`;
+    } else if (pkgType === "1kg" && val > 0) {
+        hint.style.display = "block";
+        hint.innerHTML = `⚖️ الوزن الإجمالي: <strong>${val.toFixed(2)} كجم</strong> (${parseInt(val)} كيس)`;
+    } else {
+        hint.style.display = "none";
+        hint.innerHTML = "";
+    }
+};
+
+
+    function updateAutoDocNumber() {
+        const typeSelect = document.getElementById('dispatchTypeSelect');
+        const dispType = typeSelect ? typeSelect.value : 'branch';
+        const branchSelect = document.getElementById('branchLocationId');
+        const branchId = (branchSelect && dispType === 'branch') ? branchSelect.value : '';
+        const docInput = document.getElementById('docNumberInput');
+        const draftBanner = document.getElementById('branchDraftBanner');
+        if (!docInput) return;
+        
+        let url = `/coffee/api/next-doc-number?category=roasted&type=${encodeURIComponent(dispType)}`;
+        if (branchId) {
+            url += `&branch_id=${encodeURIComponent(branchId)}`;
+        }
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.doc_number) {
+                    docInput.value = data.doc_number;
+                }
+                if (data && data.has_draft && data.draft) {
+                    if (draftBanner) {
+                        draftBanner.style.display = 'block';
+                        const elDoc = document.getElementById('draftBannerDocNum');
+                        const elBranch = document.getElementById('draftBannerBranch');
+                        const elDate = document.getElementById('draftBannerDate');
+                        const elQty = document.getElementById('draftBannerQty');
+                        const elBtn = document.getElementById('draftBannerEditBtn');
+                        if (elDoc) elDoc.textContent = data.draft.doc_number;
+                        if (elBranch) elBranch.textContent = data.draft.branch_name;
+                        if (elDate) elDate.textContent = data.draft.date;
+                        if (elQty) elQty.textContent = `${data.draft.total_qty_kg} كجم (${data.draft.lines_count} صنف)`;
+                        if (elBtn) elBtn.href = data.draft.edit_url;
+                    }
+                } else {
+                    if (draftBanner) draftBanner.style.display = 'none';
+                }
+            })
+            .catch(err => console.error('Error fetching doc number:', err));
+    }
+
+    function onDispatchTypeChange() {
+        updateAutoDocNumber();
+    const dtype = document.getElementById("dispatchTypeSelect").value;
+    const branchGroup = document.getElementById("branchSelectGroup");
+    const saleSec = document.getElementById("saleSection");
+    const reasonGroup = document.getElementById("reasonGroup");
+    const sigSec = document.getElementById("signatureSection");
+
+    const custName = document.getElementById("customerName");
+
+    if (dtype === "branch") {
+        branchGroup.style.display = "block";
+        saleSec.style.display = "none";
+        reasonGroup.style.display = "none";
+        if (sigSec) sigSec.style.display = "none";
+        if (custName) custName.required = false;
+    } else if (dtype === "sale") {
+        branchGroup.style.display = "none";
+        saleSec.style.display = "block";
+        reasonGroup.style.display = "none";
+        if (custName) custName.required = true;
+        onDeliveryMethodChange();
+    } else {
+        branchGroup.style.display = "none";
+        saleSec.style.display = "none";
+        reasonGroup.style.display = "block";
+        if (sigSec) sigSec.style.display = "none";
+        if (custName) custName.required = false;
+    }
+    renderLinesTable();
+}
+
+function onDeliveryMethodChange() {
+    const dMethod = document.getElementById("deliveryMethodSelect") ? document.getElementById("deliveryMethodSelect").value : "direct";
+    const shippingBox = document.getElementById("shippingDetailsBox");
+    const sigSec = document.getElementById("signatureSection");
+    const dtype = document.getElementById("dispatchTypeSelect") ? document.getElementById("dispatchTypeSelect").value : "";
+
+    if (dMethod === "shipping") {
+        if (shippingBox) shippingBox.style.display = "block";
+        if (sigSec) sigSec.style.display = "none";
+    } else {
+        if (shippingBox) shippingBox.style.display = "none";
+        if (dtype === "sale" && sigSec) {
+            sigSec.style.display = "block";
+            setTimeout(initSignaturePad, 100);
+        }
+    }
+}
+
+const coffeeCustomersData = [
+    {% for c in customers %}
+    { name: {{ c.name|tojson }}, phone: {{ (c.phone or '')|tojson }} },
+    {% endfor %}
+];
+
+function onCustomerInput(field) {
+    const nameInput = document.getElementById("customerName");
+    const phoneInput = document.getElementById("customerPhone");
+    const badge = document.getElementById("customerMatchBadge");
+    if (!nameInput || !phoneInput || !badge) return;
+
+    const valName = nameInput.value.trim();
+    const valNameLower = valName.toLowerCase();
+    const valPhone = phoneInput.value.trim();
+
+    let matched = null;
+    if (field === 'phone' && valPhone.length >= 3) {
+        matched = coffeeCustomersData.find(c => c.phone && c.phone === valPhone);
+    } else if (field === 'name' && valNameLower.length >= 2) {
+        matched = coffeeCustomersData.find(c => c.name && c.name.toLowerCase() === valNameLower);
+    }
+
+    if (!matched) {
+        matched = coffeeCustomersData.find(c => 
+            (valPhone && c.phone && c.phone === valPhone) || 
+            (valNameLower && c.name && c.name.toLowerCase() === valNameLower)
+        );
+    }
+
+    if (matched) {
+        if (field === 'phone' && matched.name && !nameInput.value.trim()) {
+            nameInput.value = matched.name;
+        } else if (field === 'name' && matched.phone && !phoneInput.value.trim()) {
+            phoneInput.value = matched.phone;
+        }
+
+        if (!matched.phone && valPhone) {
+            badge.style.display = 'inline-block';
+            badge.style.background = '#eff6ff';
+            badge.style.color = '#1d4ed8';
+            badge.innerHTML = '🟢 مسجل (سيتم حفظ رقم الجوال له ✓)';
+        } else {
+            badge.style.display = 'inline-block';
+            badge.style.background = '#dcfce7';
+            badge.style.color = '#15803d';
+            badge.innerHTML = '🟢 عميل مسجل مسبقاً ✓';
+        }
+    } else if (valName.length >= 2) {
+        badge.style.display = 'inline-block';
+        badge.style.background = '#fef3c7';
+        badge.style.color = '#b45309';
+        badge.innerHTML = '✨ عميل جديد (سيُحفظ تلقائياً عند حفظ السند)';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+async function promptAddNewCustomer() {
+    const nameInput = document.getElementById("customerName");
+    const phoneInput = document.getElementById("customerPhone");
+    const defaultName = nameInput ? nameInput.value.trim() : '';
+    const defaultPhone = phoneInput ? phoneInput.value.trim() : '';
+
+    const name = prompt("أدخل اسم العميل / المنشأة الجديدة:", defaultName);
+    if (!name || !name.trim()) return;
+
+    const phone = prompt("أدخل رقم جوال العميل (اختياري، يمكن تركه فارغاً وتأكيده لاحقاً):", defaultPhone);
+
+    try {
+        const res = await fetch("{{ url_for('coffee.api_customers_new') }}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: name.trim(), phone: (phone || '').trim() })
+        });
+        const data = await res.json();
+        if (data.success && data.customer) {
+            coffeeCustomersData.push({ name: data.customer.name, phone: data.customer.phone || '' });
+            if (nameInput) nameInput.value = data.customer.name;
+            if (phoneInput) phoneInput.value = data.customer.phone || '';
+            onCustomerInput('name');
+            alert(`✅ تم حفظ وتأكيد العميل '${data.customer.name}' بنجاح`);
+        } else {
+            alert(data.error || 'تعذر إضافة العميل');
+        }
+    } catch (e) {
+        alert('حدث خطأ في الاتصال بالخادم');
+    }
+}
+
+function onShippingCompanyChange() {
+    const sel = document.getElementById("shippingCompanySelect");
+    const otherInp = document.getElementById("shippingCompanyOther");
+    if (sel && otherInp) {
+        otherInp.style.display = (sel.value === "other") ? "block" : "none";
+        if (sel.value === "other") otherInp.focus();
+    }
+}
+
+function onShippingDestinationChange() {
+    const sel = document.getElementById("shippingDestinationSelect");
+    const otherInp = document.getElementById("shippingDestinationOther");
+    const hiddenInp = document.getElementById("shippingDestination");
+    if (!sel) return;
+    if (sel.value === "other") {
+        if (otherInp) {
+            otherInp.style.display = "block";
+            otherInp.focus();
+            if (hiddenInp) hiddenInp.value = otherInp.value.trim();
+        }
+    } else {
+        if (otherInp) {
+            otherInp.style.display = "none";
+        }
+        if (hiddenInp) hiddenInp.value = sel.value;
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    const dOther = document.getElementById("shippingDestinationOther");
+    if (dOther) {
+        dOther.addEventListener("input", function() {
+            const hiddenInp = document.getElementById("shippingDestination");
+            if (hiddenInp) hiddenInp.value = this.value.trim();
+        });
+    }
+    const feeInp = document.getElementById("shippingFeeInput");
+    if (feeInp) {
+        feeInp.addEventListener("input", function() {
+            this.dataset.manual = "true";
+        });
+    }
+});
+
+// البحث التفاعلي في أصناف البن المحمص
+const rSearch = document.getElementById("roastedSearchInput");
+const rResults = document.getElementById("roastedSearchResults");
+
+if (rSearch && rResults) {
+    rSearch.addEventListener("input", function() {
+        const q = this.value.trim().toLowerCase();
+        if (!q) {
+            rResults.style.display = "none";
+            return;
+        }
+
+        const matches = (typeof roastedItems !== "undefined" ? roastedItems : []).filter(r => {
+            return (r.code && r.code.toLowerCase().includes(q)) ||
+                   (r.name_ar && r.name_ar.toLowerCase().includes(q)) ||
+                   (r.name_en && r.name_en.toLowerCase().includes(q));
+        });
+
+        rResults.innerHTML = "";
+        if (matches.length === 0) {
+            rResults.innerHTML = '<div style="padding:12px; color:#64748b; font-size:12px; text-align:center;">لا توجد أصناف مطابقة</div>';
+            rResults.style.display = "block";
+            return;
+        }
+
+        matches.slice(0, 15).forEach(item => {
+            const div = document.createElement("div");
+            div.className = "search-result-item";
+            div.innerHTML = `<div><strong>[${item.code}]</strong> ${item.name_ar} ${item.name_en ? `<span style="color:#64748b;">- ${item.name_en}</span>` : ''}</div><span style="font-size:11px; color:#b45309; font-weight:700;">محمص</span>`;
+            div.addEventListener("click", () => {
+                window.selectItem(item);
+            });
+            rResults.appendChild(div);
+        });
+        rResults.style.display = "block";
+    });
+}
+
+window.selectItem = function selectItem(item) {
+    const sel = document.getElementById("roastedItemSelect");
+    if (sel) sel.value = item.id;
+    if (rSearch) rSearch.value = `[${item.code}] ${item.name_ar}`;
+    if (rResults) rResults.style.display = "none";
+    if (typeof window.onRoastedSelectChange === "function") {
+        window.onRoastedSelectChange();
+    }
+    const qtyInp = document.getElementById("inputQtyKg");
+    if (qtyInp) qtyInp.focus();
+};
+
+document.addEventListener("click", function(e) {
+    if (rSearch && rResults && !rSearch.contains(e.target) && !rResults.contains(e.target)) {
+        rResults.style.display = "none";
+    }
+});
+
+// قارئ الباركود
+const barcodeInput = document.getElementById("barcodeScannerInput");
+if (barcodeInput) {
+    barcodeInput.addEventListener("keypress", function(e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const code = this.value.trim().toLowerCase();
+            if (!code) return;
+            const match = (typeof roastedItems !== "undefined" ? roastedItems : []).find(r => (r.code && r.code.toLowerCase() === code));
+            if (match) {
+                window.selectItem(match);
+                this.value = "";
+            } else {
+                alert("لم يتم العثور على صنف محمص مطابق للباركود: " + code);
+            }
+        }
+    });
+}
+
+window.onRoastedSelectChange = function onRoastedSelectChange() {
+    const sel = document.getElementById("roastedItemSelect");
+    if (!sel) return;
+    const item = (typeof roastedItems !== "undefined" ? roastedItems : []).find(r => String(r.id) === String(sel.value));
+    if (item && rSearch) {
+        rSearch.value = `[${item.code}] ${item.name_ar}`;
+    }
+};
+
+window.onHeaderPriceInput = function onHeaderPriceInput() {
+    // تم إلغاء التعامل مع الأسعار من واجهة المستخدم
+};
+
+window.addOrUpdateLine = function addOrUpdateLine() {
+    const sel = document.getElementById("roastedItemSelect");
+    const itemId = parseInt(sel.value);
+    const inputVal = parseFloat(document.getElementById("inputQtyKg").value);
+    const notes = document.getElementById("inputLineNotes").value.trim();
+    const pkgTypeSel = document.getElementById("inputPackageType");
+    const pkgType = pkgTypeSel ? pkgTypeSel.value : "bulk";
+
+    if (!itemId || isNaN(itemId)) {
+        alert("يرجى اختيار الصنف المحمص أولاً");
+        sel.focus();
+        return;
+    }
+    if (!inputVal || isNaN(inputVal) || inputVal <= 0) {
+        alert("يرجى إدخال كمية صحيحة أكبر من الصفر");
+        document.getElementById("inputQtyKg").focus();
+        return;
+    }
+
+    const item = roastedItems.find(r => r.id === itemId);
+    const itemCode = item ? item.code : "";
+    const itemName = item ? item.name_ar : "";
+
+    let qtyKg = inputVal;
+    let pkgQty = inputVal;
+    let pkgWeight = 1.0;
+    let pkgLabel = "بالكيلو (حبوب)";
+    let targetFoodicsItemId = null;
+
+    if (pkgType === "250g") {
+        pkgWeight = 0.25;
+        pkgQty = inputVal;
+        qtyKg = Math.round(pkgQty * pkgWeight * 10000) / 10000;
+        pkgLabel = `${parseInt(pkgQty)} كيس (250g)`;
+    } else if (pkgType === "1kg") {
+        pkgWeight = 1.0;
+        pkgQty = inputVal;
+        qtyKg = Math.round(pkgQty * pkgWeight * 10000) / 10000;
+        pkgLabel = `${parseInt(pkgQty)} كيس (1 كجم)`;
+    } else {
+        pkgWeight = 1.0;
+        pkgQty = inputVal;
+        qtyKg = inputVal;
+        pkgLabel = "بالكيلو (حبوب)";
+    }
+
+    if (item && item.packages) {
+        const pMatch = item.packages.find(p => p.type === pkgType);
+        if (pMatch) {
+            targetFoodicsItemId = pMatch.foodics_item_id;
+        }
+    }
+
+    const lineData = {
+        item_id: itemId,
+        code: itemCode,
+        name: itemName,
+        qty: qtyKg,
+        price: 0,
+        notes: notes,
+        package_type: pkgType,
+        package_qty: pkgQty,
+        package_weight_kg: pkgWeight,
+        foodics_item_id: targetFoodicsItemId,
+        package_label: pkgLabel
+    };
+
+    if (editingLineIndex >= 0) {
+        dispatchLines[editingLineIndex] = lineData;
+        editingLineIndex = -1;
+        document.getElementById("btnAddLine").innerHTML = "➕ إضافة الصنف للسند";
+        document.getElementById("btnCancelEdit").style.display = "none";
+    } else {
+        const existingIdx = dispatchLines.findIndex(l => l.item_id === itemId && l.package_type === pkgType);
+        if (existingIdx >= 0) {
+            if (confirm(`هذا الصنف مضاف مسبقاً بنفس نوع التعبئة (${pkgLabel}). هل تريد جمع الكمية الجديدة مع السابقة؟`)) {
+                dispatchLines[existingIdx].qty += qtyKg;
+                dispatchLines[existingIdx].package_qty += pkgQty;
+                if (pkgType === "250g") {
+                    dispatchLines[existingIdx].package_label = `${parseInt(dispatchLines[existingIdx].package_qty)} كيس (250g)`;
+                } else if (pkgType === "1kg") {
+                    dispatchLines[existingIdx].package_label = `${parseInt(dispatchLines[existingIdx].package_qty)} كيس (1 كجم)`;
+                }
+                if (notes) dispatchLines[existingIdx].notes = (dispatchLines[existingIdx].notes ? dispatchLines[existingIdx].notes + " - " : "") + notes;
+            } else {
+                return;
+            }
+        } else {
+            dispatchLines.push(lineData);
+        }
+    }
+
+    resetLineInputs();
+    renderLinesTable();
+}
+
+window.editLine = function editLine(idx) {
+    const line = dispatchLines[idx];
+    if (!line) return;
+
+    editingLineIndex = idx;
+    const rSel = document.getElementById("roastedItemSelect");
+    if (rSel) rSel.value = line.item_id;
+    const rInp = document.getElementById("roastedSearchInput");
+    if (rInp) rInp.value = `[${line.code}] ${line.name}`;
+    
+    const pkgSel = document.getElementById("inputPackageType");
+    if (pkgSel) {
+        pkgSel.value = line.package_type || "bulk";
+        if (typeof window.onPackageTypeChange === "function") window.onPackageTypeChange();
+    }
+    
+    const qtyInp = document.getElementById("inputQtyKg");
+    if (qtyInp) {
+        if (line.package_type && line.package_type !== "bulk") {
+            qtyInp.value = line.package_qty || (line.qty / (line.package_weight_kg || 0.25));
+        } else {
+            qtyInp.value = line.qty;
+        }
+    }
+    if (typeof window.onQtyInputChange === "function") window.onQtyInputChange();
+
+    const pElem = document.getElementById("inputSalePrice");
+    if (pElem) pElem.value = line.price || 0;
+    const notesInp = document.getElementById("inputLineNotes");
+    if (notesInp) notesInp.value = line.notes || "";
+
+    const addBtn = document.getElementById("btnAddLine");
+    if (addBtn) addBtn.innerHTML = "💾 تحديث بيانات الصنف";
+    const cancelBtn = document.getElementById("btnCancelEdit");
+    if (cancelBtn) cancelBtn.style.display = "inline-block";
+    if (qtyInp) qtyInp.focus();
+};
+
+window.cancelEditLine = function cancelEditLine() {
+    editingLineIndex = -1;
+    resetLineInputs();
+    const addBtn = document.getElementById("btnAddLine");
+    if (addBtn) addBtn.innerHTML = "➕ إضافة الصنف للسند";
+    const cancelBtn = document.getElementById("btnCancelEdit");
+    if (cancelBtn) cancelBtn.style.display = "none";
+};
+
+window.removeLine = function removeLine(idx) {
+    if (confirm("هل أنت متأكد من حذف هذا الصنف من السند؟")) {
+        dispatchLines.splice(idx, 1);
+        if (editingLineIndex === idx) {
+            cancelEditLine();
+        }
+        renderLinesTable();
+    }
+};
+
+function resetLineInputs() {
+    document.getElementById("roastedItemSelect").value = "";
+    document.getElementById("roastedSearchInput").value = "";
+    const pkgSel = document.getElementById("inputPackageType");
+    if (pkgSel) pkgSel.value = "bulk";
+    onPackageTypeChange();
+    document.getElementById("inputQtyKg").value = "";
+    onQtyInputChange();
+    const pElem = document.getElementById("inputSalePrice");
+    if (pElem) pElem.value = "0";
+    document.getElementById("inputLineNotes").value = "";
+}
+
+function renderLinesTable() {
+    const tbody = document.getElementById("linesTableBody");
+    const hiddenDiv = document.getElementById("hiddenFormInputs");
+
+    tbody.innerHTML = "";
+    hiddenDiv.innerHTML = "";
+
+    document.getElementById("lineCountBadge").innerText = dispatchLines.length;
+
+    if (dispatchLines.length === 0) {
+        tbody.innerHTML = `
+            <tr id="emptyRow">
+                <td colspan="6" style="text-align: center; padding: 24px; color: #94a3b8;">
+                    لم يتم إضافة أصناف بعد. اختر الصنف والكمية أعلاه واضغط على "إضافة الصنف للسند".
+                </td>
+            </tr>
+        `;
+        document.getElementById("tableFooter").style.display = "none";
+        return;
+    }
+
+    let totalQty = 0;
+
+    dispatchLines.forEach((l, idx) => {
+        totalQty += l.qty;
+
+        const pkgBadgeStyle = (l.package_type && l.package_type !== 'bulk') 
+            ? "background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe;" 
+            : "background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;";
+
+        const tr = document.createElement("tr");
+        tr.style.borderBottom = "1px solid #e2e8f0";
+        tr.innerHTML = `
+            <td style="padding: 10px 14px; font-weight: 600;">${idx + 1}</td>
+            <td style="padding: 10px 14px;"><strong>[${l.code}]</strong> ${l.name}</td>
+            <td style="padding: 10px 14px;">
+                <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; ${pkgBadgeStyle}">
+                    ${l.package_label || 'بالكيلو (حبوب)'}
+                </span>
+            </td>
+            <td style="padding: 10px 14px; font-weight: 700; color: #b45309;">${l.qty.toFixed(2)} كجم</td>
+            <td style="padding: 10px 14px; color: #64748b; font-size: 13px;">${l.notes || '-'}</td>
+            <td style="padding: 10px 14px; text-align: center;">
+                <button type="button" onclick="editLine(${idx})" style="background: none; border: none; cursor: pointer; color: #2563eb; font-size: 15px; margin-left: 6px;" title="تعديل">✏️</button>
+                <button type="button" onclick="removeLine(${idx})" style="background: none; border: none; cursor: pointer; color: #ef4444; font-size: 15px;" title="حذف">🗑️</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+
+        // إنشاء الحقول المخفية للنموذج
+        hiddenDiv.innerHTML += `
+            <input type="hidden" name="line_coffee_item_id[]" value="${l.item_id}">
+            <input type="hidden" name="coffee_item_id[]" value="${l.item_id}">
+            <input type="hidden" name="line_qty_kg[]" value="${l.qty}">
+            <input type="hidden" name="qty_kg[]" value="${l.qty}">
+            <input type="hidden" name="line_sale_price[]" value="${l.price || 0}">
+            <input type="hidden" name="sale_price_per_kg[]" value="${l.price || 0}">
+            <input type="hidden" name="line_notes[]" value="${l.notes || ''}">
+            <input type="hidden" name="line_package_type[]" value="${l.package_type || 'bulk'}">
+            <input type="hidden" name="line_package_qty[]" value="${l.package_qty || 0}">
+            <input type="hidden" name="line_package_weight_kg[]" value="${l.package_weight_kg || 0}">
+            <input type="hidden" name="line_foodics_item_id[]" value="${l.foodics_item_id || ''}">
+        `;
+    });
+
+    document.getElementById("tableFooter").style.display = "";
+    document.getElementById("footerTotalQty").innerText = totalQty.toFixed(2) + " كجم";
+    autoUpdateShippingFee(totalQty);
+}
+
+function autoUpdateShippingFee(totalWeight) {
+    const feeInput = document.getElementById("shippingFeeInput");
+    if (!feeInput) return;
+    if (feeInput.dataset.manual === "true") return;
+    if (!totalWeight || totalWeight <= 0) {
+        feeInput.value = "";
+        return;
+    }
+    if (totalWeight <= 15) {
+        feeInput.value = "40.60";
+    } else if (totalWeight <= 25) {
+        feeInput.value = "52.20";
+    } else {
+        feeInput.value = "92.80";
+    }
+}
+
+// متابعة الزر المضغوط (حفظ كمسودة أو اعتماد)
+let activeSubmitAction = "approve";
+document.querySelectorAll("button[type=submit]").forEach(btn => {
+    btn.addEventListener("click", function() {
+        activeSubmitAction = this.value || "approve";
+    });
+});
+
+// معالج الإرسال الذكي والمباشر
+document.getElementById("dispatchForm").addEventListener("submit", function(e) {
+    const sel = document.getElementById("roastedItemSelect");
+    const qtyInput = document.getElementById("inputQtyKg");
+
+    // إذا كانت القائمة فارغة لكن المستخدم اختار صنفاً وأدخل كمية، نضيفه تلقائياً
+    if (dispatchLines.length === 0) {
+        const itemId = parseInt(sel.value);
+        const qty = parseFloat(qtyInput.value);
+        if (itemId && qty > 0) {
+            addOrUpdateLine();
+        }
+    }
+
+    // إذا لا زالت فارغة ولم يحدد صنفاً
+    if (dispatchLines.length === 0 && (!sel.value || !qtyInput.value || parseFloat(qtyInput.value) <= 0)) {
+        e.preventDefault();
+        alert("يرجى اختيار صنف محمص وتحديد الكمية المصروفة قبل الحفظ");
+        qtyInput.focus();
+        return;
+    }
+
+    const dtype = document.getElementById("dispatchTypeSelect").value;
+    if (dtype === "branch") {
+        const b = document.getElementById("branchLocationId").value;
+        if (!b) {
+            e.preventDefault();
+            alert("يرجى اختيار الفرع المستلم");
+            document.getElementById("branchLocationId").focus();
+            return;
+        }
+    } else if (dtype === "sale") {
+        const cNameInput = document.getElementById("customerName");
+        if (!cNameInput.value.trim()) {
+            cNameInput.value = "عميل نقدي";
+        }
+        saveSignatureToInput();
+
+        // فحص إلزامي للتوقيع إذا كان الإجراء اعتماد وليس مسودة (وفقط في حالة التسليم المباشر)
+        if (activeSubmitAction === "approve") {
+            const dMethod = document.getElementById("deliveryMethodSelect") ? document.getElementById("deliveryMethodSelect").value : "direct";
+            if (dMethod === "shipping") {
+                const sSel = document.getElementById("shippingDestinationSelect");
+                const sOther = document.getElementById("shippingDestinationOther");
+                let sDest = sSel ? sSel.value : "";
+                if (sDest === "other") {
+                    sDest = sOther ? sOther.value.trim() : "";
+                }
+                const hiddenInp = document.getElementById("shippingDestination");
+                if (hiddenInp) hiddenInp.value = sDest;
+
+                if (!sDest) {
+                    e.preventDefault();
+                    alert("⚠️ يرجى اختيار أو كتابة المدينة / الوجهة المشحون إليها البضاعة (مثل: الخبر أو الدمام، أو كتابة مدينة أخرى).");
+                    if (sSel && sSel.value === "other" && sOther) {
+                        sOther.focus();
+                    } else if (sSel) {
+                        sSel.focus();
+                    }
+                    return false;
+                }
+            } else {
+                const sigVal = (document.getElementById("customerSignatureInput").value || "").trim();
+                if (!sigVal || !hasSigned) {
+                    e.preventDefault();
+                    alert("⚠️ تنبيه إلزامي: لا يمكن اعتماد سند الصرف للبيع بدون توقيع العميل بالاستلام.\nيرجى جعل العميل يوقع في خانة التوقيع أسفل الصفحة، أو اختيار طريقة التسليم 'شحن عبر شركة نقل' إذا تم شحن البضاعة.");
+                    const sigSec = document.getElementById("signatureSection");
+                    if (sigSec) {
+                        sigSec.scrollIntoView({ behavior: "smooth", block: "center" });
+                        const wrap = document.getElementById("signatureWrapper");
+                        if (wrap) wrap.style.border = "2px solid #ef4444";
+                    }
+                    return false;
+                }
+            }
+        }
+    }
+});
+
+// ─── منطق التوقيع الحي للعميل (Touch / Mouse Canvas) ───
+let sigCanvas = document.getElementById("signatureCanvas");
+let sigCtx = null;
+let isDrawing = false;
+let hasSigned = false;
+
+function initSignaturePad() {
+    sigCanvas = document.getElementById("signatureCanvas");
+    if (!sigCanvas) return;
+    sigCtx = sigCanvas.getContext("2d");
+    const rect = sigCanvas.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+        sigCanvas.width = rect.width;
+        sigCanvas.height = rect.height;
+    }
+    sigCtx.strokeStyle = "#0044cc"; // حبر أزرق واضح
+    sigCtx.lineWidth = 2.5;
+    sigCtx.lineCap = "round";
+    sigCtx.lineJoin = "round";
+}
+
+function getCanvasPos(e) {
+    const rect = sigCanvas.getBoundingClientRect();
+    let clientX, clientY;
+    if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+    return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+    };
+}
+
+function startDrawing(e) {
+    if (!sigCtx) initSignaturePad();
+    isDrawing = true;
+    const pos = getCanvasPos(e);
+    sigCtx.beginPath();
+    sigCtx.moveTo(pos.x, pos.y);
+    const pl = document.getElementById("signaturePlaceholder");
+    if (pl) pl.style.display = "none";
+    if (e.type.startsWith("touch")) e.preventDefault();
+}
+
+function drawStroke(e) {
+    if (!isDrawing || !sigCtx) return;
+    const pos = getCanvasPos(e);
+    sigCtx.lineTo(pos.x, pos.y);
+    sigCtx.stroke();
+    hasSigned = true;
+    if (e.type.startsWith("touch")) e.preventDefault();
+}
+
+function stopDrawing() {
+    if (isDrawing) {
+        isDrawing = false;
+        saveSignatureToInput();
+    }
+}
+
+function clearSignaturePad() {
+    if (!sigCanvas || !sigCtx) return;
+    sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+    hasSigned = false;
+    const pl = document.getElementById("signaturePlaceholder");
+    if (pl) pl.style.display = "block";
+    const inp = document.getElementById("customerSignatureInput");
+    if (inp) inp.value = "";
+}
+
+function saveSignatureToInput() {
+    if (!hasSigned || !sigCanvas) return;
+    const inp = document.getElementById("customerSignatureInput");
+    if (inp) {
+        inp.value = sigCanvas.toDataURL("image/png");
+    }
+}
+
+if (sigCanvas) {
+    sigCanvas.addEventListener("mousedown", startDrawing);
+    sigCanvas.addEventListener("mousemove", drawStroke);
+    window.addEventListener("mouseup", stopDrawing);
+
+    sigCanvas.addEventListener("touchstart", startDrawing, { passive: false });
+    sigCanvas.addEventListener("touchmove", drawStroke, { passive: false });
+    window.addEventListener("touchend", stopDrawing);
+}
+
+// تهيئة الكانفاس عند اختيار نوع الصرف "بيع"
+const origOnDispatchTypeChange = onDispatchTypeChange;
+onDispatchTypeChange = function() {
+    origOnDispatchTypeChange();
+    const dtype = document.getElementById("dispatchTypeSelect").value;
+    if (dtype === "sale") {
+        setTimeout(initSignaturePad, 80);
+    }
+};
+
+    document.addEventListener('DOMContentLoaded', updateAutoDocNumber);
+</script>
+{% endblock %}

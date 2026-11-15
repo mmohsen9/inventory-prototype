@@ -7,19 +7,145 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+import sqlite3
+
+@event.listens_for(Engine, 'connect')
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    # Enable WAL mode, busy timeout, foreign keys
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute('PRAGMA journal_mode=WAL;')
+            cursor.execute('PRAGMA synchronous=NORMAL;')
+            cursor.execute('PRAGMA busy_timeout=30000;')
+            cursor.execute('PRAGMA foreign_keys=ON;')
+            cursor.execute('PRAGMA cache_size=-64000;')
+            cursor.execute('PRAGMA temp_store=MEMORY;')
+            cursor.execute('PRAGMA mmap_size=268435456;')
+        finally:
+            cursor.close()
+
+
+
+class Role(db.Model):
+    __tablename__ = "roles"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    name_en = db.Column(db.String(100), nullable=True)
+    description = db.Column(db.String(255), nullable=True)
+    is_system = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    permissions = db.relationship("RolePermission", backref="role", cascade="all, delete-orphan", lazy="selectin")
+    users = db.relationship("User", backref="role_rel", lazy="dynamic")
+
+    @property
+    def permissions_list(self):
+        return [p.permission for p in self.permissions]
+
+    def has_perm(self, perm_code):
+        if self.name in ("admin", "مدير النظام"):
+            return True
+        return perm_code in self.permissions_list
+
+    def get_name(self, lang="ar"):
+        if lang == "en" and self.name_en:
+            return self.name_en
+        return self.name or self.name_en
+
+
+class RolePermission(db.Model):
+    __tablename__ = "role_permissions"
+    id = db.Column(db.Integer, primary_key=True)
+    role_id = db.Column(db.Integer, db.ForeignKey("roles.id", ondelete="CASCADE"), nullable=False)
+    permission = db.Column(db.String(80), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("role_id", "permission", name="uq_role_permission"),
+    )
+
 
 class User(db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    role = db.Column(db.String(20), nullable=False)  # admin / warehouse / branch_staff / accountant
+    role = db.Column(db.String(50), nullable=False)  # admin / warehouse / branch_staff / accountant / custom
+    role_id = db.Column(db.Integer, db.ForeignKey("roles.id"), nullable=True)
     location_id = db.Column(db.Integer, db.ForeignKey("locations.id"), nullable=True)
     password = db.Column(db.String(255), nullable=False)  # تجزئة آمنة مشفرة عبر generate_password_hash
+    phone = db.Column(db.String(30), nullable=True)
+    pin_code = db.Column(db.String(10), nullable=True)
     active = db.Column(db.Boolean, default=True)
     email = db.Column(db.String(120), nullable=True)
+    is_roving = db.Column(db.Boolean, default=False)  # موظف متنقل بين كافة الفروع
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     location = db.relationship("Location")
+    user_locations = db.relationship("UserLocation", backref="user", cascade="all, delete-orphan", lazy="joined")
+
+    @property
+    def authorized_locations(self):
+        """قائمة بكافة المواقع والفروع المصرح للمستخدم بالعمل فيها."""
+        if self.role in ("admin", "accountant"):
+            return Location.get_operational_locations()
+        if self.is_roving:
+            return Location.get_operational_branches()
+        locs = []
+        if self.user_locations:
+            locs = [ul.location for ul in self.user_locations if ul.location]
+        if self.location and self.location not in locs:
+            locs.insert(0, self.location)
+        return locs
+
+    @property
+    def authorized_location_ids(self):
+        return {loc.id for loc in self.authorized_locations}
+
+    @property
+    def effective_location_id(self):
+        """معرف الفرع النشط حالياً للموظف (سواء فرعه الأساسي أو الفرع المنتقل إليه)."""
+        from flask import session
+        try:
+            active_id = session.get("active_location_id")
+            if active_id:
+                active_id = int(active_id)
+                if active_id in self.authorized_location_ids:
+                    return active_id
+        except Exception:
+            pass
+        if self.location_id:
+            return self.location_id
+        auth_ids = list(self.authorized_location_ids)
+        return auth_ids[0] if auth_ids else None
+
+    @property
+    def effective_location(self):
+        """كائن الموقع/الفرع النشط حالياً."""
+        eff_id = self.effective_location_id
+        if not eff_id:
+            return self.location
+        if self.location and self.location.id == eff_id:
+            return self.location
+        return Location.query.get(eff_id)
+
+    @property
+    def is_multi_branch(self):
+        """هل يملك المستخدم صلاحية التنقل بين أكثر من فرع؟"""
+        return bool(self.is_roving or len(self.authorized_locations) > 1)
+
+    def can_access_location(self, loc_id):
+        """التحقق مما إذا كان الموقع مصرحاً للمستخدم العمل عليه."""
+        if not loc_id:
+            return True
+        if self.role in ("admin", "accountant"):
+            return True
+        if self.is_roving:
+            loc = Location.query.get(loc_id)
+            return loc is not None and loc.type == "branch"
+        return loc_id in self.authorized_location_ids
 
     def set_password(self, raw_password):
         """تجزئة وحفظ كلمة المرور بأمان تام باستخدام werkzeug.security."""
@@ -44,8 +170,53 @@ class User(db.Model):
             return True
         return False
 
+    def has_permission(self, perm_code):
+        """فحص الصلاحية بدقة متوافقة مع نمط فوديكس ومع النظام السابق."""
+        if not self.active:
+            return False
+        if self.role == "admin" or (self.role_rel and self.role_rel.name in ("admin", "مدير النظام")):
+            return True
+        if self.role_rel:
+            return self.role_rel.has_perm(perm_code)
+
+        # توافق خلفي للحسابات المسجلة بدون دور مخصص
+        fallback_role_map = {
+            "accountant": [
+                "purchases.view", "purchases.edit", "purchases.approve", "purchases.view_cost",
+                "transfers.view", "transfers.variance_settle",
+                "counts.view", "counts.settle",
+                "coffee.xero", "coffee.counts", "coffee.salla", "coffee.settings",
+                "finance.dashboard", "finance.pnl", "finance.balance_sheet", "finance.sales",
+                "finance.foodics", "finance.inventory", "finance.budget", "finance.sync",
+                "reports.stock", "reports.ledger", "foodics.hub", "items.manage_units",
+                "admin.sync_queue", "admin.users"
+            ],
+            "warehouse": [
+                "purchases.view", "purchases.create", "purchases.edit",
+                "transfers.view", "transfers.create",
+                "counts.view", "counts.create", "counts.enter",
+                "coffee.roasting", "coffee.green_issue", "coffee.roasted_dispatch", "coffee.salla",
+                "items.manage_units",
+                "reports.stock"
+            ],
+            "branch_staff": [
+                "transfers.view", "transfers.receive",
+                "counts.view", "counts.create", "counts.enter"
+            ]
+        }
+        allowed = fallback_role_map.get(self.role, [])
+        return perm_code in allowed
+
+    @property
+    def display_role_name(self):
+        if self.role_rel:
+            return self.role_rel.name
+        return self.role_label_ar
+
     @property
     def role_label_ar(self):
+        if self.role_rel:
+            return self.role_rel.name
         roles = {
             "admin": "مدير النظام",
             "warehouse": "أمين مستودع",
@@ -56,6 +227,8 @@ class User(db.Model):
 
     @property
     def role_label_en(self):
+        if self.role_rel and self.role_rel.name_en:
+            return self.role_rel.name_en
         roles = {
             "admin": "System Admin",
             "warehouse": "Warehouse Keeper",
@@ -66,6 +239,100 @@ class User(db.Model):
 
     def get_role_label(self, lang="ar"):
         return self.role_label_en if lang == "en" else self.role_label_ar
+
+
+# ---------------------------------------------------------------
+# مجموعات الصلاحيات الشاملة (مطابقة لنمط فوديكس)
+# ---------------------------------------------------------------
+SYSTEM_PERMISSION_GROUPS = [
+    {
+        "key": "purchases",
+        "title_ar": "صلاحيات المشتريات والتوريد",
+        "title_en": "Purchases & Receiving",
+        "icon": "📦",
+        "permissions": [
+            ("purchases.view", "عرض سندات الاستلام", "قراءة واستعراض فواتير وسندات المشتريات"),
+            ("purchases.create", "إنشاء سند استلام جديد", "إدخال فاتورة استلام جديدة وحفظها كمسودة"),
+            ("purchases.edit", "تعديل وإعادة فتح السندات", "تعديل الكميات وإعادة فتح السندات كمسودة"),
+            ("purchases.approve", "الاعتماد المالي للمشتريات", "اعتماد الفاتورة وتحديث الأرصدة المخزنية"),
+            ("purchases.delete", "حذف سندات الاستلام", "حذف السند والتراجع التلقائي عن آثاره المخزنية"),
+            ("purchases.view_cost", "عرض أسعار وتكلفة الشراء", "إظهار عمود التكلفة والإجمالي المالي (إخفاء لحجب الأسعار)"),
+        ]
+    },
+    {
+        "key": "transfers",
+        "title_ar": "صلاحيات صرف وتحويل المواد",
+        "title_en": "Material Transfers & Disbursements",
+        "icon": "🚚",
+        "permissions": [
+            ("transfers.view", "عرض سندات الصرف والتحويل", "استعراض سجل شحنات وسندات الصرف"),
+            ("transfers.create", "إنشاء وإرسال سند صرف للفروع", "صرف بضاعة من المستودع وتحويلها لفرع"),
+            ("transfers.receive", "استلام ومطابقة الشحنات بالفرع", "تأكيد استلام الكميات ومطابقتها بفرع الاستلام"),
+            ("transfers.variance_settle", "اعتماد وتسوية فروقات التحويل", "الموافقة المحاسبية على الفروقات وتطبيقها"),
+            ("transfers.cancel", "إلغاء وإعادة السند كمسودة", "إلغاء الصرف واسترجاع البضاعة لمستودع المصدر"),
+            ("transfers.delete", "حذف سندات الصرف", "حذف السند وإلغاء حركاته المخزنية"),
+        ]
+    },
+    {
+        "key": "counts",
+        "title_ar": "صلاحيات الجرد المخزني",
+        "title_en": "Inventory Counts",
+        "icon": "⚖️",
+        "permissions": [
+            ("counts.view", "عرض جلسات وتقارير الجرد", "استعراض سجل جلسات الجرد الدفتري والفعلي"),
+            ("counts.create", "بدء جلسة جرد جديدة", "فتح جلسة جرد لموقع أو فرع"),
+            ("counts.enter", "إدخال وحفظ قراءات العد الفعلي", "تسجيل الكميات المجرودة وحفظها كمسودة"),
+            ("counts.settle", "اعتماد وتسوية فروقات الجرد", "تسوية الفروقات وتحديث الأرصدة ودفتر الأستاذ"),
+            ("counts.delete", "حذف جلسات الجرد", "حذف جلسة الجرد والتراجع عن التسويات"),
+        ]
+    },
+    {
+        "key": "coffee",
+        "title_ar": "صلاحيات قسم القهوة (الأخضر والمحمص)",
+        "title_en": "Coffee Division",
+        "icon": "☕",
+        "permissions": [
+            ("coffee.roasting", "أوامر التحميص والتشغيل", "إنشاء أمر تحميص وإدخال الناتج واعتماده"),
+            ("coffee.green_issue", "سندات صرف البن الأخضر", "إنشاء واعتماد سندات صرف الأخضر"),
+            ("coffee.roasted_dispatch", "سندات صرف البن المحمص", "إنشاء واعتماد سندات صرف المحمص للفروع والمبيعات"),
+            ("coffee.counts", "جرد أصناف القهوة", "تسجيل واعتماد محاضر جرد البن وتسويتها"),
+            ("coffee.xero", "الترحيل لنظام Xero", "ترحيل الفواتير والإشعارات الدائنة لـ Xero"),
+            ("coffee.salla", "مبيعات وطلبات متجر سلة", "استعراض ومطابقة طلبات متجر سلة والترحيل اليومي لسندات الصرف"),
+            ("coffee.settings", "إعدادات المحمصة وربط Xero", "إدارة وتعديل حسابات التوجيه ومراكز التكلفة وإعدادات المحمصة"),
+        ]
+    },
+    {
+        "key": "finance",
+        "title_ar": "صلاحيات الداشبورد والتقارير المالية",
+        "title_en": "Financial Dashboard & Reports",
+        "icon": "💹",
+        "permissions": [
+            ("finance.dashboard", "لوحة المعلومات المالية التنفيذية", "عرض المؤشرات المالية العامة والإيرادات والأرباح الإجمالية"),
+            ("finance.pnl", "قائمة الدخل وتحليل الأرباح (P&L)", "استعراض قوائم الدخل الشهرية والمقارنات وهوامش الربح"),
+            ("finance.balance_sheet", "المركز المالي والتدفقات النقدية", "عرض الميزانية العمومية والسيولة والنسب المالية"),
+            ("finance.sales", "مبيعات العملاء وقنوات البيع", "تحليل مبيعات التطبيقات والموقع والعملاء بالجملة والتجزئة"),
+            ("finance.foodics", "مبيعات وتقارير Foodics", "الاطلاع على مبيعات الفروع والمنتجات الأكثر مبيعاً في فوديكس"),
+            ("finance.inventory", "تقارير المخزون والحركات المالية", "الاطلاع على تقييم المخزون المالي وكشوفات الحركات"),
+            ("finance.budget", "الموازنة التقديرية والتوقعات", "إدارة الميزانية التقديرية ومقارنة الفعلي بالمخطط والتنبؤات"),
+            ("finance.sync", "المزامنة المالية واستيراد Xero & Foodics", "مزامنة البيانات الحية واستيراد ملفات الإكسيل والتسويات"),
+        ]
+    },
+    {
+        "key": "reports_admin",
+        "title_ar": "صلاحيات التقارير والرقابة والإدارة",
+        "title_en": "Reports & System Administration",
+        "icon": "📊",
+        "permissions": [
+            ("reports.stock", "عرض تقارير أرصدة المخزون", "الاطلاع على تقرير المخزون العام"),
+            ("reports.ledger", "عرض سجل الحركات (دفتر الأستاذ)", "كشف الحركات المخزنية والمالية التفصيلية"),
+            ("foodics.hub", "مركز تكامل فوديكس والمزامنة الحية", "إدارة مركز التحكم ومزامنة فوديكس السحابية"),
+            ("items.manage_units", "إدارة وحدات المخزون ومعامل التحويل", "ضبط وتطبيع وحدات التعبئة والمكونات والكراتين"),
+            ("admin.users", "إدارة المستخدمين والأدوار", "إضافة وتعديل المستخدمين وضبط الأدوار والصلاحيات"),
+            ("admin.sync_queue", "إدارة طابور مزامنة Foodics", "متابعة وإعادة محاولة العمليات المعلقة في طابور فوديكس"),
+            ("admin.settings", "إدارة إعدادات النظام وربط API", "ضبط إعدادات فوديكس وزيرو والخيارات العامة"),
+        ]
+    }
+]
 
 
 class Location(db.Model):
@@ -91,6 +358,47 @@ class Location(db.Model):
         if lang == "en" and self.name_en:
             return self.name_en
         return self.name_ar or self.name_en
+
+    @classmethod
+    def get_operational_locations(cls):
+        """
+        إرجاع المواقع التشغيلية المعتمدة فقط:
+        - الفروع والمستودعات المربوطة بفوديكس (foodics_id is not None)
+        - ومستودع البن الأخضر ومستودع البن المحمص
+        - استبعاد الفروع التجريبية/الوهمية غير المربوطة بفوديكس
+        """
+        query = cls.query.filter(
+            (cls.foodics_id.isnot(None)) |
+            (cls.name_ar.in_(["مستودع البن الأخضر", "مستودع البن المحمص", "Green Coffee Warehouse", "Roasted Coffee Warehouse"]))
+        )
+        locs = query.order_by(cls.type.desc(), cls.name_ar.asc()).all()
+        return locs if locs else cls.query.order_by(cls.type.desc(), cls.name_ar.asc()).all()
+
+    @classmethod
+    def get_operational_branches(cls):
+        """
+        إرجاع الفروع التشغيلية المعتمدة فقط المربوطة بفوديكس (تستبعد الفروع التجريبية):
+        """
+        branches = cls.query.filter(
+            cls.type == "branch",
+            cls.foodics_id.isnot(None)
+        ).order_by(cls.name_ar.asc()).all()
+        return branches if branches else cls.query.filter_by(type="branch").order_by(cls.name_ar.asc()).all()
+
+
+class UserLocation(db.Model):
+    """جدول ربط الفروع المتعددة للموظف المتنقل (Many-to-Many)."""
+    __tablename__ = "user_locations"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    location_id = db.Column(db.Integer, db.ForeignKey("locations.id", ondelete="CASCADE"), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "location_id", name="uq_user_location"),
+    )
+
+    location = db.relationship("Location")
 
 
 class Item(db.Model):
@@ -175,6 +483,7 @@ class StockMovement(db.Model):
             "count_adjustment": "تسوية جرد",
             "initial": "رصيد افتتاحي",
             "manual_adjustment": "تعديل يدوي",
+            "pos_consumption": "استهلاك مبيعات فوديكس",
         }
         return types.get(self.movement_type, self.movement_type)
 
@@ -187,6 +496,7 @@ class StockMovement(db.Model):
             "count_adjustment": "Count Adjustment",
             "initial": "Initial Balance",
             "manual_adjustment": "Manual Adjustment",
+            "pos_consumption": "POS Consumption",
         }
         return types.get(self.movement_type, self.movement_type)
 
@@ -401,16 +711,37 @@ class CountSession(db.Model):
     count_date = db.Column(db.Date, default=datetime.utcnow)
     created_by = db.Column(db.Integer, db.ForeignKey("users.id"))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    status = db.Column(db.String(20), default="open")  # open / pending_review / approved / queued / posted / failed
+    status = db.Column(db.String(20), default="open")  # draft / open / pending_review / approved / queued / posted / failed
     foodics_reference = db.Column(db.String(80), nullable=True)
+    session_number = db.Column(db.String(50), nullable=True)
 
     location = db.relationship("Location")
     creator = db.relationship("User", foreign_keys=[created_by])
     lines = db.relationship("CountLine", backref="session", cascade="all, delete-orphan")
 
+    @classmethod
+    def generate_next_session_number(cls) -> str:
+        """يولد رقم تسلسلي أوتوماتيكي لجلسة الجرد (مثل Nov-0001)."""
+        last = SystemSetting.get_val("count_session_seq", None)
+        if last is None:
+            max_id = db.session.query(db.func.max(cls.id)).scalar() or 0
+            seq = max_id + 1
+        else:
+            try:
+                seq = int(last) + 1
+            except (ValueError, TypeError):
+                seq = 1
+        SystemSetting.set_val("count_session_seq", str(seq))
+        return f"Nov-{seq:04d}"
+
+    @property
+    def display_number(self):
+        return self.session_number if self.session_number else f"#{self.id}"
+
     @property
     def status_label_ar(self):
         labels = {
+            "draft": "مسودة 📝",
             "open": "جلسة مفتوحة",
             "pending_review": "بانتظار المراجعة",
             "approved": "معتمد",
@@ -423,6 +754,7 @@ class CountSession(db.Model):
     @property
     def status_label_en(self):
         labels = {
+            "draft": "Draft",
             "open": "Open",
             "pending_review": "Pending Review",
             "approved": "Approved",

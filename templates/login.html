@@ -1,24 +1,35 @@
 <!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html dir="{{ 'rtl' if lang == 'ar' else 'ltr' }}" lang="{{ lang }}">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل الدخول - نوفمبر كفي لإدارة المخزون</title>
+    <title>{{ 'تسجيل الدخول - نوفمبر كفي' if lang == 'ar' else 'Sign In - Novembre Cafe' }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
         body {
-            font-family: 'Tajawal', sans-serif;
+            font-family: {% if lang == 'en' %}'Inter', -apple-system, sans-serif{% else %}'Tajawal', sans-serif{% endif %};
             background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            flex-direction: column;
         }
+        {% if lang == 'en' %}
+        html[dir="ltr"] body {
+            direction: ltr !important;
+            text-align: left !important;
+        }
+        html[dir="ltr"] .form-group,
+        html[dir="ltr"] .form-group label {
+            text-align: left !important;
+        }
+        {% endif %}
 
         .login-card {
             background: rgba(255, 255, 255, 0.98);
@@ -116,10 +127,17 @@
 
 <body>
     <div class="login-card">
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+            <a href="{{ url_for('toggle_lang') }}" style="background: var(--gray-100); border: 1px solid var(--gray-300); color: var(--gray-700); text-decoration: none; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" title="Switch Language">
+                🌐 {{ 'English' if lang == 'ar' else 'العربية' }}
+            </a>
+        </div>
         <div class="login-brand">
-            <div class="brand-logo-circle">🏢</div>
-            <h2>مساكن رفاء</h2>
-            <p>نظام إدخال حركات وإدارة المخزون</p>
+            <div class="brand-logo-circle" style="background: #ffffff; padding: 6px; overflow: hidden; border: 1px solid rgba(0,0,0,0.08); width: 68px; height: 68px; border-radius: 50%; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="نوفمبر كفي" style="width: 100%; height: 100%; object-fit: contain;">
+            </div>
+            <h2>{{ 'نوفمبر كوفي' if lang == 'ar' else 'Novembre Cafe' }}</h2>
+            <p>{{ 'نظام إدخال حركات وإدارة المخزون' if lang == 'ar' else 'Inventory Operations & Management System' }}</p>
         </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -188,6 +206,7 @@
             }
         }
     </script>
+    <script src="{{ url_for('static', filename='js/app-translator.js') }}"></script>
 </body>
 
 </html>

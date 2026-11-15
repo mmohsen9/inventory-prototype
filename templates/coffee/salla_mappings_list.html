@@ -1,0 +1,360 @@
+{% extends "coffee/coffee_base.html" %}
+{% block title %}جدول مطابقة أصناف سلة - مبيعات المواقع الإلكترونية{% endblock %}
+
+{% block coffee_content %}
+<div class="kf-page-header" style="margin-bottom: 20px;">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+        <span style="font-size: 26px;">🔄</span>
+        <h1 style="font-size: 22px; font-weight: 800; color: #78350f; margin: 0;">جدول مطابقة وتحويل أصناف سلة (Salla Product Mapping)</h1>
+        <span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px;">محرك المطابقة الآلي</span>
+      </div>
+      <p style="font-size: 13px; color: #64748b; margin: 0;">
+        ربط منتجات التجزئة في سلة (الأكياس، الأظرف، البكجات، والأدوات) بأصناف المحمصة بالكيلو والمستودع الرئيسي لحساب الاستهلاك المخزني وترحيل Xero بدقة.
+      </p>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <a href="{{ url_for('coffee.salla_orders_list') }}" class="btn btn-outline-secondary" style="font-size: 13px; font-weight: 700; border-radius: 8px;">
+        ← العودة لطابور الطلبات
+      </a>
+      <button type="button" class="btn" onclick="openNewMappingModal()" style="background: linear-gradient(135deg, #b45309, #d97706); color: #fff; font-weight: 800; font-size: 13px; padding: 8px 18px; border-radius: 8px; box-shadow: 0 4px 12px rgba(180, 83, 9, 0.25);">
+        + ربط / إضافة صنف جديد
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- شريط تنبيه الأصناف الجديدة بمتجر سلة -->
+{% if unmapped_items and unmapped_items|length > 0 %}
+<div style="background: linear-gradient(135deg, #fff7ed, #ffedd5); border: 2px solid #f97316; border-radius: 14px; padding: 18px 22px; margin-bottom: 24px; box-shadow: 0 4px 18px rgba(249, 115, 22, 0.15);">
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span style="font-size: 32px;">🔔</span>
+      <div>
+        <div style="font-size: 16px; font-weight: 900; color: #9a3412;">
+          وصل إشعار من متجر سلة بوجود أصناف جديدة بانتظار تحديد نوعها ووزنها!
+        </div>
+        <div style="font-size: 13px; color: #c2410c; margin-top: 3px;">
+          اضغط مباشرة على زر <strong>[⚡ ربط هذا الصنف وتحديد وزنه ومستودعه]</strong> أدناه ليتم تعبئة الاسم ورقم سلة تلقائياً:
+        </div>
+      </div>
+    </div>
+    <span class="badge" style="background: #ea580c; color: #fff; font-size: 12px; font-weight: 800; padding: 6px 14px; border-radius: 20px;">
+      {{ unmapped_items|length }} صنف بانتظار الربط
+    </span>
+  </div>
+
+  <div style="margin-top: 14px; display: flex; flex-direction: column; gap: 10px;">
+    {% for un in unmapped_items %}
+      <div style="background: #ffffff; border: 1.5px solid #fed7aa; border-radius: 10px; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <span style="font-size: 15px; font-weight: 900; color: #1e293b;">{{ un.name }}</span>
+          {% if un.id %}
+            <span style="background: #e0f2fe; color: #0369a1; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 6px; font-family: monospace;">No. {{ un.id }}</span>
+          {% endif %}
+          <span style="color: #64748b; font-size: 12px;">• {{ un.source or 'إشعار صنف جديد في سلة' }}</span>
+        </div>
+        <button type="button" onclick="quickMatchUnmapped('{{ un.name|e }}', '{{ un.id|e }}')" class="btn" style="background: linear-gradient(135deg, #ea580c, #c2410c); color: #fff; font-size: 13px; font-weight: 800; padding: 7px 18px; border-radius: 8px; box-shadow: 0 3px 10px rgba(234, 88, 12, 0.3);">
+          ⚡ ربط وتحديد هذا الصنف الآن ←
+        </button>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- كروت إحصائيات المطابقة -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px;">
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;">
+    <div style="font-size: 12px; font-weight: 700; color: #64748b; margin-bottom: 6px;">إجمالي الأصناف المربوطة</div>
+    <div style="font-size: 24px; font-weight: 900; color: #1e293b;">{{ mappings|length }}</div>
+    <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">بن محمص، أدوات، وبكجات</div>
+  </div>
+  <div style="background: #ffffff; border: 1px solid #fed7aa; border-radius: 12px; padding: 16px;">
+    <div style="font-size: 12px; font-weight: 700; color: #c2410c; margin-bottom: 6px;">أصناف البن المحمص والأظرف</div>
+    <div style="font-size: 24px; font-weight: 900; color: #b45309;">{{ coffee_mappings_count }}</div>
+    <div style="font-size: 11px; color: #b45309; margin-top: 4px;">تخصم بالكيلو من مستودع المحمصة</div>
+  </div>
+  <div style="background: #ffffff; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px;">
+    <div style="font-size: 12px; font-weight: 700; color: #15803d; margin-bottom: 6px;">المواد الجاهزة والأدوات</div>
+    <div style="font-size: 24px; font-weight: 900; color: #16a34a;">{{ tools_mappings_count }}</div>
+    <div style="font-size: 11px; color: #16a34a; margin-top: 4px;">تخصم بالقطعة من المستودع الرئيسي</div>
+  </div>
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;">
+    <div style="font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 6px;">الحساب الافتراضي في زيرو</div>
+    <div style="font-size: 22px; font-weight: 900; color: #0284c7;">203</div>
+    <div style="font-size: 11px; color: #64748b; margin-top: 4px;">مبيعات المتجر الإلكتروني موقع سلة</div>
+  </div>
+</div>
+
+<!-- جدول الأصناف المربوطة -->
+<div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+  <div style="padding: 14px 18px; border-bottom: 1px solid #e2e8f0; background: #fafafa; display: flex; justify-content: space-between; align-items: center;">
+    <span style="font-size: 14px; font-weight: 800; color: #334155;">قائمة أصناف سلة المسجلة والمطابقة</span>
+    <input type="text" id="mappingSearch" placeholder="🔍 بحث سريع باسم الصنف أو الكود..." style="font-size: 12px; padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; width: 240px;" onkeyup="filterMappingTable()">
+  </div>
+
+  <div class="table-responsive">
+    <table class="table" id="mappingsTable" style="margin: 0; font-size: 13px; text-align: right;">
+      <thead style="background: #f8fafc; color: #475569; font-size: 12px;">
+        <tr>
+          <th style="padding: 12px 14px;">اسم الصنف في سلة</th>
+          <th style="padding: 12px 14px;">No. في سلة</th>
+          <th style="padding: 12px 14px;">النوع والتصنيف</th>
+          <th style="padding: 12px 14px;">الصنف المقابل في البرنامج</th>
+          <th style="padding: 12px 14px;">الوزن الصافي (KG)</th>
+          <th style="padding: 12px 14px;">المستودع المنصرف منه</th>
+          <th style="padding: 12px 14px;">حساب زيرو</th>
+          <th style="padding: 12px 14px;">ملاحظات البكج</th>
+          <th style="padding: 12px 14px; text-align: center;">إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in mappings %}
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 12px 14px; font-weight: 800; color: #0f172a;">
+            {{ m.salla_product_name }}
+          </td>
+          <td style="padding: 12px 14px; color: #0284c7; font-weight: 700; font-family: monospace;">
+            {{ m.salla_product_id or '—' }}
+          </td>
+          <td style="padding: 12px 14px;">
+            {% if m.item_type == 'coffee' %}
+              <span class="badge" style="background: #fef3c7; color: #92400e; font-weight: 700;">☕ بن محمص</span>
+            {% elif m.item_type == 'bundle' %}
+              <span class="badge" style="background: #f3e8ff; color: #6b21a8; font-weight: 700;">🎁 بكج مجمع</span>
+            {% else %}
+              <span class="badge" style="background: #e0f2fe; color: #0369a1; font-weight: 700;">📦 أدوات ومواد</span>
+            {% endif %}
+            {% if m.salla_category %}
+              <br><small style="color: #64748b; font-size: 11px;">{{ m.salla_category }}</small>
+            {% endif %}
+          </td>
+          <td style="padding: 12px 14px; font-weight: 700; color: #334155;">
+            {{ m.target_display_name }}
+          </td>
+          <td style="padding: 12px 14px; font-weight: 800; color: #047857;">
+            {% if m.weight_kg and m.weight_kg > 0 %}
+              {{ m.weight_kg }} كجم
+            {% else %}
+              <span style="color: #94a3b8; font-weight: normal;">— (بالقطعة)</span>
+            {% endif %}
+          </td>
+          <td style="padding: 12px 14px;">
+            {% if m.source_warehouse == 'roasted' %}
+              <span style="color: #b45309; font-weight: 700;">مستودع المحمصة</span>
+            {% else %}
+              <span style="color: #059669; font-weight: 700;">المستودع الرئيسي</span>
+            {% endif %}
+          </td>
+          <td style="padding: 12px 14px; font-weight: 700; color: #0284c7;">
+            {{ m.xero_account_code or '203' }}
+          </td>
+          <td style="padding: 12px 14px; font-size: 11px; color: #64748b;">
+            {{ m.package_details or '—' }}
+          </td>
+          <td style="padding: 12px 14px; text-align: center;">
+            <div style="display: inline-flex; gap: 4px;">
+              <button type="button" class="btn btn-sm btn-outline-primary" onclick='editMapping({{ m.to_dict()|tojson }})' style="font-size: 11px; padding: 2px 8px; border-radius: 4px;">
+                ✏️
+              </button>
+              <form action="{{ url_for('coffee.salla_mapping_delete', mapping_id=m.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('هل أنت متأكد من حذف هذا الربط؟');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger" style="font-size: 11px; padding: 2px 8px; border-radius: 4px;">
+                  🗑️
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal إضافة وتعديل الربط -->
+<div class="modal fade" id="mappingModal" tabindex="-1" style="display: none; background: rgba(0,0,0,0.5);">
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 600px; margin: 1.75rem auto;">
+    <div class="modal-content" style="border-radius: 14px; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+      <form action="{{ url_for('coffee.salla_mapping_save') }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+        <input type="hidden" name="mapping_id" id="modal_mapping_id">
+
+        <div class="modal-header" style="background: #fafafa; border-bottom: 1px solid #e2e8f0; padding: 14px 20px; border-radius: 14px 14px 0 0;">
+          <h5 class="modal-title" id="modalTitle" style="font-size: 16px; font-weight: 800; color: #78350f; margin: 0;">
+            + إضافة / ربط صنف من سلة
+          </h5>
+          <button type="button" class="btn-close" onclick="closeMappingModal()"></button>
+        </div>
+
+        <div class="modal-body" style="padding: 20px; text-align: right;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div>
+              <label style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px; display: block;">اسم الصنف في سلة *</label>
+              <input type="text" name="salla_product_name" id="modal_product_name" required class="form-control" style="font-size: 13px;" placeholder="مثال: كولمبيا توليما 250g">
+            </div>
+            <div>
+              <label style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px; display: block;">No. / كود المنتج في سلة</label>
+              <input type="text" name="salla_product_id" id="modal_product_id" class="form-control" style="font-size: 13px;" placeholder="مثال: 766085130">
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div>
+              <label style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px; display: block;">نوع الصنف *</label>
+              <select name="item_type" id="modal_item_type" class="form-select" style="font-size: 13px;" onchange="toggleItemTypeFields()">
+                <option value="coffee">☕ بن محمص (بالوزن/كجم)</option>
+                <option value="bundle">🎁 بكج / خلطة مركبة (بالوزن/كجم)</option>
+                <option value="tool">📦 أدوات ومواد جاهزة (بالقطعة)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px; display: block;">المستودع المنصرف منه *</label>
+              <select name="source_warehouse" id="modal_source_warehouse" class="form-select" style="font-size: 13px;">
+                <option value="roasted">مستودع المحمصة (البن المحمص)</option>
+                <option value="main">المستودع الرئيسي (قسم الكافيهات)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- حقل اختيار صنف القهوة -->
+          <div id="coffee_item_field" style="margin-bottom: 14px;">
+            <label style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px; display: block;">صنف البن المحمص المقابل في المحمصة *</label>
+            <select name="coffee_item_id" id="modal_coffee_item_id" class="form-select" style="font-size: 13px;">
+              <option value="">-- اختر صنف البن المحمص --</option>
+              {% for ci in roasted_coffee_items %}
+                <option value="{{ ci.id }}">{{ ci.xero_item_code or ci.base_code }} - {{ ci.name_ar }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- حقل اختيار صنف الأدوات -->
+          <div id="general_item_field" style="margin-bottom: 14px; display: none;">
+            <label style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px; display: block;">صنف الأداة المقابل في المستودع الرئيسي *</label>
+            <select name="general_item_id" id="modal_general_item_id" class="form-select" style="font-size: 13px;">
+              <option value="">-- اختر الصنف من المستودع الرئيسي --</option>
+              {% for gi in general_items %}
+                <option value="{{ gi.id }}">[{{ gi.sku }}] {{ gi.name_ar or gi.name_en }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+            <div>
+              <label style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px; display: block;">الوزن الصافي بالكيلو (KG)</label>
+              <input type="number" step="0.001" name="weight_kg" id="modal_weight_kg" class="form-control" style="font-size: 13px;" placeholder="0.250 أو 0.150 أو 1.000">
+              <small style="font-size: 10px; color: #64748b;">(0 للأدوات والمواد المباعة بالقطعة)</small>
+            </div>
+            <div>
+              <label style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px; display: block;">حساب المبيعات في Xero</label>
+              <input type="text" name="xero_account_code" id="modal_xero_account" value="203" class="form-control" style="font-size: 13px;">
+              <small style="font-size: 10px; color: #64748b;">الافتراضي: 203 - مبيعات المتجر الإلكتروني</small>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 10px;">
+            <label style="font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px; display: block;">ملاحظات / تفاصيل البكج (اختياري)</label>
+            <input type="text" name="package_details" id="modal_package_details" class="form-control" style="font-size: 13px;" placeholder="مثال: يتكون من صنفين بن محمص 50% كولومبيا + 50% مكسيك">
+          </div>
+        </div>
+
+        <div class="modal-footer" style="background: #fafafa; border-top: 1px solid #e2e8f0; padding: 12px 20px; border-radius: 0 0 14px 14px;">
+          <button type="button" class="btn btn-secondary" onclick="closeMappingModal()" style="font-size: 13px; font-weight: 700; border-radius: 8px;">إلغاء</button>
+          <button type="submit" class="btn" style="background: #b45309; color: #fff; font-size: 13px; font-weight: 800; border-radius: 8px; padding: 8px 20px;">حفظ الربط ✓</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function openNewMappingModal() {
+  document.getElementById('modalTitle').innerText = '+ إضافة / ربط صنف جديد من سلة';
+  document.getElementById('modal_mapping_id').value = '';
+  document.getElementById('modal_product_name').value = '';
+  document.getElementById('modal_product_id').value = '';
+  document.getElementById('modal_item_type').value = 'coffee';
+  document.getElementById('modal_source_warehouse').value = 'roasted';
+  document.getElementById('modal_coffee_item_id').value = '';
+  document.getElementById('modal_general_item_id').value = '';
+  document.getElementById('modal_weight_kg').value = '0.250';
+  document.getElementById('modal_xero_account').value = '203';
+  document.getElementById('modal_package_details').value = '';
+  toggleItemTypeFields();
+  document.getElementById('mappingModal').style.display = 'block';
+}
+
+function closeMappingModal() {
+  document.getElementById('mappingModal').style.display = 'none';
+}
+
+function quickMatchUnmapped(name, id) {
+  openNewMappingModal();
+  document.getElementById('modal_product_name').value = name;
+  document.getElementById('modal_product_id').value = id;
+  
+  // ذكاء آلي في استنتاج الوزن الافتراضي
+  var lower = name.toLowerCase();
+  if (lower.indexOf('250') > -1 || lower.indexOf('ربع') > -1) {
+    document.getElementById('modal_weight_kg').value = '0.250';
+  } else if (lower.indexOf('كيلو') > -1 || lower.indexOf('1kg') > -1 || lower.indexOf('1 kg') > -1) {
+    document.getElementById('modal_weight_kg').value = '1.000';
+  } else if (lower.indexOf('ظرف') > -1 || lower.indexOf('أظرف') > -1 || lower.indexOf('اظرف') > -1) {
+    document.getElementById('modal_weight_kg').value = '0.150';
+  }
+
+  // تركيز المؤشر على اختيار صنف المحمصة المقابل
+  setTimeout(function() {
+    var cSel = document.getElementById('modal_coffee_item_id');
+    if (cSel) cSel.focus();
+  }, 200);
+}
+
+function editMapping(m) {
+  document.getElementById('modalTitle').innerText = '✏️ تعديل ربط صنف: ' + m.salla_product_name;
+  document.getElementById('modal_mapping_id').value = m.id;
+  document.getElementById('modal_product_name').value = m.salla_product_name;
+  document.getElementById('modal_product_id').value = m.salla_product_id || '';
+  document.getElementById('modal_item_type').value = m.item_type || 'coffee';
+  document.getElementById('modal_source_warehouse').value = m.source_warehouse || 'roasted';
+  document.getElementById('modal_coffee_item_id').value = m.coffee_item_id || '';
+  document.getElementById('modal_general_item_id').value = m.general_item_id || '';
+  document.getElementById('modal_weight_kg').value = m.weight_kg || '0.0';
+  document.getElementById('modal_xero_account').value = m.xero_account_code || '203';
+  document.getElementById('modal_package_details').value = m.package_details || '';
+  toggleItemTypeFields();
+  document.getElementById('mappingModal').style.display = 'block';
+}
+
+function toggleItemTypeFields() {
+  var t = document.getElementById('modal_item_type').value;
+  var cField = document.getElementById('coffee_item_field');
+  var gField = document.getElementById('general_item_field');
+  var sw = document.getElementById('modal_source_warehouse');
+
+  if (t === 'tool') {
+    cField.style.display = 'none';
+    gField.style.display = 'block';
+    sw.value = 'main';
+    document.getElementById('modal_weight_kg').value = '0.0';
+  } else {
+    cField.style.display = 'block';
+    gField.style.display = 'none';
+    sw.value = 'roasted';
+  }
+}
+
+function filterMappingTable() {
+  var input = document.getElementById('mappingSearch').value.toLowerCase();
+  var table = document.getElementById('mappingsTable');
+  var trs = table.getElementsByTagName('tr');
+
+  for (var i = 1; i < trs.length; i++) {
+    var text = trs[i].innerText.toLowerCase();
+    trs[i].style.display = text.indexOf(input) > -1 ? '' : 'none';
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,645 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}دليل عملاء القهوة والمبيعات{% endblock %}
+
+{% block coffee_content %}
+  <div class="kf-page-header">
+    <div>
+      <h1 class="kf-page-title">👥 دليل عملاء القهوة والمبيعات</h1>
+      <p style="margin: 4px 0 0; font-size: 13px; color: var(--kf-steel);">
+        إدارة وتعديل وحذف العملاء وتأكيد أرقام الهواتف وتسهيل الإكمال التلقائي في سندات صرف البن الأخضر والمحمص
+      </p>
+    </div>
+    <div class="kf-page-actions">
+      <a href="{{ url_for('coffee.report_customers_statement') }}" class="kf-btn kf-btn-secondary" title="كشف حساب واستلامات العملاء">
+        <span>📑 كشف حساب العملاء</span>
+      </a>
+      <button type="button" class="kf-btn kf-btn-primary btn-add-customer" id="btnOpenNewCustomer" onclick="openNewCustomerModal()">
+        <span>+ إضافة عميل جديد</span>
+      </button>
+      <button type="button" onclick="window.print()" class="kf-btn kf-btn-secondary">
+        {{ ui.icon_file_text() }}
+        <span>طباعة الدليل</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- كروت المؤشرات العلوية -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 20px;">
+    <!-- إجمالي العملاء -->
+    <a href="{{ url_for('coffee.customers_list') }}" style="text-decoration: none;">
+      <div style="background: white; border: 1.5px solid {% if phone_filter == 'all' %}var(--kf-amber){% else %}var(--kf-border){% endif %}; border-radius: 12px; padding: 14px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: transform 0.15s ease;">
+        <div style="font-size: 12px; font-weight: 700; color: var(--kf-steel); display: flex; align-items: center; justify-content: space-between;">
+          <span>إجمالي العملاء المسجلين</span>
+          <span>👥</span>
+        </div>
+        <div style="font-size: 24px; font-weight: 900; color: #1e293b; margin-top: 6px;">{{ total_count }}</div>
+        <div style="font-size: 11px; color: var(--kf-steel); margin-top: 4px;">كافة العملاء في الدليل</div>
+      </div>
+    </a>
+
+    <!-- لديهم هاتف مؤكد -->
+    <a href="{{ url_for('coffee.customers_list', phone_filter='with_phone', q=search_q) }}" style="text-decoration: none;">
+      <div style="background: white; border: 1.5px solid {% if phone_filter == 'with_phone' %}#10b981{% else %}var(--kf-border){% endif %}; border-radius: 12px; padding: 14px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: transform 0.15s ease;">
+        <div style="font-size: 12px; font-weight: 700; color: #059669; display: flex; align-items: center; justify-content: space-between;">
+          <span>لديهم هاتف مسجل ومؤكد</span>
+          <span>✅</span>
+        </div>
+        <div style="font-size: 24px; font-weight: 900; color: #059669; margin-top: 6px;">{{ with_phone_count }}</div>
+        <div style="font-size: 11px; color: #047857; margin-top: 4px;">جاهزون للإكمال التلقائي بالهاتف</div>
+      </div>
+    </a>
+
+    <!-- بانتظار تأكيد الهاتف -->
+    <a href="{{ url_for('coffee.customers_list', phone_filter='no_phone', q=search_q) }}" style="text-decoration: none;">
+      <div style="background: white; border: 1.5px solid {% if phone_filter == 'no_phone' %}#f59e0b{% else %}var(--kf-border){% endif %}; border-radius: 12px; padding: 14px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: transform 0.15s ease;">
+        <div style="font-size: 12px; font-weight: 700; color: #d97706; display: flex; align-items: center; justify-content: space-between;">
+          <span>بانتظار تأكيد رقم الهاتف</span>
+          <span>📱</span>
+        </div>
+        <div style="font-size: 24px; font-weight: 900; color: #d97706; margin-top: 6px;">{{ no_phone_count }}</div>
+        <div style="font-size: 11px; color: #b45309; margin-top: 4px;">يمكن تأكيد الجوال بنقرة زر أو عند إصدار السند</div>
+      </div>
+    </a>
+  </div>
+
+  <!-- بطاقة البحث والتصفية -->
+  <div style="background: white; border: 1px solid var(--kf-border); border-radius: 12px; padding: 14px 16px; margin-bottom: 20px;">
+    <form method="get" action="{{ url_for('coffee.customers_list') }}" id="customerSearchForm" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;" onsubmit="event.preventDefault(); filterCustomersLive();">
+      <!-- حقل البحث المتفاعل بدون كتابة أي بيان أو تسمية فوقه -->
+      <div style="flex: 2; min-width: 260px; position: relative;">
+        <input type="text" 
+               id="liveCustomerSearch" 
+               name="q" 
+               value="{{ search_q }}" 
+               placeholder="🔍 ابحث باسم العميل أو الأحرف أو رقم الجوال..." 
+               class="form-control" 
+               autocomplete="off"
+               oninput="onCustomerSearchInput(this.value)"
+               style="height: 42px; font-size: 13.5px; border-radius: 8px; padding-left: 36px; padding-right: 14px;">
+        <button type="button" 
+                id="clearCustomerSearchBtn" 
+                onclick="clearCustomerSearch()" 
+                title="مسح البحث"
+                style="display: {% if search_q %}block{% else %}none{% endif %}; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); border: none; background: #e2e8f0; color: #475569; width: 22px; height: 22px; border-radius: 50%; font-size: 12px; cursor: pointer; line-height: 22px; text-align: center; padding: 0;">✕</button>
+      </div>
+
+      <!-- قائمة فلترة حالة الهاتف بدون كتابة أي بيان أو تسمية فوقها -->
+      <div style="flex: 1; min-width: 200px;">
+        <select id="phoneFilterSelect" name="phone_filter" class="form-control" onchange="filterCustomersLive()" style="height: 42px; font-size: 13px; border-radius: 8px;">
+          <option value="all" {% if phone_filter == 'all' %}selected{% endif %}>جميع العملاء ({{ total_count }})</option>
+          <option value="with_phone" {% if phone_filter == 'with_phone' %}selected{% endif %}>عملاء برقم هاتف مسجل ({{ with_phone_count }})</option>
+          <option value="no_phone" {% if phone_filter == 'no_phone' %}selected{% endif %}>عملاء بانتظار تأكيد الهاتف ({{ no_phone_count }})</option>
+        </select>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button type="button" onclick="clearCustomerSearch(); resetPhoneFilter();" class="kf-btn kf-btn-secondary" style="height: 42px; padding: 0 16px; border-radius: 8px; font-size: 12.5px;">
+          <span>إعادة ضبط</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- جدول العملاء -->
+  <div style="background: white; border: 1px solid var(--kf-border); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+    <div style="padding: 12px 18px; background: #f8fafc; border-bottom: 1px solid var(--kf-border); display: flex; justify-content: space-between; align-items: center;">
+      <div style="font-weight: 800; font-size: 13px; color: #334155;">
+        قائمة العملاء (عرض <span id="visibleCustCount">{{ customers|length }}</span> عميل)
+      </div>
+      <div style="font-size: 12px; color: var(--kf-steel);">
+        يمكنك تعديل الاسم أو الجوال، أو حذف أي عميل غير مرتبط بسندات
+      </div>
+    </div>
+    
+    <div style="overflow-x: auto;">
+      <table class="table" style="width: 100%; margin-bottom: 0;">
+        <thead>
+          <tr style="background: #f1f5f9; color: #475569; font-size: 12px; border-bottom: 1.5px solid var(--kf-border);">
+            <th style="width: 50px; text-align: center;">#</th>
+            <th style="text-align: right;">اسم العميل / المنشأة</th>
+            <th style="text-align: center; width: 200px;">رقم الجوال</th>
+            <th style="text-align: center; width: 110px;">عدد السندات</th>
+            <th style="text-align: center; width: 240px;">الإجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="customersTableBody">
+          {% for c in customers %}
+          <tr id="custRow_{{ c.id }}" class="customer-row" 
+              data-name="{{ (c.name or '')|e }}" 
+              data-phone="{{ (c.phone or '')|e }}" 
+              data-notes="{{ (c.notes or '')|e }}" 
+              data-has-phone="{{ 'true' if c.phone else 'false' }}"
+              style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;">
+            <td class="cust-index-cell" style="text-align: center; color: var(--kf-steel); font-size: 11px;">{{ loop.index }}</td>
+            <td style="font-weight: 700; color: #0f172a; font-size: 13px;" id="custNameCell_{{ c.id }}">
+              <span class="cust-name-text">{{ c.name }}</span>
+              {% if c.notes %}
+              <div class="cust-notes-text" style="font-size: 11px; font-weight: normal; color: var(--kf-steel); margin-top: 2px;">{{ c.notes }}</div>
+              {% endif %}
+            </td>
+            <td style="text-align: center;" id="custPhoneCell_{{ c.id }}">
+              {% if c.phone %}
+              <div style="display: inline-flex; align-items: center; gap: 6px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 12px; direction: ltr;">
+                <span class="cust-phone-text">{{ c.phone }}</span>
+                <span style="font-size: 10px;">✓</span>
+              </div>
+              {% else %}
+              <button type="button" 
+                      class="btn-edit-customer" 
+                      data-id="{{ c.id }}" 
+                      data-name="{{ c.name|e }}" 
+                      data-phone="" 
+                      data-notes="{{ (c.notes or '')|e }}" 
+                      style="background: #fffbeb; color: #b45309; border: 1px dashed #fcd34d; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer;">
+                📱 + تأكيد رقم الهاتف
+              </button>
+              {% endif %}
+            </td>
+            <td style="text-align: center;">
+              <span style="background: #f8fafc; border: 1px solid #e2e8f0; color: #475569; font-weight: 800; font-size: 11px; padding: 2px 8px; border-radius: 4px;">
+                {{ c.vouchers_count }}
+              </span>
+            </td>
+            <td style="text-align: center; white-space: nowrap;">
+              <button type="button" 
+                      class="btn btn-sm btn-outline-secondary btn-edit-customer" 
+                      data-id="{{ c.id }}" 
+                      data-name="{{ c.name|e }}" 
+                      data-phone="{{ (c.phone or '')|e }}" 
+                      data-notes="{{ (c.notes or '')|e }}" 
+                      style="font-size: 11px; padding: 3px 8px; margin-left: 3px;" 
+                      title="تعديل بيانات العميل">
+                ✏️ تعديل
+              </button>
+              <a href="{{ url_for('coffee.report_customers_statement', customer_id=c.id) }}" class="btn btn-sm btn-outline-primary" style="font-size: 11px; padding: 3px 8px; margin-left: 3px;" title="عرض كشف حساب العميل">
+                📑 كشف حساب
+              </a>
+              <a href="{{ url_for('coffee.dispatch_new') }}" class="btn btn-sm btn-outline-success" style="font-size: 11px; padding: 3px 8px; margin-left: 3px;" title="صرف محمص للبيع">
+                💰 صرف بيع
+              </a>
+              <button type="button" 
+                      class="btn btn-sm btn-outline-danger btn-delete-customer" 
+                      data-id="{{ c.id }}" 
+                      data-name="{{ c.name|e }}" 
+                      data-vouchers="{{ c.vouchers_count }}" 
+                      style="font-size: 11px; padding: 3px 8px;" 
+                      title="حذف العميل">
+                🗑️ حذف
+              </button>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 36px 12px; color: var(--kf-steel);">
+              <div style="font-size: 36px; margin-bottom: 8px;">👥</div>
+              <div style="font-weight: 700; font-size: 14px;">لا يوجد عملاء يطابقون معايير البحث</div>
+              <div style="font-size: 12px; margin-top: 4px;">يمكنك إضافة عميل جديد بالضغط على زر «+ إضافة عميل جديد» أعلاه</div>
+            </td>
+          </tr>
+          {% endfor %}
+          <tr id="noLiveCustRow" style="display: none;">
+            <td colspan="5" style="text-align: center; padding: 36px 12px; color: var(--kf-steel);">
+              <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+              <div style="font-weight: 700; font-size: 14px; color: #475569;">لا يوجد عملاء يطابقون كلمة البحث "<span id="noCustSearchTerm"></span>"</div>
+              <div style="font-size: 12px; margin-top: 4px; color: #64748b;">جرب البحث بكلمة أو حرف آخر أو اضغط «إعادة ضبط» لإظهار كافة العملاء</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- نافذة إضافة عميل جديد (Modal) -->
+  <div id="newCustomerModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 999999; align-items: center; justify-content: center; padding: 16px;">
+    <div style="background: white; border-radius: 14px; max-width: 480px; width: 100%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15); overflow: hidden;">
+      <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+        <div style="font-weight: 800; font-size: 14px; color: #0f172a;">
+          ✨ إضافة عميل جديد لدليل القهوة
+        </div>
+        <button type="button" onclick="closeNewCustomerModal()" style="border: none; background: transparent; font-size: 18px; color: #94a3b8; cursor: pointer;">✕</button>
+      </div>
+      <div style="padding: 20px;">
+        <div style="margin-bottom: 14px;">
+          <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 6px;">اسم العميل / الجهة المشترية *</label>
+          <input type="text" id="newCustName" class="form-control" placeholder="مثال: مقهى الأمل..." autocomplete="off">
+        </div>
+        <div style="margin-bottom: 14px;">
+          <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 6px;">رقم الجوال (اختياري، يمكن تأكيده لاحقاً)</label>
+          <input type="text" id="newCustPhone" class="form-control" placeholder="05xxxxxxxx" dir="ltr" style="text-align: right;" autocomplete="off">
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 6px;">ملاحظات إضافية (اختياري)</label>
+          <input type="text" id="newCustNotes" class="form-control" placeholder="مثال: فرع التحلية، كافيه..." autocomplete="off">
+        </div>
+        <div id="newCustError" style="display: none; padding: 8px 12px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 6px; font-size: 12px; margin-bottom: 12px;"></div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" onclick="closeNewCustomerModal()" class="kf-btn kf-btn-secondary" style="padding: 8px 16px;">إلغاء</button>
+          <button type="button" onclick="submitNewCustomer()" class="kf-btn kf-btn-primary" style="padding: 8px 18px;" id="saveNewCustBtn">حفظ العميل</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة تعديل بيانات العميل بالكامل (Modal) -->
+  <div id="editCustomerModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 999999; align-items: center; justify-content: center; padding: 16px;">
+    <div style="background: white; border-radius: 14px; max-width: 480px; width: 100%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15); overflow: hidden;">
+      <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+        <div style="font-weight: 800; font-size: 14px; color: #0f172a;">
+          ✏️ تعديل بيانات العميل
+        </div>
+        <button type="button" onclick="closeEditCustomerModal()" style="border: none; background: transparent; font-size: 18px; color: #94a3b8; cursor: pointer;">✕</button>
+      </div>
+      <div style="padding: 20px;">
+        <input type="hidden" id="editCustId">
+        <div style="margin-bottom: 14px;">
+          <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 6px;">اسم العميل / المنشأة *</label>
+          <input type="text" id="editCustNameInput" class="form-control" autocomplete="off">
+        </div>
+        <div style="margin-bottom: 14px;">
+          <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 6px;">رقم الجوال المؤكد</label>
+          <input type="text" id="editCustPhoneInput" class="form-control" placeholder="05xxxxxxxx" dir="ltr" style="text-align: right;" autocomplete="off">
+          <small style="color: #64748b; font-size: 11px;">سيتم تحديث هذا الرقم في الدليل وكافة السندات المرتبطة به تلقائياً.</small>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 12px; font-weight: 700; color: #334155; display: block; margin-bottom: 6px;">ملاحظات إضافية</label>
+          <input type="text" id="editCustNotesInput" class="form-control" placeholder="أي بيانات أو ملاحظات خاصة بالعميل..." autocomplete="off">
+        </div>
+        <div id="editCustError" style="display: none; padding: 8px 12px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 6px; font-size: 12px; margin-bottom: 12px;"></div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" onclick="closeEditCustomerModal()" class="kf-btn kf-btn-secondary" style="padding: 8px 16px;">إلغاء</button>
+          <button type="button" onclick="submitEditCustomer()" class="kf-btn kf-btn-primary" style="padding: 8px 18px;" id="saveEditCustBtn">حفظ التعديلات</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة تأكيد حذف العميل (Modal) -->
+  <div id="deleteCustomerModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 999999; align-items: center; justify-content: center; padding: 16px;">
+    <div style="background: white; border-radius: 14px; max-width: 440px; width: 100%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15); overflow: hidden;">
+      <div style="padding: 16px 20px; background: #fef2f2; border-bottom: 1px solid #fee2e2; display: flex; align-items: center; justify-content: space-between;">
+        <div style="font-weight: 800; font-size: 14px; color: #991b1b;">
+          🗑️ تأكيد حذف العميل
+        </div>
+        <button type="button" onclick="closeDeleteCustomerModal()" style="border: none; background: transparent; font-size: 18px; color: #94a3b8; cursor: pointer;">✕</button>
+      </div>
+      <div style="padding: 20px;">
+        <input type="hidden" id="deleteCustId">
+        <div id="deleteCustomerNotice" style="margin-bottom: 16px;"></div>
+        <div id="deleteCustError" style="display: none; padding: 8px 12px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 6px; font-size: 12px; margin-bottom: 12px;"></div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" onclick="closeDeleteCustomerModal()" class="kf-btn kf-btn-secondary" style="padding: 8px 16px;">إلغاء</button>
+          <button type="button" onclick="submitDeleteCustomer()" class="btn btn-danger" style="padding: 8px 18px; font-weight: 700;" id="confirmDeleteBtn">نعم، احذف العميل</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // التعامل مع نقرات الأزرار بأمان تام عبر Event Delegation
+    document.addEventListener('click', function(e) {
+      const addBtn = e.target.closest('#btnOpenNewCustomer') || e.target.closest('.btn-add-customer');
+      if (addBtn) {
+        openNewCustomerModal();
+        return;
+      }
+
+      const editBtn = e.target.closest('.btn-edit-customer');
+      if (editBtn) {
+        const id = editBtn.getAttribute('data-id');
+        const name = editBtn.getAttribute('data-name');
+        const phone = editBtn.getAttribute('data-phone');
+        const notes = editBtn.getAttribute('data-notes');
+        openEditCustomerModal(id, name, phone, notes);
+        return;
+      }
+
+      const deleteBtn = e.target.closest('.btn-delete-customer');
+      if (deleteBtn) {
+        const id = deleteBtn.getAttribute('data-id');
+        const name = deleteBtn.getAttribute('data-name');
+        const vCount = parseInt(deleteBtn.getAttribute('data-vouchers') || '0', 10);
+        confirmDeleteCustomer(id, name, vCount);
+        return;
+      }
+
+      // إغلاق النافذة عند النقر خارج المحتوى
+      if (e.target.id === 'newCustomerModal') closeNewCustomerModal();
+      if (e.target.id === 'editCustomerModal') closeEditCustomerModal();
+      if (e.target.id === 'deleteCustomerModal') closeDeleteCustomerModal();
+    });
+
+    // إغلاق النوافذ بمفتاح Escape
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeNewCustomerModal();
+        closeEditCustomerModal();
+        closeDeleteCustomerModal();
+      }
+    });
+
+    function openNewCustomerModal() {
+      document.getElementById('newCustName').value = '';
+      document.getElementById('newCustPhone').value = '';
+      document.getElementById('newCustNotes').value = '';
+      document.getElementById('newCustError').style.display = 'none';
+      const m = document.getElementById('newCustomerModal');
+      m.style.display = 'flex';
+      setTimeout(() => document.getElementById('newCustName').focus(), 50);
+    }
+
+    function closeNewCustomerModal() {
+      document.getElementById('newCustomerModal').style.display = 'none';
+    }
+
+    async function submitNewCustomer() {
+      const name = document.getElementById('newCustName').value.trim();
+      const phone = document.getElementById('newCustPhone').value.trim();
+      const notes = document.getElementById('newCustNotes').value.trim();
+      const errBox = document.getElementById('newCustError');
+      const btn = document.getElementById('saveNewCustBtn');
+
+      if (!name) {
+        errBox.textContent = 'يرجى إدخال اسم العميل';
+        errBox.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'جاري الحفظ...';
+      errBox.style.display = 'none';
+
+      try {
+        const res = await fetch("{{ url_for('coffee.api_customers_new') }}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name, phone: phone, notes: notes })
+        });
+        const data = await res.json();
+        if (data.success) {
+          window.location.reload();
+        } else {
+          errBox.textContent = data.error || 'تعذر حفظ العميل';
+          errBox.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'حفظ العميل';
+        }
+      } catch (e) {
+        errBox.textContent = 'خطأ في الاتصال بالخادم';
+        errBox.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'حفظ العميل';
+      }
+    }
+
+    function openEditCustomerModal(id, name, currentPhone, currentNotes) {
+      document.getElementById('editCustId').value = id;
+      document.getElementById('editCustNameInput').value = name || '';
+      document.getElementById('editCustPhoneInput').value = currentPhone || '';
+      document.getElementById('editCustNotesInput').value = currentNotes || '';
+      document.getElementById('editCustError').style.display = 'none';
+      const m = document.getElementById('editCustomerModal');
+      m.style.display = 'flex';
+      setTimeout(() => document.getElementById('editCustNameInput').focus(), 50);
+    }
+
+    function closeEditCustomerModal() {
+      document.getElementById('editCustomerModal').style.display = 'none';
+    }
+
+    async function submitEditCustomer() {
+      const id = document.getElementById('editCustId').value;
+      const name = document.getElementById('editCustNameInput').value.trim();
+      const phone = document.getElementById('editCustPhoneInput').value.trim();
+      const notes = document.getElementById('editCustNotesInput').value.trim();
+      const errBox = document.getElementById('editCustError');
+      const btn = document.getElementById('saveEditCustBtn');
+
+      if (!name) {
+        errBox.textContent = 'اسم العميل إلزامي';
+        errBox.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'جاري الحفظ...';
+      errBox.style.display = 'none';
+
+      try {
+        const res = await fetch(`/coffee/api/customers/${id}/edit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name, phone: phone, notes: notes })
+        });
+        const data = await res.json();
+        if (data.success) {
+          window.location.reload();
+        } else {
+          errBox.textContent = data.error || 'تعذر تعديل بيانات العميل';
+          errBox.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'حفظ التعديلات';
+        }
+      } catch (e) {
+        errBox.textContent = 'خطأ في الاتصال بالخادم';
+        errBox.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'حفظ التعديلات';
+      }
+    }
+
+    function confirmDeleteCustomer(id, name, vCount) {
+      document.getElementById('deleteCustId').value = id;
+      document.getElementById('deleteCustError').style.display = 'none';
+      const noticeBox = document.getElementById('deleteCustomerNotice');
+      const confirmBtn = document.getElementById('confirmDeleteBtn');
+      const safeName = escapeHtml(name);
+
+      if (vCount > 0) {
+        noticeBox.innerHTML = `
+          <div style="padding: 12px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; color: #92400e; font-size: 13px; line-height: 1.5;">
+            ⚠️ <strong>لا يمكن حذف هذا العميل:</strong><br>
+            العميل <strong>"${safeName}"</strong> مسجل لديه <strong>(${vCount}) سند/سندات صرف</strong> في النظام.<br>
+            <span style="font-size: 11px; color: #b45309;">حذف العميل محظور لحماية القيود والمطبوعات المحاسبية. يمكنك الضغط على «تعديل» لتغيير اسمه أو رقم هاتفه.</span>
+          </div>
+        `;
+        confirmBtn.style.display = 'none';
+      } else {
+        noticeBox.innerHTML = `
+          <div style="font-size: 13px; color: #334155; line-height: 1.5;">
+            هل أنت متأكد من رغبتك في حذف العميل <strong>"${safeName}"</strong> من الدليل نهائياً؟<br>
+            <span style="font-size: 11px; color: #64748b;">هذا العميل غير مرتبط بأي سندات، ولن تتمكن من التراجع عن الحذف.</span>
+          </div>
+        `;
+        confirmBtn.style.display = 'inline-block';
+      }
+
+      const m = document.getElementById('deleteCustomerModal');
+      m.style.display = 'flex';
+    }
+
+    function closeDeleteCustomerModal() {
+      document.getElementById('deleteCustomerModal').style.display = 'none';
+    }
+
+    async function submitDeleteCustomer() {
+      const id = document.getElementById('deleteCustId').value;
+      const errBox = document.getElementById('deleteCustError');
+      const btn = document.getElementById('confirmDeleteBtn');
+
+      btn.disabled = true;
+      btn.textContent = 'جاري الحذف...';
+      errBox.style.display = 'none';
+
+      try {
+        const res = await fetch(`/coffee/api/customers/${id}/delete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" }
+        });
+        const data = await res.json();
+        if (data.success) {
+          window.location.reload();
+        } else {
+          errBox.textContent = data.error || 'تعذر حذف العميل';
+          errBox.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'نعم، احذف العميل';
+        }
+      } catch (e) {
+        errBox.textContent = 'خطأ في الاتصال بالخادم';
+        errBox.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'نعم، احذف العميل';
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // البحث التفاعلي اللحظي بالأحرف والاسم ورقم الجوال (Live Instant Search)
+    // ─────────────────────────────────────────────────────────────────────────
+    function normAr(str) {
+      if (!str) return "";
+      return String(str)
+        .toLowerCase()
+        .replace(/[أإآء]/g, "ا")
+        .replace(/[ة]/g, "ه")
+        .replace(/[ى]/g, "ي")
+        .replace(/[\u064B-\u065F\u0670]/g, "") // إزالة حركات التشكيل والتنوين
+        .replace(/[\s\-_/\\()]+/g, " ")
+        .trim();
+    }
+
+    function onCustomerSearchInput(val) {
+      const clearBtn = document.getElementById('clearCustomerSearchBtn');
+      if (clearBtn) {
+        clearBtn.style.display = (val && val.trim().length > 0) ? 'block' : 'none';
+      }
+      filterCustomersLive();
+    }
+
+    function clearCustomerSearch() {
+      const inp = document.getElementById('liveCustomerSearch');
+      if (inp) {
+        inp.value = '';
+        onCustomerSearchInput('');
+        inp.focus();
+      }
+    }
+
+    function resetPhoneFilter() {
+      const sel = document.getElementById('phoneFilterSelect');
+      if (sel) {
+        sel.value = 'all';
+      }
+      filterCustomersLive();
+    }
+
+    function filterCustomersLive() {
+      const searchInput = document.getElementById('liveCustomerSearch');
+      const rawTerm = searchInput ? searchInput.value.trim() : '';
+      const term = normAr(rawTerm);
+
+      const phoneSelect = document.getElementById('phoneFilterSelect');
+      const phoneFilter = phoneSelect ? phoneSelect.value : 'all';
+
+      const rows = document.querySelectorAll('.customer-row');
+      let visibleCount = 0;
+
+      rows.forEach(function(row) {
+        const rawName = row.getAttribute('data-name') || '';
+        const rawPhone = row.getAttribute('data-phone') || '';
+        const rawNotes = row.getAttribute('data-notes') || '';
+        const hasPhone = row.getAttribute('data-has-phone') === 'true';
+
+        // 1. فلتر حالة رقم الهاتف
+        let matchPhoneFilter = true;
+        if (phoneFilter === 'with_phone') {
+          matchPhoneFilter = hasPhone;
+        } else if (phoneFilter === 'no_phone') {
+          matchPhoneFilter = !hasPhone;
+        }
+
+        // 2. فلتر البحث بالأحرف والاسم ورقم الجوال
+        let matchSearch = true;
+        if (term.length > 0) {
+          const normName = normAr(rawName);
+          const normNotes = normAr(rawNotes);
+          const cleanPhone = rawPhone.replace(/\D/g, '');
+          const cleanDigitsTerm = rawTerm.replace(/\D/g, '');
+
+          const nameMatched = normName.includes(term);
+          const notesMatched = normNotes.includes(term);
+          const phoneMatched = (cleanDigitsTerm.length > 0 && cleanPhone.includes(cleanDigitsTerm)) || rawPhone.toLowerCase().includes(rawTerm.toLowerCase());
+
+          matchSearch = nameMatched || notesMatched || phoneMatched;
+        }
+
+        if (matchPhoneFilter && matchSearch) {
+          row.style.display = '';
+          visibleCount++;
+          const indexCell = row.querySelector('.cust-index-cell');
+          if (indexCell) {
+            indexCell.textContent = visibleCount;
+          }
+        } else {
+          row.style.display = 'none';
+        }
+      });
+
+      // تحديث عداد العملاء الظاهرين في رأس الجدول
+      const countBadge = document.getElementById('visibleCustCount');
+      if (countBadge) {
+        countBadge.textContent = visibleCount;
+      }
+
+      // إظهار أو إخفاء صف "لا توجد نتائج مطابقة"
+      const noRow = document.getElementById('noLiveCustRow');
+      const noTermSpan = document.getElementById('noCustSearchTerm');
+      if (noRow) {
+        if (visibleCount === 0 && rows.length > 0) {
+          noRow.style.display = '';
+          if (noTermSpan) noTermSpan.textContent = rawTerm || 'المحددة';
+        } else {
+          noRow.style.display = 'none';
+        }
+      }
+    }
+
+    // تشغيل الفلترة التلقائية عند تحميل الصفحة إذا كان هناك قيمة بحث أولية
+    document.addEventListener('DOMContentLoaded', function() {
+      const searchInput = document.getElementById('liveCustomerSearch');
+      if (searchInput && searchInput.value.trim().length > 0) {
+        onCustomerSearchInput(searchInput.value);
+      }
+    });
+  </script>
+{% endblock %}

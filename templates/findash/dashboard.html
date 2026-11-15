@@ -1,0 +1,466 @@
+{% extends "findash/base.html" %}
+
+{% block findash_content %}
+<!-- شريط الفلاتر والتحكم بالفترة -->
+<form method="GET" action="{{ url_for('findash.index') }}" class="fin-filter-bar">
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="font-size: 13px; font-weight: 700; color: #475569;">📅 السنة المالية:</label>
+        <select name="year" onchange="this.form.submit()" class="form-control form-control-sm" style="font-weight: 700; border-radius: 8px; width: 110px;">
+            {% for y in data.available_years %}
+            <option value="{{ y }}" {% if data.year == y %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="font-size: 13px; font-weight: 700; color: #475569;">🗓️ الشهر:</label>
+        <select name="month" onchange="this.form.submit()" class="form-control form-control-sm" style="font-weight: 700; border-radius: 8px; width: 140px;">
+            <option value="0" {% if not data.month or data.month == 0 %}selected{% endif %}>كامل العام (تراكمي)</option>
+            {% for idx in range(1, 13) %}
+            <option value="{{ idx }}" {% if data.month == idx %}selected{% endif %}>{{ month_names_ar[idx - 1] }} ({{ idx }})</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div style="margin-right: auto; display: flex; gap: 10px; align-items: center;">
+        <span style="font-size: 12px; color: #64748b; font-weight: 600;">
+            فترة التقرير: <strong>{{ data.year }}{% if data.month and data.month > 0 %} - شهر {{ month_names_ar[data.month - 1] }}{% else %} (كامل السنة){% endif %}</strong>
+        </span>
+    </div>
+</form>
+
+<!-- شبكة بطاقات المؤشرات التنفيذية (5 بطاقات متوافقة مع الداشبورد التفاعلي) -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px;">
+    <!-- صافي الإيرادات / أرباح الحركات -->
+    <div class="fin-kpi-card" style="--card-accent: #6366f1;">
+        <div class="kpi-label">
+            <span>💎 صافي الإيرادات / الأرباح</span>
+            <span style="font-size: 12px;">SAR</span>
+        </div>
+        <div class="kpi-val" style="color: {% if data.kpis.net_profit >= 0 %}#4338ca{% else %}#b91c1c{% endif %};">
+            {{ "{:,.0f}".format(data.kpis.net_profit) }}
+        </div>
+        <div class="kpi-sub">صافي الأرباح التشغيلية</div>
+    </div>
+
+    <!-- مبيعات Foodics -->
+    <div class="fin-kpi-card" style="--card-accent: #3b82f6;">
+        <div class="kpi-label">
+            <span>🏪 مبيعات Foodics</span>
+            <span style="font-size: 12px;">SAR</span>
+        </div>
+        <div class="kpi-val" style="color: #2563eb;">{{ "{:,.0f}".format(data.foodics_sales_total) }}</div>
+        <div class="kpi-sub">المبيعات الإجمالية المسجلة بفوديكس</div>
+    </div>
+
+    <!-- أصناف برصيد -->
+    <div class="fin-kpi-card" style="--card-accent: #10b981;">
+        <div class="kpi-label">
+            <span>📦 أصناف برصيد</span>
+            <span style="font-size: 11px; background: #d1fae5; color: #065f46; padding: 1px 6px; border-radius: 6px;">مخزون نشط</span>
+        </div>
+        <div class="kpi-val" style="color: #059669;">{{ data.inventory_active_count }}</div>
+        <div class="kpi-sub">أصناف يتوفر منها رصيد موجب بالمستودع</div>
+    </div>
+
+    <!-- قيمة المخزون -->
+    <div class="fin-kpi-card" style="--card-accent: #f59e0b;">
+        <div class="kpi-label">
+            <span>💰 قيمة المخزون</span>
+            <span style="font-size: 12px;">SAR</span>
+        </div>
+        <div class="kpi-val" style="color: #d97706;">{{ "{:,.0f}".format(data.inventory_total_value) }}</div>
+        <div class="kpi-sub">إجمالي تقييم رصيد المستودع الفعلي</div>
+    </div>
+
+    <!-- كفاءة المخزون -->
+    <div class="fin-kpi-card" style="--card-accent: #06b6d4;">
+        <div class="kpi-label">
+            <span>⚡ كفاءة المخزون</span>
+            <span style="font-size: 11px; background: #cffafe; color: #0e7490; padding: 1px 6px; border-radius: 6px;">مؤشر الدوران</span>
+        </div>
+        <div class="kpi-val" style="color: #0891b2;">{{ data.inventory_efficiency }}%</div>
+        <div class="kpi-sub">معدل استغلال وكفاءة البضاعة</div>
+    </div>
+</div>
+
+<!-- شريط تنبيه الأصناف ذات المخزون المنخفض (حد 10) -->
+{% if data.low_stock_items %}
+<div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 12px 18px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+    <div style="display: flex; align-items: center; gap: 10px; font-weight: 700; color: #b45309; font-size: 13px;">
+        <span style="font-size: 18px;">⚠️</span>
+        <span>يوجد <strong>{{ data.low_stock_items|length }}</strong> صنف بمخزون منخفض (حد 10).</span>
+    </div>
+    <button type="button" onclick="const p = document.getElementById('low-stock-panel'); p.style.display = p.style.display === 'none' ? 'block' : 'none';" 
+            style="background: none; border: none; color: #b45309; font-weight: 700; font-size: 12px; cursor: pointer; text-decoration: underline;">
+        › عرض الأصناف ذات المخزون المنخفض
+    </button>
+</div>
+<div id="low-stock-panel" style="display: none; background: #ffffff; border: 1px solid #fde68a; border-radius: 12px; padding: 16px; margin-bottom: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.03);">
+    <table class="fin-table" style="font-size: 12px;">
+        <thead>
+            <tr>
+                <th>كود الصنف</th>
+                <th>اسم الصنف</th>
+                <th>نوع البن</th>
+                <th style="text-align: left;">الرصيد الحالي</th>
+                <th style="text-align: left;">قيمة الرصيد (SAR)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for it in data.low_stock_items %}
+            <tr>
+                <td><code>{{ it.item_code }}</code></td>
+                <td style="font-weight: 700;">{{ it.item_name }}</td>
+                <td>{{ it.coffee_type }}</td>
+                <td style="text-align: left; font-family: monospace; font-weight: 800; color: #dc2626;">{{ "{:,.1f}".format(it.qty) }}</td>
+                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(it.value) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot class="tfoot-totals">
+            <tr>
+                <td colspan="3" style="text-align: right;">المجموع الإجمالي:</td>
+                <td style="text-align: left; font-family: monospace;">{{ "{:,.1f}".format(data.low_stock_items|sum(attribute='qty')) }}</td>
+                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(data.low_stock_items|sum(attribute='value')) }}</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% endif %}
+
+<!-- الرسوم البيانية التفاعلية الجانبية (المبيعات وتوزيع الحركات) -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 20px;">
+    <!-- مخطط المبيعات حسب الشهر -->
+    <div class="fin-chart-card">
+        <div class="fin-chart-header" style="flex-wrap: wrap; gap: 8px;">
+            <div class="fin-chart-title">
+                <span>📊 المبيعات حسب الشهر ({{ data.year }})</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="badge" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px;">
+                    👆 انقر على أي شهر للتفصيل (Drill-down)
+                </span>
+            </div>
+        </div>
+        <div style="position: relative; height: 320px;">
+            <canvas id="monthlySalesChart"></canvas>
+        </div>
+    </div>
+
+    <!-- مخطط توزيع الحركات حسب النوع -->
+    <div class="fin-chart-card">
+        <div class="fin-chart-header" style="flex-wrap: wrap; gap: 8px;">
+            <div class="fin-chart-title">
+                <span>🔄 توزيع الحركات حسب النوع</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="badge" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px;">
+                    👆 انقر على أي نوع لفتح سجل الحركات
+                </span>
+            </div>
+        </div>
+        <div style="position: relative; height: 320px;">
+            <canvas id="movementTypesChart"></canvas>
+        </div>
+    </div>
+</div>
+
+
+<!-- ========================================================================= -->
+<!-- نافذة التفصيل اللحظي للنقر على الرسم البياني (Click-to-Drilldown Modal)     -->
+<!-- ========================================================================= -->
+<div id="drilldown-modal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: #ffffff; border-radius: 18px; width: 100%; max-width: 820px; max-height: 88vh; overflow-y: auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.35); position: relative; animation: modalFadeIn 0.25s ease-out;">
+        <!-- الترويسة -->
+        <div style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); color: #ffffff; padding: 20px 24px; border-radius: 18px 18px 0 0; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 24px;">📊</span>
+                <div>
+                    <h3 style="margin: 0; font-size: 18px; font-weight: 800; color: #ffffff;">تفاصيل مبيعات شهر <span id="dd-month-title"></span></h3>
+                    <p style="margin: 0; font-size: 12px; color: #cbd5e1;">بيان مبيعات الفروع، قنوات التطبيقات، ومؤشرات الربحية للشهر</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeDrilldownModal()" style="background: rgba(255,255,255,0.15); border: none; color: #ffffff; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: 800; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+                ✕
+            </button>
+        </div>
+
+        <!-- محتوى النافذة -->
+        <div style="padding: 24px;">
+            <!-- مؤشرات الشهر السريعة -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 24px;">
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 14px;">
+                    <div style="font-size: 11px; font-weight: 700; color: #1e40af;">📈 إجمالي المبيعات</div>
+                    <div id="dd-gross-sales" style="font-size: 20px; font-weight: 900; color: #1d4ed8; font-family: monospace;">—</div>
+                </div>
+                <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 14px;">
+                    <div style="font-size: 11px; font-weight: 700; color: #065f46;">💎 صافي الربح</div>
+                    <div id="dd-net-profit" style="font-size: 20px; font-weight: 900; color: #047857; font-family: monospace;">—</div>
+                </div>
+                <div style="background: #fdf4ff; border: 1px solid #f0abfc; border-radius: 12px; padding: 14px;">
+                    <div style="font-size: 11px; font-weight: 700; color: #86198f;">📊 هامش الربح %</div>
+                    <div id="dd-margin" style="font-size: 20px; font-weight: 900; color: #a21caf; font-family: monospace;">—</div>
+                </div>
+                <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 12px; padding: 14px;">
+                    <div style="font-size: 11px; font-weight: 700; color: #9a3412;">📱 مبيعات التطبيقات</div>
+                    <div id="dd-channels" style="font-size: 20px; font-weight: 900; color: #c2410c; font-family: monospace;">—</div>
+                </div>
+            </div>
+
+            <!-- جدول توزيع مبيعات الفروع للشهر -->
+            <div style="margin-bottom: 24px;">
+                <div style="font-size: 14px; font-weight: 800; color: #1e293b; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>🏬 مبيعات الفروع في هذا الشهر:</span>
+                    <span id="dd-branches-count" style="font-size: 11px; font-weight: 700; color: #64748b;"></span>
+                </div>
+                <div style="border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                    <table class="fin-table" style="font-size: 12px; margin: 0;">
+                        <thead>
+                            <tr style="background: #f8fafc;">
+                                <th>الفرع</th>
+                                <th style="text-align: left;">المبيعات (SAR)</th>
+                                <th style="text-align: center;">عدد الفواتير</th>
+                                <th style="width: 35%;">نسبة المساهمة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dd-branches-tbody">
+                            <!-- يملأ برمجياً -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- مبيعات قنوات التوصيل والتطبيقات -->
+            <div id="dd-channels-section" style="display: none; margin-bottom: 24px;">
+                <div style="font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 10px;">
+                    🛵 تفصيل قنوات التوصيل والموقع للشهر:
+                </div>
+                <div id="dd-channels-pills" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+            </div>
+
+            <!-- أزرار الانتقال المباشر -->
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; padding-top: 14px; border-top: 1px solid #f1f5f9;">
+                <a id="dd-link-pnl" href="#" class="btn btn-secondary btn-sm" style="font-size: 12px; font-weight: 700;">
+                    📄 قائمة الدخل لهذا الشهر
+                </a>
+                <a id="dd-link-sales" href="#" class="btn btn-secondary btn-sm" style="font-size: 12px; font-weight: 700;">
+                    👥 فواتير العملاء لهذا الشهر
+                </a>
+                <a id="dd-link-channels" href="#" class="btn btn-primary btn-sm" style="background: #4f46e5; border: none; font-size: 12px; font-weight: 700;">
+                    📱 مبيعات التطبيقات
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. رسم مخطط المبيعات حسب الشهر (Bar Chart)
+    const salesCtx = document.getElementById('monthlySalesChart').getContext('2d');
+    const monthlyData = {{ data.monthly_trends | tojson }};
+
+    // 1. رسم مخطط المبيعات مع خاصية النقر للتفصيل (Click-to-Drilldown)
+    const salesChart = new Chart(salesCtx, {
+        type: 'bar',
+        data: {
+            labels: monthlyData.labels,
+            datasets: [{
+                label: 'المبيعات الشهرية (SAR)',
+                data: monthlyData.revenue,
+                backgroundColor: '#38bdf8',
+                hoverBackgroundColor: '#0284c7',
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            locale: 'en-US',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    rtl: false,
+                    callbacks: {
+                        label: function(context) {
+                            return 'المبيعات: ' + new Intl.NumberFormat('en-US', {minimumFractionDigits: 2}).format(context.raw) + ' SAR (انقر للتفصيل)';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            const val = Number(value);
+                            if (Math.abs(val) >= 1000000) return (val / 1000000).toLocaleString('en-US', {maximumFractionDigits: 1}) + 'M';
+                            if (Math.abs(val) >= 1000) return (val / 1000).toLocaleString('en-US', {maximumFractionDigits: 1}) + 'k';
+                            return val.toLocaleString('en-US');
+                        },
+                        font: { family: "'Readex Pro', sans-serif" }
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: { family: "'Readex Pro', sans-serif" }
+                    }
+                }
+            },
+            onHover: (event, elements) => {
+                event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+            },
+            onClick: (event, elements) => {
+                if (elements.length > 0) {
+                    const idx = elements[0].index;
+                    const month = idx + 1;
+                    openMonthDrilldown({{ data.year }}, month);
+                }
+            }
+        }
+    });
+
+    // 2. رسم مخطط توزيع الحركات مع النقر للانتقال لسجل الحركات المفلتر
+    const mvCtx = document.getElementById('movementTypesChart').getContext('2d');
+    const mvData = {{ data.movements_by_type | tojson }};
+
+    new Chart(mvCtx, {
+        type: 'bar',
+        data: {
+            labels: mvData.labels,
+            datasets: [{
+                label: 'عدد الحركات المسجلة',
+                data: mvData.counts,
+                backgroundColor: [
+                    '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'
+                ],
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'عدد الحركات: ' + context.raw + ' (انقر لفتح السجل)';
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+            onHover: (event, elements) => {
+                event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+            },
+            onClick: (event, elements) => {
+                if (elements.length > 0) {
+                    const idx = elements[0].index;
+                    const typeName = mvData.labels[idx];
+                    location.href = "{{ url_for('findash.inventory') }}?tab=movements&type=" + encodeURIComponent(typeName) + "&year={{ data.year }}";
+                }
+            }
+        }
+    });
+});
+
+// تشغيل نافذة التفصيل اللحظي للنقر على عمود الشهر (Drill-down)
+function openMonthDrilldown(year, month) {
+    const modal = document.getElementById('drilldown-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+
+    document.getElementById('dd-month-title').innerText = `${month} (${year}) — جاري التحميل...`;
+    document.getElementById('dd-gross-sales').innerText = '...';
+    document.getElementById('dd-net-profit').innerText = '...';
+    document.getElementById('dd-margin').innerText = '...';
+    document.getElementById('dd-channels').innerText = '...';
+    document.getElementById('dd-branches-tbody').innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 25px; color: #64748b;">⏳ جاري سحب بيانات الشهر وتفاصيل الفروع...</td></tr>';
+
+    fetch(`{{ url_for('findash.api_drilldown_month') }}?year=${year}&month=${month}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                document.getElementById('dd-branches-tbody').innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 25px; color: #dc2626;">تعذر جلب تفاصيل الشهر</td></tr>';
+                return;
+            }
+            document.getElementById('dd-month-title').innerText = `${data.month_name} ${year}`;
+            document.getElementById('dd-gross-sales').innerText = Number(data.gross_sales).toLocaleString('en-US', {minimumFractionDigits: 2}) + ' SAR';
+            document.getElementById('dd-net-profit').innerText = Number(data.net_profit).toLocaleString('en-US', {minimumFractionDigits: 2}) + ' SAR';
+            document.getElementById('dd-margin').innerText = `${data.net_margin}%`;
+            document.getElementById('dd-channels').innerText = Number(data.channels_total).toLocaleString('en-US', {minimumFractionDigits: 2}) + ' SAR';
+
+            // روابط سريعة
+            document.getElementById('dd-link-pnl').href = `{{ url_for('findash.pnl') }}?year=${year}&month=${month}`;
+            document.getElementById('dd-link-sales').href = `{{ url_for('findash.sales') }}?basis=monthly&year=${year}&month=${month}`;
+            document.getElementById('dd-link-channels').href = `{{ url_for('findash.channels') }}?year=${year}&month=${month}`;
+
+            // الفروع
+            const bTbody = document.getElementById('dd-branches-tbody');
+            if (data.branches && data.branches.length > 0) {
+                document.getElementById('dd-branches-count').innerText = `(${data.branches.length} فروع)`;
+                bTbody.innerHTML = data.branches.map(b => `
+                    <tr>
+                        <td style="font-weight: 700;">🏬 ${b.branch_name}</td>
+                        <td style="text-align: left; font-weight: 800; color: #2563eb;"><span class="fin-num">${Number(b.amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</span></td>
+                        <td style="text-align: center;"><span class="fin-num">${b.invoices_count}</span></td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div style="flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                                    <div style="width: ${b.share_pct}%; height: 100%; background: #4f46e5; border-radius: 4px;"></div>
+                                </div>
+                                <span class="fin-num" style="font-size: 11px; font-weight: 700; width: 42px; text-align: left;">${b.share_pct}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                bTbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 25px; color: #64748b;">لا توجد سجلات فواتير فروع لهذا الشهر.</td></tr>';
+            }
+
+            // قنوات التطبيقات
+            const chSec = document.getElementById('dd-channels-section');
+            const chPills = document.getElementById('dd-channels-pills');
+            if (data.channels && data.channels.length > 0) {
+                chSec.style.display = 'block';
+                chPills.innerHTML = data.channels.map(c => `
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 12px; font-size: 12px;">
+                        <span style="font-weight: 800; color: #1e293b;">${c.channel}</span>:
+                        <strong style="color: #4f46e5;"><span class="fin-num">${Number(c.amount).toLocaleString('en-US', {minimumFractionDigits: 2})}</span> SAR</strong>
+                        <span style="font-size: 10px; color: #64748b;">(${c.branch})</span>
+                    </div>
+                `).join('');
+            } else {
+                chSec.style.display = 'none';
+            }
+        })
+        .catch(err => {
+            document.getElementById('dd-branches-tbody').innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 25px; color: #dc2626;">خطأ في الاتصال: ${err}</td></tr>`;
+        });
+}
+
+function closeDrilldownModal() {
+    const modal = document.getElementById('drilldown-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeDrilldownModal();
+});
+
+</script>
+{% endblock %}
+

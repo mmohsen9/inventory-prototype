@@ -1,8 +1,8 @@
-{% extends "base.html" %}
+{% extends "cafe_base.html" %}
 
 {% block title %}{{ t('new_transfer') }}{% endblock %}
 
-{% block content %}
+{% block cafe_content %}
 <div class="page-header">
     <div class="page-title">
         <h2>🚚 {{ t('new_transfer') }}</h2>
@@ -36,6 +36,9 @@
                 <option value="{{ loc.id }}">{{ loc_name(loc) }} ({{ loc_type(loc) }})</option>
                 {% endfor %}
             </select>
+            <small style="color: var(--gray-500); display: block; margin-top: 6px;">
+                💡 يتم عرض الفروع والمستودعات المربوطة فعلياً بحساب فوديكس لضمان دقة الترحيل.
+            </small>
         </div>
 
         <div style="margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--gray-100); display: flex; justify-content: flex-end; gap: 10px;">

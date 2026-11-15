@@ -1,0 +1,1520 @@
+{% extends "coffee/coffee_base.html" %}
+
+{% block title %}لوحة تحكم القهوة والمحمصة{% endblock %}
+
+{% block coffee_extra_css %}
+<style>
+/* ==============================================================
+   لوحة تحكم قسم القهوة والمحمصة — تصميم Apple Fluid & Cyber SaaS
+   دعم ثنائي فائق الوضوح للثيمين (Light Mode الافتراضي + Dark Mode)
+   تباين لوني كامل (WCAG AAA) وخطوط عربية مقروءة بوضوح فائق
+   ============================================================== */
+
+/* ── 0. نظام متغيرات الألوان المتكيف (Light Mode الافتراضي) ── */
+.saas-dashboard-wrapper {
+    /* ── خلفية لون بسيطة وراقية جداً للوحة التحكم لتمييزها وإبراز البطاقات البيضاء ── */
+    background: #f6f5f2;
+    border: 1px solid #ebe7df;
+    border-radius: 22px;
+    padding: 20px 22px 36px 22px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+
+    --saas-bg: #f6f5f2;
+    --saas-card-bg: #ffffff;
+    --saas-card-border: #e2e8f0;
+    --saas-card-hover-border: #f59e0b;
+    --saas-card-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+
+    /* نصوص عالية التباين للثيم الفاتح */
+    --saas-text-main: #0f172a;        /* كحلي داكن شديد الوضوح */
+    --saas-text-muted: #334155;       /* نصوص مساعدة مقروءة بتباين عالي */
+    --saas-text-subtle: #64748b;
+
+    /* تدرجات التحميص والبن */
+    --saas-coffee-amber: #d97706;
+    --saas-coffee-bronze: #b45309;
+    --saas-coffee-roast: #78350f;
+    --saas-coffee-glow: rgba(217, 119, 6, 0.25);
+    --saas-emerald: #059669;
+    --saas-cyan: #0284c7;
+    --saas-blue: #2563eb;
+
+    /* الجداول */
+    --saas-table-bg: #ffffff;
+    --saas-table-th-bg: #f8fafc;
+    --saas-table-th-color: #0f172a;
+    --saas-table-th-border: #cbd5e1;
+    --saas-table-td-color: #0f172a;
+    --saas-table-td-border: #e2e8f0;
+    --saas-table-row-hover: #fefce8;
+    --saas-table-code-bg: #f1f5f9;
+    --saas-table-code-color: #1e293b;
+    --saas-table-code-border: #cbd5e1;
+    --saas-table-link: #d97706;
+    --saas-currency-color: #047857;
+
+    /* مربعات الإحصاءات السريعة (Sub-stats) */
+    --saas-substat-bg: #ffffff;
+    --saas-substat-border: #cbd5e1;
+    --saas-substat-val: #0f172a;
+    --saas-substat-label: #334155;
+
+    /* شريط التبويبات */
+    --saas-tabs-bg: #e2e8f0;
+    --saas-tabs-border: #cbd5e1;
+    --saas-tab-btn-color: #334155;
+    --saas-tab-btn-hover-bg: rgba(255, 255, 255, 0.7);
+    --saas-tab-btn-active-bg: #ffffff;
+    --saas-tab-btn-active-color: #b45309;
+    --saas-tab-badge-bg: #cbd5e1;
+    --saas-tab-badge-color: #0f172a;
+
+    /* حقول البحث والتمدد */
+    --saas-input-bg: #ffffff;
+    --saas-input-color: #0f172a;
+    --saas-input-border: #cbd5e1;
+    --saas-expand-bg: #f8fafc;
+    --saas-expand-border: #f59e0b;
+
+    font-family: 'Readex Pro', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--saas-text-main);
+    padding-bottom: 36px;
+    font-feature-settings: "tnum";
+    line-height: 1.55;
+}
+
+/* ── 0b. تفعيل الثيم الداكن التلقائي (Dark Mode) ── */
+[data-theme="dark"] .saas-dashboard-wrapper,
+html[data-theme="dark"] .saas-dashboard-wrapper,
+body[data-theme="dark"] .saas-dashboard-wrapper {
+    background: #0c1017;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+
+    --saas-bg: #0c1017;
+    --saas-card-bg: #111827;
+    --saas-card-border: rgba(255, 255, 255, 0.08);
+    --saas-card-hover-border: rgba(245, 158, 11, 0.45);
+    --saas-card-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+
+    --saas-text-main: #f8fafc;
+    --saas-text-muted: #94a3b8;
+    --saas-text-subtle: #64748b;
+
+    --saas-coffee-amber: #f59e0b;
+    --saas-coffee-bronze: #b45309;
+    --saas-coffee-roast: #78350f;
+    --saas-coffee-glow: rgba(245, 158, 11, 0.32);
+
+    --saas-table-bg: #111827;
+    --saas-table-th-bg: #1e293b;
+    --saas-table-th-color: #cbd5e1;
+    --saas-table-th-border: rgba(255, 255, 255, 0.1);
+    --saas-table-td-color: #f8fafc;
+    --saas-table-td-border: rgba(255, 255, 255, 0.06);
+    --saas-table-row-hover: rgba(245, 158, 11, 0.08);
+    --saas-table-code-bg: rgba(255, 255, 255, 0.08);
+    --saas-table-code-color: #f1f5f9;
+    --saas-table-code-border: rgba(255, 255, 255, 0.15);
+    --saas-table-link: #fbbf24;
+    --saas-currency-color: #34d399;
+
+    --saas-substat-bg: #111827;
+    --saas-substat-border: rgba(255, 255, 255, 0.08);
+    --saas-substat-val: #ffffff;
+    --saas-substat-label: #94a3b8;
+
+    --saas-tabs-bg: #1e293b;
+    --saas-tabs-border: rgba(255, 255, 255, 0.08);
+    --saas-tab-btn-color: #94a3b8;
+    --saas-tab-btn-hover-bg: rgba(255, 255, 255, 0.08);
+    --saas-tab-btn-active-bg: #334155;
+    --saas-tab-btn-active-color: #fbbf24;
+    --saas-tab-badge-bg: #334155;
+    --saas-tab-badge-color: #f8fafc;
+
+    --saas-input-bg: rgba(15, 23, 42, 0.85);
+    --saas-input-color: #f1f5f9;
+    --saas-input-border: rgba(255, 255, 255, 0.15);
+    --saas-expand-bg: rgba(15, 23, 42, 0.95);
+    --saas-expand-border: #f59e0b;
+}
+
+/* 1. الشريط القيادي العلوي (Executive Command Topbar) — ثابت بهيبة داكنة فخمة */
+.saas-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 22px;
+    padding: 16px 22px;
+    background: linear-gradient(135deg, #2a1506 0%, #0f172a 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+    gap: 16px;
+    flex-wrap: wrap;
+    color: #ffffff;
+}
+
+.saas-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.saas-topbar-center {
+    display: flex;
+    align-items: center;
+}
+
+.saas-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.saas-brand-icon {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    border-radius: 10px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.25) !important;
+    overflow: hidden !important;
+    position: relative !important;
+    padding: 3px !important;
+    flex-shrink: 0 !important;
+}
+
+.saas-brand-icon img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    display: block !important;
+}
+
+.saas-hero-welcome h1 {
+    font-size: 21px;
+    margin: 0 0 4px 0;
+    font-weight: 700;
+    color: #ffffff !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.saas-hero-welcome p {
+    font-size: 13px !important;
+    color: #cbd5e1 !important;
+    font-weight: 500;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/* حبة اتصال Xero الحية */
+.xero-conn-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(245, 158, 11, 0.18);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 9999px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #fef3c7;
+    transition: all 0.2s ease;
+}
+
+.xero-conn-pill:hover {
+    background: rgba(245, 158, 11, 0.28);
+    border-color: rgba(245, 158, 11, 0.55);
+}
+
+.pulse-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    position: relative;
+}
+
+.pulse-dot.online {
+    background: #10b981;
+    box-shadow: 0 0 10px #10b981;
+}
+
+.pulse-dot.online::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    border-radius: 50%;
+    border: 1px solid #10b981;
+    animation: saas-pulse 2s infinite;
+}
+
+.pulse-dot.warning {
+    background: #f59e0b;
+    box-shadow: 0 0 8px #f59e0b;
+}
+
+@keyframes saas-pulse {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* أزرار الإجراءات السريعة في شريط القهوة */
+.saas-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.saas-btn-glow-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: linear-gradient(135deg, #d97706, #b45309);
+    color: #ffffff !important;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 4px 16px rgba(217, 119, 6, 0.35);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.saas-btn-glow-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 22px rgba(217, 119, 6, 0.5);
+    color: #ffffff !important;
+}
+
+.saas-btn-glow-primary:active {
+    transform: scale(0.97);
+}
+
+.saas-btn-glass {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff !important;
+    padding: 8px 15px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(8px);
+    transition: all 0.2s;
+}
+
+.saas-btn-glass:hover {
+    background: rgba(255, 255, 255, 0.22);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-1px);
+    color: #ffffff !important;
+}
+
+.saas-btn-glass:active {
+    transform: scale(0.97);
+}
+
+/* 2. بطاقات مؤشرات الأداء الرئيسية لقسم القهوة */
+.saas-hero-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 992px) {
+    .saas-hero-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.saas-hero-card {
+    background: linear-gradient(135deg, #2a1506 0%, #0f172a 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 18px;
+    padding: 24px 26px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 220px;
+    position: relative;
+    overflow: hidden;
+    color: #ffffff;
+}
+
+.saas-hero-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.saas-hero-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0 0 4px 0;
+}
+
+.saas-hero-card-subtitle {
+    font-size: 12.5px;
+    color: #cbd5e1;
+    margin: 0;
+    font-weight: 500;
+}
+
+.saas-pill-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.saas-pill-badge.amber {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.saas-pill-badge.emerald {
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.saas-hero-card-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 10px 0;
+    gap: 16px;
+}
+
+.saas-big-number {
+    font-size: 32px;
+    font-weight: 800;
+    color: #ffffff;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.5px;
+}
+
+.saas-big-number small {
+    font-size: 15px;
+    font-weight: 600;
+    color: #cbd5e1;
+    margin-right: 4px;
+}
+
+.saas-hero-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 12.5px;
+    color: #cbd5e1;
+}
+
+/* 3. شريط إحصائيات العمليات السريعة (Sub-stats Strip) — عالي التباين */
+.saas-substats-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 1100px) {
+    .saas-substats-strip {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .saas-substats-strip {
+        grid-template-columns: 1fr;
+    }
+}
+
+.saas-substat-box {
+    background: var(--saas-substat-bg) !important;
+    border: 1.5px solid var(--saas-substat-border) !important;
+    border-radius: 14px !important;
+    padding: 14px 18px !important;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: var(--saas-card-shadow);
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+
+.saas-substat-box:hover {
+    transform: translateY(-2px);
+    border-color: #f59e0b !important;
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.15);
+}
+
+.saas-substat-box:active {
+    transform: scale(0.98);
+}
+
+.saas-substat-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.saas-substat-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.saas-substat-label {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: var(--saas-substat-label) !important;
+    line-height: 1.4;
+}
+
+.saas-substat-val {
+    font-size: 22px !important;
+    font-weight: 800 !important;
+    color: var(--saas-substat-val) !important;
+    font-variant-numeric: tabular-nums;
+}
+
+.saas-substat-arrow {
+    margin-right: auto;
+    color: var(--saas-text-subtle);
+    font-size: 15px;
+    font-weight: 700;
+    transition: transform 0.2s, color 0.2s;
+}
+
+.saas-substat-box:hover .saas-substat-arrow {
+    transform: translateX(-4px);
+    color: #d97706;
+}
+
+/* 4. شريط التبويبات التفاعلي */
+.saas-tabs-bar {
+    display: flex;
+    gap: 8px;
+    padding: 6px;
+    background: var(--saas-tabs-bg);
+    border: 1.5px solid var(--saas-tabs-border);
+    border-radius: 14px;
+    margin-bottom: 22px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+.saas-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: var(--saas-tab-btn-color);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+}
+
+.saas-tab-btn:hover {
+    color: var(--saas-text-main);
+    background: var(--saas-tab-btn-hover-bg);
+}
+
+.saas-tab-btn.active {
+    background: var(--saas-tab-btn-active-bg);
+    color: var(--saas-tab-btn-active-color);
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.saas-tab-btn:active {
+    transform: scale(0.98);
+}
+
+.saas-tab-pane {
+    display: none;
+}
+
+.saas-tab-pane.active {
+    display: block;
+    animation: saas-fade-in 0.22s ease-out;
+}
+
+/* 5. الجداول وبطاقات البيانات لقسم القهوة */
+.saas-table-card {
+    background: var(--saas-card-bg) !important;
+    border: 1.5px solid var(--saas-card-border) !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+    box-shadow: var(--saas-card-shadow) !important;
+}
+
+.saas-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 22px;
+    border-bottom: 1.5px solid var(--saas-table-th-border);
+    background: var(--saas-table-th-bg);
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.saas-table-header h4 {
+    margin: 0 0 3px 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--saas-text-main);
+}
+
+.saas-table-header span {
+    font-size: 12.5px;
+    color: var(--saas-text-muted);
+}
+
+.saas-table-search-input {
+    background: var(--saas-input-bg) !important;
+    border: 1.5px solid var(--saas-input-border) !important;
+    color: var(--saas-input-color) !important;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-family: inherit;
+    min-width: 220px;
+    transition: all 0.2s ease;
+}
+
+.saas-table-search-input:focus {
+    outline: none;
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+.saas-table {
+    width: 100% !important;
+    table-layout: auto !important;
+    border-collapse: collapse !important;
+    font-size: 13px !important;
+    text-align: right !important;
+    background: var(--saas-table-bg) !important;
+}
+
+.saas-table th {
+    background: var(--saas-table-th-bg) !important;
+    color: var(--saas-table-th-color) !important;
+    font-weight: 700 !important;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    border-bottom: 2px solid var(--saas-table-th-border) !important;
+    letter-spacing: -0.2px;
+    white-space: nowrap;
+}
+
+.saas-table td {
+    padding: 8px 12px !important;
+    border-bottom: 1px solid var(--saas-table-td-border) !important;
+    color: var(--saas-table-td-color) !important;
+    background: transparent !important;
+    vertical-align: middle !important;
+    font-size: 13px !important;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+.saas-table tr:hover td {
+    background: var(--saas-table-row-hover) !important;
+}
+
+.saas-table tr.clickable-row {
+    cursor: pointer;
+}
+
+.saas-table-main-text {
+    color: var(--saas-table-td-color) !important;
+    font-weight: 700 !important;
+    font-size: 13.5px !important;
+}
+
+.saas-table-code {
+    background: var(--saas-table-code-bg) !important;
+    color: var(--saas-table-code-color) !important;
+    border: 1px solid var(--saas-table-code-border) !important;
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: 600;
+}
+
+.saas-table-link {
+    color: var(--saas-table-link) !important;
+    font-weight: 700 !important;
+    text-decoration: none;
+    font-size: 13.5px;
+}
+
+.saas-table-link:hover {
+    text-decoration: underline;
+}
+
+/* شارات السندات */
+.saas-doc-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.saas-doc-badge.blue {
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-color: #bfdbfe;
+}
+
+.saas-doc-badge.emerald {
+    background: #dcfce7;
+    color: #15803d;
+    border-color: #bbf7d0;
+}
+
+/* شارات السندات بالثيم الداكن */
+[data-theme="dark"] .saas-doc-badge {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+[data-theme="dark"] .saas-doc-badge.blue {
+    background: rgba(59, 130, 246, 0.18);
+    color: #93c5fd;
+    border-color: rgba(59, 130, 246, 0.35);
+}
+
+[data-theme="dark"] .saas-doc-badge.emerald {
+    background: rgba(16, 185, 129, 0.18);
+    color: #6ee7b7;
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+/* وسوم وقيم المبالغ والعملات والأوزان */
+.saas-currency-val {
+    color: var(--saas-currency-color) !important;
+    font-weight: 700 !important;
+    font-size: 13.5px !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+/* وسوم الحالة والبادجات عالية التباين لقسم القهوة */
+.saas-pill-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.saas-pill-tag.submitted, .saas-pill-tag.pending, .saas-pill-tag.warning {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+    border: 1px solid #fde68a !important;
+}
+
+.saas-pill-tag.approved, .saas-pill-tag.completed, .saas-pill-tag.posted {
+    background: #dcfce7 !important;
+    color: #15803d !important;
+    border: 1px solid #bbf7d0 !important;
+}
+
+.saas-pill-tag.in_transit, .saas-pill-tag.info {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+    border: 1px solid #bfdbfe !important;
+}
+
+.saas-pill-tag.draft {
+    background: #f1f5f9 !important;
+    color: #334155 !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+.saas-pill-tag.danger, .saas-pill-tag.rejected {
+    background: #fee2e2 !important;
+    color: #b91c1c !important;
+    border: 1px solid #fecaca !important;
+}
+
+/* وسوم الحالة بالثيم الداكن */
+[data-theme="dark"] .saas-pill-tag.submitted,
+[data-theme="dark"] .saas-pill-tag.pending,
+[data-theme="dark"] .saas-pill-tag.warning {
+    background: rgba(245, 158, 11, 0.18) !important;
+    color: #fbbf24 !important;
+    border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+[data-theme="dark"] .saas-pill-tag.approved,
+[data-theme="dark"] .saas-pill-tag.completed,
+[data-theme="dark"] .saas-pill-tag.posted {
+    background: rgba(16, 185, 129, 0.18) !important;
+    color: #34d399 !important;
+    border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+[data-theme="dark"] .saas-pill-tag.in_transit,
+[data-theme="dark"] .saas-pill-tag.info {
+    background: rgba(59, 130, 246, 0.18) !important;
+    color: #60a5fa !important;
+    border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+[data-theme="dark"] .saas-pill-tag.draft {
+    background: rgba(148, 163, 184, 0.18) !important;
+    color: #cbd5e1 !important;
+    border-color: rgba(148, 163, 184, 0.3) !important;
+}
+
+[data-theme="dark"] .saas-pill-tag.danger,
+[data-theme="dark"] .saas-pill-tag.rejected {
+    background: rgba(239, 68, 68, 0.18) !important;
+    color: #f87171 !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+/* بطاقات قسم القهوة والمؤشرات */
+.saas-card {
+    background: var(--saas-card-bg) !important;
+    border: 1.5px solid var(--saas-card-border) !important;
+    border-radius: 18px !important;
+    padding: 22px 24px !important;
+    box-shadow: var(--saas-card-shadow) !important;
+    color: var(--saas-text-main) !important;
+    transition: all 0.2s ease;
+}
+
+.saas-card h3 {
+    color: var(--saas-text-main) !important;
+    font-weight: 700 !important;
+    font-size: 16px !important;
+    margin: 0 0 4px 0 !important;
+}
+
+.saas-card p {
+    color: var(--saas-text-muted) !important;
+    font-size: 13px !important;
+    margin: 0 !important;
+}
+
+.stat-number {
+    font-size: 28px !important;
+    font-weight: 800 !important;
+    color: var(--saas-text-main) !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+.stat-sub {
+    font-size: 13.5px !important;
+    color: var(--saas-text-muted) !important;
+    margin-top: 6px !important;
+}
+
+.coffee-tags-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.coffee-tag {
+    background: #f1f5f9;
+    color: #1e293b;
+    border: 1px solid #cbd5e1;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 3px 9px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+[data-theme="dark"] .coffee-tag {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.stock-val-number {
+    font-size: 32px !important;
+    font-weight: 800 !important;
+    color: var(--saas-text-main) !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+.stock-val-number small {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    color: var(--saas-text-muted) !important;
+}
+
+.stock-val-badge {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    font-weight: 700;
+    font-size: 12.5px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+}
+
+[data-theme="dark"] .stock-val-badge {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+.circular-gauge-value {
+    font-size: 22px !important;
+    font-weight: 800 !important;
+    color: var(--saas-text-main) !important;
+    font-variant-numeric: tabular-nums !important;
+}
+
+.circular-gauge-label {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: var(--saas-text-muted) !important;
+}
+
+</style>
+{% endblock %}
+
+{% block coffee_content %}
+<div class="saas-dashboard-wrapper">
+
+    <!-- 1. الشريط القيادي الموحد (Executive Command Topbar) -->
+    <div class="saas-topbar">
+        <div class="saas-topbar-right">
+            <div class="saas-brand-icon" title="محمصة نوفمبر" style="width: 36px; height: 36px; min-width: 36px; max-width: 36px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #ffffff; padding: 3px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.25); flex-shrink: 0;">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" alt="نوفمبر كفي" style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; display: block;">
+            </div>
+            <div class="saas-hero-welcome" style="margin-bottom: 0;">
+                <h1>
+                    <span>مرحباً، {{ user.name }} ☕</span>
+                </h1>
+                <p>
+                    <span style="color: #fbbf24; font-weight: 600;">قسم القهوة والمحمصة</span>
+                    <span>&bull;</span>
+                    <span>الدور: <strong style="color: #cbd5e1;">{{ user.display_role_name if user.display_role_name else user.role }}</strong></span>
+                    <span>&bull;</span>
+                    <span>المستودع المركزي للبن والتحميص</span>
+                </p>
+            </div>
+        </div>
+
+        {% if user and user.role != 'warehouse' %}
+        <div class="saas-topbar-center">
+            <!-- حبة اتصال ومزامنة Xero الحية -->
+            <a href="{{ url_for('coffee.xero_status') }}" class="xero-conn-pill" title="حالة الربط والترحيل المحاسبي لنظام Xero">
+                <span class="pulse-dot {% if xero_pending == 0 %}online{% else %}warning{% endif %}"></span>
+                <span>Xero Accounting &bull; {% if xero_pending == 0 %}متزامن بالكامل{% else %}{{ xero_pending }} بانتظار الترحيل{% endif %}</span>
+            </a>
+        </div>
+        {% endif %}
+
+        <div class="saas-topbar-left">
+            <!-- أزرار الإجراءات السريعة الحية -->
+            <div class="saas-hero-actions">
+                <a href="{{ url_for('coffee.roasting_new') }}" class="saas-btn-glow-primary" title="إنشاء أمر تحميص جديد">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span>أمر تحميص جديد</span>
+                </a>
+                <a href="{{ url_for('coffee.green_issue_new') }}" class="saas-btn-glass" title="إصدار سند صرف بن أخضر">
+                    📤 صرف أخضر
+                </a>
+                <a href="{{ url_for('coffee.dispatch_new') }}" class="saas-btn-glass" title="إصدار شحنة محمص للفروع">
+                    🚚 صرف محمص
+                </a>
+                <a href="{{ url_for('coffee.inventory_count_record') }}" class="saas-btn-glass" title="تسجيل جلسة جرد بن">
+                    📋 تسجيل جرد
+                </a>
+            </div>
+
+            <span style="color: var(--saas-card-border); font-size: 14px;">|</span>
+
+            <!-- الأفاتار الدائري للمستخدم -->
+            <div class="saas-avatar" title="{{ user.name }} ({{ user.role }})">
+                <span>{{ (user.name or 'م')[:1] }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. البطاقتان الرئيسيتان (Hero Analytics Cards) -->
+    <div class="saas-hero-grid">
+
+        <!-- بطاقة 1: مؤشر إنجاز أوامر التحميص وترحيل Xero مع الـ Circular Progress Gauge -->
+        <div class="saas-card">
+            <div class="saas-card-header">
+                <div class="saas-card-title-group">
+                    <h3>جاهزية التحميص وترحيل القيود</h3>
+                    <p>متابعة تشغيل خطوط التحميص وترحيل القيود لنظام Xero المحاسبي</p>
+                </div>
+                {% if xero_pending == 0 %}
+                <span class="saas-pill-badge green">
+                    ⚡ Xero محدث بالكامل
+                </span>
+                {% else %}
+                <span class="saas-pill-badge">
+                    ⚠️ {{ xero_pending }} معلق للترحيل
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="coffee-metric-content">
+                <!-- الـ Circular Progress SVG -->
+                <div class="circular-gauge-box">
+                    {% set total_ord = completed_orders + pending_orders %}
+                    {% set pct = ((completed_orders / total_ord) * 100)|round|int if total_ord > 0 else 100 %}
+                    {% set dash_offset = 283 - (283 * pct / 100) %}
+                    <svg width="104" height="104" viewBox="0 0 104 104">
+                        <defs>
+                            <linearGradient id="coffeeRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#f59e0b" />
+                                <stop offset="100%" stop-color="#b45309" />
+                            </linearGradient>
+                        </defs>
+                        <!-- مسار الخلفية الداكن -->
+                        <circle cx="52" cy="52" r="45" fill="none" stroke="rgba(255, 255, 255, 0.08)" stroke-width="9" />
+                        <!-- مسار التقدم المتدرج -->
+                        <circle cx="52" cy="52" r="45" fill="none" stroke="url(#coffeeRingGrad)" stroke-width="9"
+                                stroke-dasharray="283"
+                                stroke-dashoffset="{{ dash_offset }}"
+                                stroke-linecap="round"
+                                style="transition: stroke-dashoffset 1s ease-in-out;" />
+                    </svg>
+                    <div class="circular-gauge-center">
+                        <span class="circular-gauge-value">{{ pct }}%</span>
+                        <span class="circular-gauge-label">مكتمل</span>
+                    </div>
+                </div>
+
+                <div class="coffee-metric-stats">
+                    <div class="stat-number">{{ completed_orders }} <small style="font-size: 13px; font-weight: normal; color: var(--saas-text-muted);">من {{ total_ord }} أمر تحميص</small></div>
+                    <div class="stat-sub">إجمالي الإنتاج المحمص: <strong class="saas-table-main-text" style="font-size: 15px; font-weight: 800;">{{ "{:,.2f}".format(total_roasted_kg) }} كجم</strong></div>
+                    
+                    <div class="coffee-tags-row">
+                        <span class="coffee-tag">🔥 {{ pending_orders }} قيد التشغيل</span>
+                        <span class="coffee-tag">☕ {{ roasted_items_count }} صنف محمص</span>
+                        <span class="coffee-tag">🌱 {{ green_items_count }} صنف أخضر</span>
+                    </div>
+
+                    {% if user and user.role != 'warehouse' %}
+                    <a href="{{ url_for('coffee.xero_status') }}" class="saas-card-footer-link">
+                        فتح مركز ترحيل ومزامنة Xero &larr;
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- بطاقة 2: إجمالي قيمة مخزون البن مع الرسم البياني الموجي Wave Sparkline -->
+        <div class="saas-card">
+            <div class="saas-card-header">
+                <div class="saas-card-title-group">
+                    <h3>إجمالي قيمة مخزون البن والتحميص</h3>
+                    <p>التقييم المالي التراكمي للبن الأخضر والمحمص بالمستودعات</p>
+                </div>
+                <span class="saas-pill-badge green">
+                    ● رصيد وزني مباشر
+                </span>
+            </div>
+
+            <div class="stock-val-content">
+                <div class="stock-val-top">
+                    <div>
+                        <div class="stock-val-number">
+                            {% set total_coffee_val = total_green_val + total_roasted_val %}
+                            {{ "{:,.2f}".format(total_coffee_val) }} <small>ر.س</small>
+                        </div>
+                    </div>
+                    <div class="stock-val-badge">
+                        <span>▲ وزن المخزون: {{ "{:,.1f}".format(total_green_kg + total_roasted_kg) }} كجم</span>
+                    </div>
+                </div>
+
+                <!-- الرسم البياني الموجي (Curved Wave Sparkline) -->
+                <div class="sparkline-container">
+                    <svg viewBox="0 0 360 70" preserveAspectRatio="none">
+                        <defs>
+                            <linearGradient id="coffeeWaveStroke" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stop-color="#fbbf24" />
+                                <stop offset="50%" stop-color="#f59e0b" />
+                                <stop offset="100%" stop-color="#b45309" />
+                            </linearGradient>
+                            <linearGradient id="coffeeWaveFill" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stop-color="rgba(245, 158, 11, 0.28)" />
+                                <stop offset="100%" stop-color="rgba(180, 83, 9, 0.0)" />
+                            </linearGradient>
+                        </defs>
+                        <!-- تعبئة تحت المنحنى -->
+                        <path d="M 0,55 C 50,58 80,42 130,46 C 180,50 210,25 260,32 C 310,38 335,12 360,14 L 360,70 L 0,70 Z" fill="url(#coffeeWaveFill)" />
+                        <!-- خط الموجة المنحني -->
+                        <path d="M 0,55 C 50,58 80,42 130,46 C 180,50 210,25 260,32 C 310,38 335,12 360,14" fill="none" stroke="url(#coffeeWaveStroke)" stroke-width="3" stroke-linecap="round" />
+                        <!-- النقطة المتوهجة في نهاية المنحنى -->
+                        <circle cx="360" cy="14" r="4.5" fill="#f59e0b" />
+                        <circle cx="360" cy="14" r="9" fill="rgba(245, 158, 11, 0.35)" />
+                    </svg>
+                </div>
+
+                <div class="stock-meta-row">
+                    <span>
+                        🌱 أخضر: <strong>{{ "{:,.1f}".format(total_green_kg) }} كجم</strong> ({{ "{:,.0f}".format(total_green_val) }} ر.س) &bull; ☕ محمص: <strong>{{ "{:,.1f}".format(total_roasted_kg) }} كجم</strong> ({{ "{:,.0f}".format(total_roasted_val) }} ر.س)
+                    </span>
+                    <a href="{{ url_for('coffee.green_stock') }}" class="saas-card-footer-link">
+                        كشف أرصدة البن المفصل &larr;
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 3. شريط إحصائيات العمليات السريع (Interactive Sub-stats strip - 4 boxes) -->
+    <div class="saas-substats-strip">
+        <a href="{{ url_for('coffee.roasting_list') }}" class="saas-substat-box" title="انقر لعرض ومتابعة أوامر التحميص">
+            <div class="saas-substat-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">
+                🔥
+            </div>
+            <div class="saas-substat-info">
+                <span class="saas-substat-label">أوامر تحميص قيد التشغيل</span>
+                <span class="saas-substat-val">{{ pending_orders or 0 }}</span>
+            </div>
+            <span class="saas-substat-arrow">←</span>
+        </a>
+
+        <a href="{{ url_for('coffee.green_stock') }}" class="saas-substat-box" title="انقر لفتح سجلات وأرصدة البن الأخضر">
+            <div class="saas-substat-icon" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">
+                🌱
+            </div>
+            <div class="saas-substat-info">
+                <span class="saas-substat-label">أصناف البن الأخضر النشطة</span>
+                <span class="saas-substat-val">{{ green_items_count or 0 }}</span>
+            </div>
+            <span class="saas-substat-arrow">←</span>
+        </a>
+
+        <a href="{{ url_for('coffee.dispatches_list') }}" class="saas-substat-box" title="انقر لعرض شحنات وسندات صرف المحمص للفروع والمبيعات">
+            <div class="saas-substat-icon" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">
+                🚚
+            </div>
+            <div class="saas-substat-info">
+                <span class="saas-substat-label">شحنات المحمص للفروع</span>
+                <span class="saas-substat-val">{{ recent_dispatches|length }}</span>
+            </div>
+            <span class="saas-substat-arrow">←</span>
+        </a>
+
+        {% if user and user.role != 'warehouse' %}
+        <a href="{{ url_for('coffee.xero_status') }}" class="saas-substat-box" title="انقر لفتح غرفة ترحيل قيود Xero المعلقة">
+            <div class="saas-substat-icon" style="background: rgba(139, 92, 246, 0.15); color: #c4b5fd;">
+                ⚡
+            </div>
+            <div class="saas-substat-info">
+                <span class="saas-substat-label">معلق الترحيل المحاسبي لـ Xero</span>
+                <span class="saas-substat-val">{{ xero_pending or 0 }}</span>
+            </div>
+            <span class="saas-substat-arrow">←</span>
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- 4. شريط التبويبات التفاعلية لعمليات المحمصة (Segmented Tabs Bar) -->
+    <div class="saas-tabs-bar" role="tablist">
+        <button type="button" class="saas-tab-btn active" id="btnCoffeeRoasting" onclick="switchCoffeeTab('tabRoastingOrders', this)">
+            <span>🔥 أوامر التحميص التشغيلية</span>
+            <span class="saas-tab-badge">{{ recent_orders|length }}</span>
+        </button>
+
+        <button type="button" class="saas-tab-btn" id="btnCoffeeDispatches" onclick="switchCoffeeTab('tabCoffeeDispatches', this)">
+            <span>🚚 سندات صرف المحمص للفروع</span>
+            <span class="saas-tab-badge">{{ recent_dispatches|length }}</span>
+        </button>
+
+        <button type="button" class="saas-tab-btn" id="btnCoffeeGreenIssues" onclick="switchCoffeeTab('tabCoffeeGreenIssues', this)">
+            <span>📤 سندات صرف البن الأخضر</span>
+            <span class="saas-tab-badge">{{ recent_green_issues|length }}</span>
+        </button>
+    </div>
+
+    <!-- 5. كرت وجداول العمليات التشغيلية (Tab Panes) -->
+
+    <!-- تبويب 1: أوامر التحميص -->
+    <div id="tabRoastingOrders" class="saas-tab-pane active" role="tabpanel">
+        <div class="saas-table-card">
+            <div class="saas-table-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <h4>📋 أحدث أوامر التحميص التشغيلية</h4>
+                    <span class="saas-pill-tag submitted" style="font-size: 12px; padding: 3px 10px;">
+                        {{ completed_orders + pending_orders }} أمر مسجل
+                    </span>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <input type="text"
+                           class="saas-table-search-input"
+                           placeholder="🔍 بحث سريع برقم الأمر أو التاريخ أو المشرف..."
+                           onkeyup="filterActiveCoffeeTable('roastingTable', this.value)">
+                    
+                    <a href="{{ url_for('coffee.roasting_list') }}" class="saas-btn-glass" style="font-size: 12px; padding: 6px 12px;">
+                        عرض كافة الأوامر &larr;
+                    </a>
+                </div>
+            </div>
+
+            {% if recent_orders %}
+            <div style="overflow-x: auto;">
+                <table class="saas-table" id="roastingTable">
+                    <thead>
+                        <tr>
+                            <th>رقم الأمر</th>
+                            <th>التاريخ</th>
+                            <th>مشرف التحميص</th>
+                            <th>عدد الأصناف</th>
+                            <th>كمية الأخضر</th>
+                            <th>كمية المحمص</th>
+                            <th>الحالة</th>
+                            {% if user and user.role != 'warehouse' %}
+                            <th>ترحيل Xero</th>
+                            {% endif %}
+                            <th style="text-align: center;">الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ord in recent_orders %}
+                        <tr class="clickable-row" onclick="window.location='{{ url_for('coffee.roasting_edit', order_id=ord.id) }}'">
+                            <td>
+                                <strong class="saas-doc-badge">{{ ord.order_number }}</strong>
+                            </td>
+                            <td>{{ ord.order_date }}</td>
+                            <td><strong class="saas-table-main-text">{{ ord.roasting_supervisor or '—' }}</strong></td>
+                            <td>{{ ord.lines|length }}</td>
+                            <td>{{ "{:,.2f}".format(ord.total_green_kg) }} كجم</td>
+                            <td>
+                                {% if ord.status == 'completed' %}
+                                <strong class="saas-currency-val">{{ "{:,.2f}".format(ord.total_roasted_kg) }} كجم</strong>
+                                {% else %}
+                                <span class="saas-pill-tag submitted">قيد التشغيل</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ ui.order_status(ord.status) }}
+                            </td>
+                            {% if user and user.role != 'warehouse' %}
+                            <td>
+                                {{ ui.xero_status(ord.xero_status) }}
+                            </td>
+                            {% endif %}
+                            <td style="text-align: center;" onclick="event.stopPropagation()">
+                                <a href="{{ url_for('coffee.roasting_edit', order_id=ord.id) }}" class="saas-btn-glass" style="padding: 4px 10px; font-size: 11.5px;">
+                                    تفاصيل &larr;
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 40px 20px; color: var(--saas-text-muted);">
+                <div style="font-size: 32px; margin-bottom: 8px;">🔥</div>
+                <p style="margin: 0 0 14px 0;">لم يتم إنشاء أي أوامر تحميص حتى الآن</p>
+                <a href="{{ url_for('coffee.roasting_new') }}" class="saas-btn-glow-primary">
+                    + إنشاء أول أمر تحميص
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- تبويب 2: سندات صرف البن المحمص للفروع -->
+    <div id="tabCoffeeDispatches" class="saas-tab-pane" role="tabpanel">
+        <div class="saas-table-card">
+            <div class="saas-table-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <h4>🚚 أحدث شحنات وسندات صرف البن المحمص</h4>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <input type="text"
+                           class="saas-table-search-input"
+                           placeholder="🔍 بحث برقم الشحنة أو الفرع أو التاريخ..."
+                           onkeyup="filterActiveCoffeeTable('dispatchesTable', this.value)">
+                    
+                    <a href="{{ url_for('coffee.dispatches_list') }}" class="saas-btn-glass" style="font-size: 12px; padding: 6px 12px;">
+                        عرض كافة الشحنات &larr;
+                    </a>
+                </div>
+            </div>
+
+            {% if recent_dispatches %}
+            <div style="overflow-x: auto;">
+                <table class="saas-table" id="dispatchesTable">
+                    <thead>
+                        <tr>
+                            <th>رقم السند</th>
+                            <th>التاريخ</th>
+                            <th>الوجهة / الفرع المستلم</th>
+                            <th>طريقة التسليم</th>
+                            <th>إجمالي الوزن</th>
+                            <th>الحالة</th>
+                            {% if user and user.role != 'warehouse' %}
+                            <th>ترحيل Xero</th>
+                            {% endif %}
+                            <th style="text-align: center;">الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in recent_dispatches %}
+                        <tr class="clickable-row" onclick="window.location='{{ url_for('coffee.roasted_dispatch_edit', dispatch_id=d.id) }}'">
+                            <td>
+                                <strong class="saas-doc-badge blue">{{ d.dispatch_number or ('#' ~ d.id) }}</strong>
+                            </td>
+                            <td>{{ d.dispatch_date }}</td>
+                            <td>
+                                <strong class="saas-table-main-text">
+                                    {% if d.dispatch_type == 'branch' %}
+                                        {{ d.branch_name or (d.branch.name_ar if d.branch else 'فرع غير محدد') }}
+                                    {% elif d.dispatch_type == 'sale' %}
+                                        {{ d.customer_name or 'عميل بيع خارجي' }}
+                                    {% else %}
+                                        {{ d.dispatch_type }}
+                                    {% endif %}
+                                </strong>
+                            </td>
+                            <td>
+                                {% if d.delivery_method == 'shipping' %}
+                                <span class="saas-pill-tag in_transit">
+                                    🚚 شحن ({{ d.shipping_company or 'ناقل' }})
+                                </span>
+                                {% else %}
+                                <span class="saas-pill-tag draft">
+                                    🤝 تسليم مباشر
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong class="saas-table-main-text" style="color: #b45309 !important; font-weight: 800; font-size: 14px;">{{ "{:,.2f}".format(d.total_roasted_kg or 0.0) }} كجم</strong>
+                            </td>
+                            <td>
+                                {% if d.status == 'approved' %}
+                                <span class="kf-status kf-status--ok">معتمد ونهائي</span>
+                                {% else %}
+                                <span class="kf-status kf-status--muted">مسودة</span>
+                                {% endif %}
+                            </td>
+                            {% if user and user.role != 'warehouse' %}
+                            <td>
+                                {{ ui.xero_status(d.xero_status) }}
+                            </td>
+                            {% endif %}
+                            <td style="text-align: center;" onclick="event.stopPropagation()">
+                                <a href="{{ url_for('coffee.roasted_dispatch_edit', dispatch_id=d.id) }}" class="saas-btn-glass" style="padding: 4px 10px; font-size: 11.5px;">
+                                    معاينة &larr;
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 40px 20px; color: var(--saas-text-muted);">
+                <div style="font-size: 32px; margin-bottom: 8px;">🚚</div>
+                <p style="margin: 0 0 14px 0;">لا توجد شحنات صرف بن محمص مسجلة حالياً</p>
+                <a href="{{ url_for('coffee.dispatch_new') }}" class="saas-btn-glow-primary">
+                    + إنشاء سند صرف محمص جديد
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- تبويب 3: سندات صرف البن الأخضر -->
+    <div id="tabCoffeeGreenIssues" class="saas-tab-pane" role="tabpanel">
+        <div class="saas-table-card">
+            <div class="saas-table-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <h4>📤 أحدث سندات صرف البن الأخضر</h4>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <input type="text"
+                           class="saas-table-search-input"
+                           placeholder="🔍 بحث برقم السند أو التاريخ أو السبب..."
+                           onkeyup="filterActiveCoffeeTable('greenIssuesTable', this.value)">
+                    
+                    <a href="{{ url_for('coffee.green_issues_list') }}" class="saas-btn-glass" style="font-size: 12px; padding: 6px 12px;">
+                        عرض كافة سندات الأخضر &larr;
+                    </a>
+                </div>
+            </div>
+
+            {% if recent_green_issues %}
+            <div style="overflow-x: auto;">
+                <table class="saas-table" id="greenIssuesTable">
+                    <thead>
+                        <tr>
+                            <th>رقم السند</th>
+                            <th>التاريخ</th>
+                            <th>الغرض / البيان</th>
+                            <th>إجمالي الوزن</th>
+                            <th>الحالة</th>
+                            {% if user and user.role != 'warehouse' %}
+                            <th>ترحيل Xero</th>
+                            {% endif %}
+                            <th style="text-align: center;">الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gi in recent_green_issues %}
+                        <tr class="clickable-row" onclick="window.location='{{ url_for('coffee.green_issue_edit', issue_id=gi.id) }}'">
+                            <td>
+                                <strong class="saas-doc-badge emerald">{{ gi.issue_number or ('#' ~ gi.id) }}</strong>
+                            </td>
+                            <td>{{ gi.issue_date }}</td>
+                            <td>
+                                <strong class="saas-table-main-text">
+                                    {% if gi.issue_type == 'roasting' %}
+                                        🔥 صرف لخطوط التحميص
+                                    {% elif gi.issue_type == 'sale' %}
+                                        💼 بيع مباشر ({{ gi.customer_name or 'عميل' }})
+                                    {% else %}
+                                        {{ gi.issue_type }}
+                                    {% endif %}
+                                </strong>
+                            </td>
+                            <td>
+                                <strong class="saas-currency-val">{{ "{:,.2f}".format(gi.total_green_kg or 0.0) }} كجم</strong>
+                            </td>
+                            <td>
+                                {% if gi.status == 'approved' %}
+                                <span class="kf-status kf-status--ok">معتمد</span>
+                                {% else %}
+                                <span class="kf-status kf-status--muted">مسودة</span>
+                                {% endif %}
+                            </td>
+                            {% if user and user.role != 'warehouse' %}
+                            <td>
+                                {{ ui.xero_status(gi.xero_status) }}
+                            </td>
+                            {% endif %}
+                            <td style="text-align: center;" onclick="event.stopPropagation()">
+                                <a href="{{ url_for('coffee.green_issue_edit', issue_id=gi.id) }}" class="saas-btn-glass" style="padding: 4px 10px; font-size: 11.5px;">
+                                    معاينة &larr;
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 40px 20px; color: var(--saas-text-muted);">
+                <div style="font-size: 32px; margin-bottom: 8px;">📤</div>
+                <p style="margin: 0 0 14px 0;">لا توجد سندات صرف بن أخضر مسجلة حالياً</p>
+                <a href="{{ url_for('coffee.green_issue_new') }}" class="saas-btn-glow-primary">
+                    + إنشاء سند صرف أخضر
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<!-- دوال التبويبات والبحث الفوري لقسم القهوة والمحمصة -->
+<script>
+function switchCoffeeTab(tabId, btn) {
+    document.querySelectorAll('.saas-tab-pane').forEach(function(pane) {
+        pane.classList.remove('active');
+    });
+    document.querySelectorAll('.saas-tab-btn').forEach(function(b) {
+        b.classList.remove('active');
+    });
+    var targetPane = document.getElementById(tabId);
+    if (targetPane) {
+        targetPane.classList.add('active');
+    }
+    if (btn) {
+        btn.classList.add('active');
+    }
+}
+
+function filterActiveCoffeeTable(tableId, query) {
+    var filter = (query || "").toLowerCase().trim();
+    var table = document.getElementById(tableId);
+    if (!table) return;
+    var rows = table.getElementsByTagName("tbody")[0].getElementsByTagName("tr");
+
+    for (var i = 0; i < rows.length; i++) {
+        var rowText = rows[i].textContent.toLowerCase();
+        if (rowText.indexOf(filter) > -1) {
+            rows[i].style.display = "";
+        } else {
+            rows[i].style.display = "none";
+        }
+    }
+}
+</script>
+{% endblock %}
