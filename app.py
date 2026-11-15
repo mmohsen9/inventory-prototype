@@ -46,11 +46,15 @@ is_test_env = (
     or "pytest" in sys.modules
     or any("test" in arg.lower() for arg in sys.argv)
 )
-app.config["SQLALCHEMY_DATABASE_URI"] = (
-    "sqlite:///:memory:" if is_test_env else os.environ.get(
-        "DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'rafa_inventory.db')}"
-    )
-)
+raw_db_url = (os.environ.get("DATABASE_URL") or "").strip()
+if not raw_db_url or raw_db_url.lower() in ("value", "none", "null", "undefined"):
+    db_uri = f"sqlite:///{os.path.join(BASE_DIR, 'instance', 'rafa_inventory.db')}"
+else:
+    if raw_db_url.startswith("postgres://"):
+        raw_db_url = raw_db_url.replace("postgres://", "postgresql://", 1)
+    db_uri = raw_db_url
+
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:" if is_test_env else db_uri
 
 # فرض وجود مفتاح سري حقيقي في بيئة الإنتاج ومنع المفتاح الافتراضي
 secret_key = os.environ.get("SECRET_KEY")
@@ -130,10 +134,7 @@ def add_performance_headers(response):
 
 
 def ensure_seed_data():
-    """يهيئ البيانات الأولية الأساسية إذا كانت قاعدة البيانات فارغة في بيئة التطوير فقط."""
-    if IS_PRODUCTION:
-        return
-
+    """يهيئ البيانات الأولية الأساسية إذا كانت قاعدة البيانات فارغة."""
     if Location.query.count() == 0:
         default_locations = [
             ("المستودع الرئيسي", "Warehouse 1", "warehouse"),
@@ -229,8 +230,8 @@ def ensure_seed_data():
 
     db.session.commit()
 
-    # تهيئة أرصدة ابتدائية للأصناف لتفعيل التقارير
-    if StockBalance.query.count() == 0:
+    # تهيئة أرصدة ابتدائية للأصناف لتفعيل التقارير (في بيئة التطوير فقط)
+    if not IS_PRODUCTION and StockBalance.query.count() == 0:
         import random
         locs = Location.query.all()
         sample_items = Item.query.limit(25).all()
@@ -4910,7 +4911,7 @@ def handle_403(e):
 @app.errorhandler(500)
 def handle_500(e):
     ref_id = uuid.uuid4().hex[:8].upper()
-    app.logger.error(f"Internal error [{ref_id}]: {str(e)}")
+    app.logger.error(f"Internal error [{ref_id}]: {str(e)}", exc_info=True)
     return render_template("error.html", error_code=500, error_message=f"حدث خطأ غير متوقع أثناء معالجة الطلب. رقم المرجع للدعم: {ref_id}"), 500
 
 
@@ -4990,12 +4991,12 @@ def reconcile_stock_cmd(fix):
 # تهيئة قاعدة البيانات عند الإقلاع
 # ---------------------------------------------------------------
 with app.app_context():
-    if not IS_PRODUCTION and not is_test_env:
-        db.create_all()
+    if not is_test_env:
         try:
+            db.create_all()
             ensure_seed_data()
         except Exception as _seed_err:
-            print(f"تحذير: تعذّر التحميل الأولي للبيانات: {_seed_err}")
+            app.logger.warning(f"تحذير أثناء تهيئة قاعدة البيانات: {_seed_err}")
 
 
 if __name__ == "__main__":
