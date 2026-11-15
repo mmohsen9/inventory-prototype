@@ -52,6 +52,16 @@ if not raw_db_url or raw_db_url.lower() in ("value", "none", "null", "undefined"
 else:
     if raw_db_url.startswith("postgres://"):
         raw_db_url = raw_db_url.replace("postgres://", "postgresql://", 1)
+    if raw_db_url.startswith("postgresql://") and "@" in raw_db_url:
+        try:
+            proto, rest = raw_db_url.split("://", 1)
+            userinfo, hostinfo = rest.split("@", 1)
+            if ":" not in userinfo:
+                pg_pass = os.environ.get("PGPASSWORD") or os.environ.get("POSTGRES_PASSWORD") or os.environ.get("DB_PASSWORD")
+                if pg_pass:
+                    raw_db_url = f"{proto}://{userinfo}:{pg_pass}@{hostinfo}"
+        except Exception:
+            pass
     db_uri = raw_db_url
 
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:" if is_test_env else db_uri
