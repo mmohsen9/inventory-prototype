@@ -363,13 +363,19 @@ class Location(db.Model):
     def get_operational_locations(cls):
         """
         إرجاع المواقع التشغيلية المعتمدة فقط:
-        - الفروع والمستودعات المربوطة بفوديكس (foodics_id is not None)
-        - ومستودع البن الأخضر ومستودع البن المحمص
-        - استبعاد الفروع التجريبية/الوهمية غير المربوطة بفوديكس
+        - كافة المستودعات التشغيلية (المستودع الرئيسي، مستودع الأخضر، مستودع المحمص)
+        - الفروع المربوطة بفوديكس (foodics_id is not None)
+        - استبعاد الفروع التجريبية/الوهمية غير المربوطة
         """
+        has_foodics_locs = cls.query.filter(cls.foodics_id.isnot(None)).first() is not None
+        if not has_foodics_locs:
+            # قبل إتمام أول مزامنة مع فوديكس: إتاحة كافة مواقع النظام الأولية
+            return cls.query.order_by(cls.type.desc(), cls.name_ar.asc()).all()
+
         query = cls.query.filter(
+            (cls.type == "warehouse") |
             (cls.foodics_id.isnot(None)) |
-            (cls.name_ar.in_(["مستودع البن الأخضر", "مستودع البن المحمص", "Green Coffee Warehouse", "Roasted Coffee Warehouse"]))
+            (cls.name_ar.in_(["المستودع الرئيسي", "Warehouse 1", "المستودع المركزي", "مستودع البن الأخضر", "مستودع البن المحمص", "Green Coffee Warehouse", "Roasted Coffee Warehouse"]))
         )
         locs = query.order_by(cls.type.desc(), cls.name_ar.asc()).all()
         return locs if locs else cls.query.order_by(cls.type.desc(), cls.name_ar.asc()).all()
@@ -379,6 +385,10 @@ class Location(db.Model):
         """
         إرجاع الفروع التشغيلية المعتمدة فقط المربوطة بفوديكس (تستبعد الفروع التجريبية):
         """
+        has_foodics_branches = cls.query.filter(cls.type == "branch", cls.foodics_id.isnot(None)).first() is not None
+        if not has_foodics_branches:
+            return cls.query.filter_by(type="branch").order_by(cls.name_ar.asc()).all()
+
         branches = cls.query.filter(
             cls.type == "branch",
             cls.foodics_id.isnot(None)
