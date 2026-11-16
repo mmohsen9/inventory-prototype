@@ -885,12 +885,16 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
                         "--disable-gpu",
                         "--no-sandbox",
                         "--disable-dev-shm-usage",
+                        "--no-zygote",
+                        "--single-process",
+                        "--disable-software-rasterizer",
+                        "--disable-extensions",
                         "--no-pdf-header-footer",
                         f"--print-to-pdf={temp_pdf}",
                         temp_html
                     ]
                     try:
-                        res = subprocess.run(cmd, capture_output=True, timeout=25)
+                        res = subprocess.run(cmd, capture_output=True, timeout=10)
                         if os.path.exists(temp_pdf) and os.path.getsize(temp_pdf) > 0:
                             with open(temp_pdf, "rb") as pf:
                                 pdf_bytes = pf.read()

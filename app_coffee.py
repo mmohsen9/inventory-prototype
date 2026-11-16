@@ -3781,20 +3781,91 @@ def xero_post_batch():
         data = request.get_json(silent=True) or {}
         scope = data.get("scope", scope)
 
+    # جمع معرفات العمليات المراد ترحيلها
+    dispatch_ids = []
+    green_issue_ids = []
+    roasting_order_ids = []
+
+    if scope in ("all", "dispatches"):
+        dispatch_ids = [d.id for d in RoastedCoffeeDispatch.query.filter(
+            RoastedCoffeeDispatch.status == "approved",
+            RoastedCoffeeDispatch.dispatch_type.in_(["sale", "branch", "sample", "internal_use"]),
+            RoastedCoffeeDispatch.xero_status.in_(["pending", "failed"])
+        ).order_by(RoastedCoffeeDispatch.dispatch_date.asc()).all()]
+
+    if scope in ("all", "green_issues"):
+        green_issue_ids = [gi.id for gi in GreenCoffeeIssue.query.filter(
+            GreenCoffeeIssue.status == "approved",
+            GreenCoffeeIssue.issue_type.in_(["sale", "sample", "internal_use"]),
+            GreenCoffeeIssue.xero_status.in_(["pending", "failed"])
+        ).order_by(GreenCoffeeIssue.issue_date.asc()).all()]
+
+    if scope in ("all", "roasting"):
+        roasting_order_ids = [ord_item.id for ord_item in RoastingOrder.query.filter(
+            RoastingOrder.status == "completed",
+            RoastingOrder.xero_status.in_(["pending", "failed", "partial"])
+        ).order_by(RoastingOrder.order_date.asc()).all()]
+
+    total_candidates = len(dispatch_ids) + len(green_issue_ids) + len(roasting_order_ids)
+
+    if total_candidates == 0:
+        if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({
+                "success": True,
+                "total_processed": 0,
+                "message": "لا توجد أي عمليات معلقة أو متعثرة بانتظار الترحيل حالياً."
+            })
+        flash("ℹ️ لا توجد أي عمليات معلقة أو متعثرة بانتظار الترحيل حالياً.", "info")
+        return redirect(request.referrer or url_for("coffee.xero_status"))
+
+    # في بيئة الإنتاج السحابية (CranL): تشغيل الترحيل في الخلفية لمنع انقطاع الاتصال (504 Gateway Timeout)
+    if not current_app.config.get("TESTING"):
+        app_obj = current_app._get_current_object()
+
+        def _bg_batch_post(app_ref, d_ids, g_ids, r_ids):
+            with app_ref.app_context():
+                for did in d_ids:
+                    try:
+                        post_roasted_dispatch_to_xero(did)
+                    except Exception as e:
+                        logger.error("Error in background post dispatch %s: %s", did, e)
+                for gid in g_ids:
+                    try:
+                        post_green_issue_to_xero(gid)
+                    except Exception as e:
+                        logger.error("Error in background post green issue %s: %s", gid, e)
+                for roid in r_ids:
+                    try:
+                        ro_item = RoastingOrder.query.get(roid)
+                        if ro_item:
+                            post_roasting_order_to_xero(ro_item)
+                    except Exception as e:
+                        logger.error("Error in background post roasting %s: %s", roid, e)
+
+        import threading
+        t = threading.Thread(target=_bg_batch_post, args=(app_obj, dispatch_ids, green_issue_ids, roasting_order_ids), daemon=True)
+        t.start()
+
+        msg = f"⚡ بدأ ترحيل كافة العمليات المعلقة ({total_candidates} عمليات) في الخلفية بنجاح إلى Xero! سيتم تحديث حالة السندات فور اكتمالها."
+        if request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({
+                "success": True,
+                "total_processed": total_candidates,
+                "message": msg,
+                "background": True
+            })
+        flash(msg, "success")
+        return redirect(request.referrer or url_for("coffee.xero_status"))
+
+    # في وضع الاختبار (TESTING): تشغيل متزامن لتمكين الفحوصات الآلية
     success_count = 0
     failed_count = 0
     errors = []
 
-    # 1. ترحيل سندات صرف المحمص المعلقة أو المتعثرة المعتمدة فقط
-    if scope in ("all", "dispatches"):
-        dispatches = RoastedCoffeeDispatch.query.filter(
-            RoastedCoffeeDispatch.status == "approved",
-            RoastedCoffeeDispatch.dispatch_type.in_(["sale", "branch", "sample", "internal_use"]),
-            RoastedCoffeeDispatch.xero_status.in_(["pending", "failed"])
-        ).order_by(RoastedCoffeeDispatch.dispatch_date.asc()).all()
-
-        for d in dispatches:
-            try:
+    for did in dispatch_ids:
+        try:
+            d = RoastedCoffeeDispatch.query.get(did)
+            if d:
                 res = post_roasted_dispatch_to_xero(d.id)
                 if res.get("success"):
                     success_count += 1
@@ -3802,20 +3873,14 @@ def xero_post_batch():
                     failed_count += 1
                     err = res.get("error") or "فشل غير معروف"
                     errors.append(f"سند محمص {d.doc_number}: {err}")
-            except Exception as e:
-                failed_count += 1
-                errors.append(f"سند محمص {d.doc_number}: {str(e)}")
+        except Exception as e:
+            failed_count += 1
+            errors.append(f"سند محمص #{did}: {str(e)}")
 
-    # 2. ترحيل سندات صرف الأخضر المعلقة أو المتعثرة المعتمدة فقط
-    if scope in ("all", "green_issues"):
-        green_issues = GreenCoffeeIssue.query.filter(
-            GreenCoffeeIssue.status == "approved",
-            GreenCoffeeIssue.issue_type.in_(["sale", "sample", "internal_use"]),
-            GreenCoffeeIssue.xero_status.in_(["pending", "failed"])
-        ).order_by(GreenCoffeeIssue.issue_date.asc()).all()
-
-        for gi in green_issues:
-            try:
+    for gid in green_issue_ids:
+        try:
+            gi = GreenCoffeeIssue.query.get(gid)
+            if gi:
                 res = post_green_issue_to_xero(gi.id)
                 if res.get("success"):
                     success_count += 1
@@ -3823,19 +3888,14 @@ def xero_post_batch():
                     failed_count += 1
                     err = res.get("error") or "فشل غير معروف"
                     errors.append(f"سند أخضر {gi.doc_number}: {err}")
-            except Exception as e:
-                failed_count += 1
-                errors.append(f"سند أخضر {gi.doc_number}: {str(e)}")
+        except Exception as e:
+            failed_count += 1
+            errors.append(f"سند أخضر #{gid}: {str(e)}")
 
-    # 3. ترحيل أوامر التحميص المكتملة المعلقة أو المتعثرة
-    if scope in ("all", "roasting"):
-        orders = RoastingOrder.query.filter(
-            RoastingOrder.status == "completed",
-            RoastingOrder.xero_status.in_(["pending", "failed", "partial"])
-        ).order_by(RoastingOrder.order_date.asc()).all()
-
-        for ord_item in orders:
-            try:
+    for roid in roasting_order_ids:
+        try:
+            ord_item = RoastingOrder.query.get(roid)
+            if ord_item:
                 res = post_roasting_order_to_xero(ord_item)
                 if res.get("xero_status") == "posted":
                     success_count += 1
@@ -3843,9 +3903,9 @@ def xero_post_batch():
                     failed_count += 1
                     errs = " | ".join(res.get("errors") or ["فشل الترحيل"])
                     errors.append(f"أمر تحميص {ord_item.order_number}: {errs}")
-            except Exception as e:
-                failed_count += 1
-                errors.append(f"أمر تحميص {ord_item.order_number}: {str(e)}")
+        except Exception as e:
+            failed_count += 1
+            errors.append(f"أمر تحميص #{roid}: {str(e)}")
 
     total = success_count + failed_count
 
