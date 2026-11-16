@@ -719,6 +719,19 @@
                 </form>
             </div>
             {% endif %}
+
+            {% if order.xero_status != 'posted' and has_perm('coffee.create_roasting_order') %}
+            <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #cbd5e1; width: 100%; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                <form method="POST" action="{{ url_for('coffee.roasting_change_number', order_id=order.id) }}" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <span style="font-size: 12px; font-weight: 700; color: #475569;">💡 في حال تعارض رقم الأمر مع زيرو (مستند قديم مسجل مسبقاً بنفس الرقم):</span>
+                    <input type="text" name="new_order_number" value="{{ order.order_number }}" style="padding: 6px 12px; border: 1px solid var(--gray-300); border-radius: 4px; font-size: 13px; font-weight: 700; width: 130px;" required>
+                    <button type="submit" class="btn-sm" style="background: #475569; color: #fff; border: none; padding: 7px 14px; border-radius: 4px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                        تحديث رقم الأمر
+                    </button>
+                </form>
+            </div>
+            {% endif %}
         </div>
     </div>
     {% endif %}

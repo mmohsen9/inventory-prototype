@@ -478,23 +478,34 @@ def post_credit_note(order) -> Tuple[bool, Optional[str], Optional[str]]:
 
     try:
         resp = _post_credit_note_resilient(payload, timeout=30)
-        resp.raise_for_status()
-        data = resp.json()
-        cn   = data["CreditNotes"][0]
-        cn_id = cn["CreditNoteID"]
-        actual_total = float(cn.get("Total") or total)
+        if resp.status_code in (200, 201):
+            data = resp.json()
+            cn   = data["CreditNotes"][0]
+            cn_id = cn["CreditNoteID"]
+            actual_total = float(cn.get("Total") or total)
 
-        # ─ إغلاق Credit Note بـ Cash Refund على الحساب الوسيط ────────────
-        clearing = _get_setting("xero_clearing_account", "851")
-        if clearing and cn_id and actual_total > 0:
-            _apply_cash_refund(cn_id, actual_total, order.order_date, clearing)
+            # ─ إغلاق Credit Note بـ Cash Refund على الحساب الوسيط ────────────
+            clearing = _get_setting("xero_clearing_account", "851")
+            if clearing and cn_id and actual_total > 0:
+                _apply_cash_refund(cn_id, actual_total, order.order_date, clearing)
 
-        url = f"https://go.xero.com/AccountsPayable/View.aspx?creditnoteID={cn_id}"
-        return True, cn_id, None
+            url = f"https://go.xero.com/AccountsPayable/View.aspx?creditnoteID={cn_id}"
+            return True, cn_id, None
+        else:
+            # التعافي الذكي في حال كان الإشعار موجوداً مسبقاً في زيرو ومسدداً
+            existing = _find_existing_xero_document("CreditNotes", order.order_number, expected_total=total)
+            if existing and existing.get("CreditNoteID"):
+                cn_id = existing.get("CreditNoteID")
+                rem_credit = float(existing.get("RemainingCredit") or 0.0)
+                clearing = _get_setting("xero_clearing_account", "851")
+                if clearing and rem_credit > 0:
+                    _apply_cash_refund(cn_id, rem_credit, order.order_date, clearing)
+                logger.info("Found existing Xero Credit Note %s for order %s, linked successfully.", cn_id, order.order_number)
+                return True, cn_id, None
 
-    except requests.HTTPError as e:
-        err = _parse_xero_error(e)
-        return False, None, err
+            err = _parse_xero_error(resp)
+            return False, None, err
+
     except Exception as e:
         return False, None, str(e)
 
@@ -546,21 +557,32 @@ def post_bill(order) -> Tuple[bool, Optional[str], Optional[str]]:
             json={"Invoices": [payload]},
             timeout=30,
         )
-        resp.raise_for_status()
-        data    = resp.json()
-        inv     = data["Invoices"][0]
-        bill_id = inv["InvoiceID"]
+        if resp.status_code in (200, 201):
+            data    = resp.json()
+            inv     = data["Invoices"][0]
+            bill_id = inv["InvoiceID"]
 
-        # ─ إغلاق Bill بـ Payment على الحساب الوسيط ───────────────────────
-        clearing = _get_setting("xero_clearing_account", "851")
-        if clearing and bill_id:
-            _apply_payment(bill_id, total, order.order_date, clearing)
+            # ─ إغلاق Bill بـ Payment على الحساب الوسيط ───────────────────────
+            clearing = _get_setting("xero_clearing_account", "851")
+            if clearing and bill_id:
+                _apply_payment(bill_id, total, order.order_date, clearing)
 
-        return True, bill_id, None
+            return True, bill_id, None
+        else:
+            # التعافي الذكي في حال كانت الفاتورة موجودة مسبقاً في زيرو ومسددة
+            existing = _find_existing_xero_document("Invoices", order.order_number, expected_total=total)
+            if existing and existing.get("InvoiceID"):
+                bill_id = existing.get("InvoiceID")
+                amt_due = float(existing.get("AmountDue") or 0.0)
+                clearing = _get_setting("xero_clearing_account", "851")
+                if clearing and amt_due > 0:
+                    _apply_payment(bill_id, amt_due, order.order_date, clearing)
+                logger.info("Found existing Xero Bill %s for order %s, linked successfully.", bill_id, order.order_number)
+                return True, bill_id, None
 
-    except requests.HTTPError as e:
-        err = _parse_xero_error(e)
-        return False, None, err
+            err = _parse_xero_error(resp)
+            return False, None, err
+
     except Exception as e:
         return False, None, str(e)
 

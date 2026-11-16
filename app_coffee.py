@@ -1530,6 +1530,49 @@ def roasting_attach_xero(order_id):
     return redirect(request.referrer or url_for("coffee.roasting_edit", order_id=order_id))
 
 
+@coffee_bp.route("/roasting/<int:order_id>/change-number", methods=["POST"])
+def roasting_change_number(order_id):
+    """تعديل رقم أمر التحميص في حال تعارضه مع رقم مستند قديم مسجل في زيرو."""
+    r = _require_login()
+    if r: return r
+    denied = _require_perm("coffee.create_roasting_order")
+    if denied: return denied
+
+    order = RoastingOrder.query.get_or_404(order_id)
+    if order.xero_status == "posted":
+        flash("لا يمكن تعديل رقم أمر التحميص بعد ترحيله بنجاح إلى Xero", "error")
+        return redirect(url_for("coffee.roasting_edit", order_id=order_id))
+
+    new_num = (request.form.get("new_order_number") or "").strip()
+    if not new_num:
+        flash("يرجى إدخال رقم أمر صالح", "error")
+        return redirect(url_for("coffee.roasting_edit", order_id=order_id))
+
+    existing = RoastingOrder.query.filter(RoastingOrder.order_number == new_num, RoastingOrder.id != order.id).first()
+    if existing:
+        flash(f"رقم أمر التحميص {new_num} مسجل مسبقاً لأمر آخر (#{existing.id})", "error")
+        return redirect(url_for("coffee.roasting_edit", order_id=order_id))
+
+    old_num = order.order_number
+    order.order_number = new_num
+    order.xero_error_message = None
+    db.session.commit()
+
+    log_coffee_audit(
+        event_type="change_order_number",
+        entity_type="roasting_order",
+        entity_id=order.id,
+        old_value={"order_number": old_num},
+        new_value={"order_number": new_num},
+        notes=f"تعديل رقم أمر التحميص من {old_num} إلى {new_num} لتفادي تعارض Xero"
+    )
+    db.session.commit()
+
+    flash(f"✅ تم تحديث رقم أمر التحميص بنجاح إلى {new_num}. يمكنك الآن ترحيله لـ Xero.", "success")
+    return redirect(url_for("coffee.roasting_edit", order_id=order_id))
+
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # 10. إلغاء أمر التحميص (بحركة عكسية)
 # ─────────────────────────────────────────────────────────────────────────────
