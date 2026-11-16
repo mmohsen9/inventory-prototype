@@ -27,7 +27,7 @@ def test_green_coffee_issue_doc_number(db_session):
     db_session.flush()
 
     n1 = GreenCoffeeIssue.generate_next_doc_number()
-    assert n1 == "GB-00001"
+    assert n1 == "GB-1001"
     
     item = Item(sku="GB-TEST", name_ar="بن تجريبي", storage_unit="كجم", cost=40.0)
     db_session.add(item)
@@ -53,7 +53,7 @@ def test_green_coffee_issue_doc_number(db_session):
     db_session.commit()
     
     n2 = GreenCoffeeIssue.generate_next_doc_number()
-    assert n2 == "GB-00002"
+    assert n2 == "GB-1002"
 
 
 def test_sack_calculation_and_search_text(db_session):
@@ -164,7 +164,7 @@ def test_roasted_coffee_dispatch_doc_number(db_session):
     db_session.flush()
 
     n1 = RoastedCoffeeDispatch.generate_next_doc_number()
-    assert n1 == "RB-00001"
+    assert n1 == "RB-1001"
 
     item = Item(sku="RB-TEST", name_ar="بن محمص تجريبي", storage_unit="كجم", cost=60.0)
     db_session.add(item)
@@ -190,7 +190,7 @@ def test_roasted_coffee_dispatch_doc_number(db_session):
     db_session.commit()
 
     n2 = RoastedCoffeeDispatch.generate_next_doc_number()
-    assert n2 == "RB-00002"
+    assert n2 == "RB-1002"
 
 
 def test_roasted_sale_xero_draft_invoice(db_session):

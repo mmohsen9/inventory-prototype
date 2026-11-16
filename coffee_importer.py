@@ -56,7 +56,7 @@ def parse_xlsx_rows(file_source):
         return parsed_rows
 
 
-def import_coffee_items_from_rows(rows, user_id=None, reset_balances=True):
+def import_coffee_items_from_rows(rows, user_id=None, reset_balances=False):
     """
     يستورد الأصناف من الصفوف المستخرجة:
     - يضيف الأصناف غير المسجلة مع رصيدها الافتتاحي.
@@ -154,6 +154,10 @@ def import_coffee_items_from_rows(rows, user_id=None, reset_balances=True):
         ).first()
 
         if existing:
+            if not reset_balances:
+                skipped_items.append({"code": raw_code, "name": name_ar})
+                continue
+
             # تحديث التكاليف والأسعار
             if unit_cost > 0:
                 existing.xero_cost_price = unit_cost

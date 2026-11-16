@@ -100,3 +100,58 @@ def test_post_credit_note_and_bill_existing_xero_recovery():
         assert bill_id == "inv-uuid-456"
         assert err is None
         mock_find.assert_called_once_with("Invoices", "OP-00001", expected_total=1000.0)
+
+
+def test_serial_numbers_above_1000(db_session):
+    from models_coffee import (
+        next_roasting_order_number, GreenCoffeeIssue,
+        RoastedCoffeeDispatch, CoffeeSetting, RoastingOrder,
+        ensure_serial_numbers_above_1000
+    )
+    from models import CountSession
+
+    # 1. Test next_roasting_order_number starts at 1001
+    roast_num = next_roasting_order_number()
+    assert roast_num == "OP-1001"
+    assert next_roasting_order_number(preview_only=True) == "OP-1002"
+
+    # 2. Test GreenCoffeeIssue starts at 1001
+    green_num = GreenCoffeeIssue.generate_next_doc_number()
+    assert green_num == "GB-1001"
+
+    # 3. Test RoastedCoffeeDispatch prefixes start at 1001
+    mp_num = RoastedCoffeeDispatch.generate_next_doc_number("branch")
+    assert mp_num == "MP-1001"
+
+    sl_num = RoastedCoffeeDispatch.generate_next_doc_number("salla")
+    assert sl_num == "SL-1001"
+
+    rb_num = RoastedCoffeeDispatch.generate_next_doc_number("sale")
+    assert rb_num == "RB-1001"
+
+    # 4. Test CountSession starts at 1001
+    cs_num = CountSession.generate_next_session_number()
+    assert cs_num == "Nov-1001"
+
+    # 5. Test auto-migration of stuck OP-00001
+    from models import Location
+    gw = Location(name_ar="مستودع الأخضر", name_en="Green WH", type="warehouse")
+    rw = Location(name_ar="مستودع المحمص", name_en="Roasted WH", type="warehouse")
+    db_session.add_all([gw, rw])
+    db_session.flush()
+
+    stuck = RoastingOrder(
+        order_number="OP-00001",
+        order_date=date.today(),
+        green_warehouse_id=gw.id,
+        roasted_warehouse_id=rw.id,
+        xero_status="failed",
+        status="completed"
+    )
+    db_session.add(stuck)
+    db_session.commit()
+
+    ensure_serial_numbers_above_1000()
+    refreshed = RoastingOrder.query.get(stuck.id)
+    assert refreshed.order_number == "OP-1001"
+

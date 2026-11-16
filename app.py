@@ -266,13 +266,36 @@ def ensure_seed_data():
         from coffee_importer import ensure_default_coffee_items
         ensure_default_coffee_items()
     except Exception as _coffee_err:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
         print(f"تحذير: تعذّر تهيئة أصناف القهوة الافتراضية: {_coffee_err}")
 
     try:
         from models_coffee import ensure_salla_schema
         ensure_salla_schema()
     except Exception as _salla_err:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
         print(f"تحذير: تعذّر تهيئة بيانات سلة الافتراضية: {_salla_err}")
+
+    try:
+        from models_coffee import ensure_serial_numbers_above_1000
+        ensure_serial_numbers_above_1000()
+    except Exception as _ser_err:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        print(f"تحذير: تعذّر تهيئة تسلسل السندات: {_ser_err}")
+
+    try:
+        cleanup_supplier_linked_notifications()
+    except Exception:
+        pass
 
 
 def ensure_suppliers_seed():
@@ -321,6 +344,10 @@ def ensure_suppliers_seed():
             import import_supplier_items
             import_supplier_items.run_import()
     except Exception as e:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
         print(f"تحذير: تعذّر استيراد الموردين أو أصنافهم: {e}")
 
 
@@ -932,14 +959,21 @@ def _get_cached_pending_count():
     now = time.time()
     if now - _pending_count_cache["ts"] < 20.0:
         return _pending_count_cache["count"]
-    count = (
-        PurchaseTransaction.query.filter_by(status="submitted").count() +
-        TransferOrder.query.filter_by(status="needs_review").count() +
-        NewItemRequest.query.filter_by(status="pending").count()
-    )
-    _pending_count_cache["count"] = count
-    _pending_count_cache["ts"] = now
-    return count
+    try:
+        count = (
+            PurchaseTransaction.query.filter_by(status="submitted").count() +
+            TransferOrder.query.filter_by(status="needs_review").count() +
+            NewItemRequest.query.filter_by(status="pending").count()
+        )
+        _pending_count_cache["count"] = count
+        _pending_count_cache["ts"] = now
+        return count
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return _pending_count_cache.get("count", 0)
 
 
 _globals_cache = {
@@ -957,13 +991,20 @@ def _get_cached_suppliers():
     now = time.time()
     if now - _globals_cache["suppliers_ts"] < 60.0 and _globals_cache["suppliers"]:
         return _globals_cache["suppliers"]
-    suppliers = Supplier.query.order_by(Supplier.name.asc()).all()
-    _globals_cache["suppliers"] = suppliers
-    _globals_cache["suppliers_ts"] = now
-    return suppliers
+    try:
+        suppliers = Supplier.query.order_by(Supplier.name.asc()).all()
+        _globals_cache["suppliers"] = suppliers
+        _globals_cache["suppliers_ts"] = now
+        return suppliers
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return _globals_cache.get("suppliers", [])
 
 def cleanup_supplier_linked_notifications():
-    """تنظيف وإغلاق إشعارات أصناف المخزون المربوطة بمورد لعدم إشغال شارة وجرس الإشعارات."""
+    """تنظيف وإغلاق إشعارات أصناف المخزون غير المشمولة أو المربوطة بمورد لعدم إشغال شارة وجرس الإشعارات وإظهار المتفق عليه فقط."""
     try:
         from models import Notification, Item, ItemSupplier
         # 1. أي إشعار مسجل به has_supplier=True وكان غير مقروء يتم تعليمه كمقروء
@@ -981,17 +1022,52 @@ def cleanup_supplier_linked_notifications():
                 Notification.item_sku.in_(linked_skus),
                 Notification.is_read == False
             ).update({"is_read": True, "has_supplier": True}, synchronize_session=False)
+
+        # 3. إغلاق إشعارات الأصناف غير المشمولة بنطاق القهوة والمحمصة المتفق عليها (مثل المخبوزات والحلويات ومواد فوديكس العامة)
+        from models_coffee import CoffeeItem
+        coffee_skus = [r[0] for r in db.session.query(Item.sku).join(CoffeeItem, Item.id == CoffeeItem.item_id).filter(Item.sku.isnot(None)).distinct().all()]
+        if coffee_skus:
+            Notification.query.filter(
+                Notification.type == "new_inventory_item",
+                Notification.is_read == False,
+                Notification.item_sku.notin_(coffee_skus)
+            ).update({"is_read": True}, synchronize_session=False)
+        else:
+            # إذا لم تكن هناك أصناف قهوة معرّفة، علّم إشعارات sk- العامة كمقروءة
+            Notification.query.filter(
+                Notification.type == "new_inventory_item",
+                Notification.is_read == False,
+                Notification.item_sku.like("sk-%")
+            ).update({"is_read": True}, synchronize_session=False)
         db.session.commit()
     except Exception:
         db.session.rollback()
 
 
 def get_unread_notifications_query(user=None):
-    """استعلام موحد للإشعارات غير المقروءة مع استبعاد الأصناف المربوطة بمورد."""
+    """استعلام موحد للإشعارات غير المقروءة مع استبعاد الأصناف المربوطة بمورد وحصر أصناف المخزون على النطاق المتفق عليه."""
+    try:
+        from models import Item
+        from models_coffee import CoffeeItem
+        coffee_skus = [r[0] for r in db.session.query(Item.sku).join(CoffeeItem, Item.id == CoffeeItem.item_id).filter(Item.sku.isnot(None)).distinct().all()]
+    except Exception:
+        coffee_skus = []
+
+    if coffee_skus:
+        item_filter = db.and_(
+            Notification.has_supplier == False,
+            Notification.item_sku.in_(coffee_skus)
+        )
+    else:
+        item_filter = db.and_(
+            Notification.has_supplier == False,
+            Notification.item_sku.not_like("sk-%")
+        )
+
     q = Notification.query.filter_by(is_read=False).filter(
         db.or_(
             Notification.type != "new_inventory_item",
-            Notification.has_supplier == False
+            item_filter
         )
     )
     if user and user.role == "branch_staff":
@@ -1000,33 +1076,47 @@ def get_unread_notifications_query(user=None):
 
 
 def _get_cached_notifications(user=None):
-    cleanup_supplier_linked_notifications()
-    q = get_unread_notifications_query(user)
-    if user and user.role == "branch_staff":
+    try:
+        cleanup_supplier_linked_notifications()
+        q = get_unread_notifications_query(user)
+        if user and user.role == "branch_staff":
+            notifs = q.order_by(Notification.created_at.desc()).limit(10).all()
+            cnt = q.count()
+            return notifs, cnt
+
+        import time
+        now = time.time()
+        if now - _globals_cache["notifs_ts"] < 15.0:
+            return _globals_cache["notifs"], _globals_cache["notifs_count"]
         notifs = q.order_by(Notification.created_at.desc()).limit(10).all()
         cnt = q.count()
+        _globals_cache["notifs"] = notifs
+        _globals_cache["notifs_count"] = cnt
+        _globals_cache["notifs_ts"] = now
         return notifs, cnt
-
-    import time
-    now = time.time()
-    if now - _globals_cache["notifs_ts"] < 15.0:
-        return _globals_cache["notifs"], _globals_cache["notifs_count"]
-    notifs = q.order_by(Notification.created_at.desc()).limit(10).all()
-    cnt = q.count()
-    _globals_cache["notifs"] = notifs
-    _globals_cache["notifs_count"] = cnt
-    _globals_cache["notifs_ts"] = now
-    return notifs, cnt
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return [], 0
 
 def _get_cached_foodics_recent():
     import time
     now = time.time()
     if now - _globals_cache["foodics_ts"] < 30.0 and _globals_cache["foodics_items"]:
         return _globals_cache["foodics_items"]
-    items = Item.query.filter(Item.foodics_id.isnot(None)).order_by(Item.id.desc()).limit(5).all()
-    _globals_cache["foodics_items"] = items
-    _globals_cache["foodics_ts"] = now
-    return items
+    try:
+        items = Item.query.filter(Item.foodics_id.isnot(None)).order_by(Item.id.desc()).limit(5).all()
+        _globals_cache["foodics_items"] = items
+        _globals_cache["foodics_ts"] = now
+        return items
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return _globals_cache.get("foodics_items", [])
 
 
 @app.context_processor
@@ -1314,11 +1404,31 @@ def dashboard():
             joinedload(StockMovement.location)
         ).order_by(StockMovement.created_at.desc()).limit(6).all()
 
-    # تنبيهات انخفاض المخزون (أقل من 10)
-    low_stock_query = StockBalance.query.filter(StockBalance.quantity <= 10.0)
+    # تنبيهات انخفاض المخزون (حصر التنبيهات على أصناف القهوة والمحمصة المتفق عليها)
+    from models_coffee import CoffeeItem
+    try:
+        coffee_item_ids = [r[0] for r in db.session.query(CoffeeItem.item_id).filter(CoffeeItem.item_id.isnot(None)).all()]
+        if coffee_item_ids:
+            low_stock_query = StockBalance.query.filter(
+                StockBalance.item_id.in_(coffee_item_ids),
+                StockBalance.quantity <= 10.0
+            )
+        else:
+            low_stock_query = StockBalance.query.filter(
+                StockBalance.quantity > 0,
+                StockBalance.quantity <= 10.0
+            )
+    except Exception:
+        db.session.rollback()
+        low_stock_query = StockBalance.query.filter(StockBalance.quantity <= 10.0)
+
     if u.role == "branch_staff" and u.location_id:
         low_stock_query = low_stock_query.filter(StockBalance.location_id == u.location_id)
-    context["low_stock_count"] = low_stock_query.count()
+    try:
+        context["low_stock_count"] = low_stock_query.count()
+    except Exception:
+        db.session.rollback()
+        context["low_stock_count"] = 0
 
     # مؤشرات فوديكس والتاريخ الحي للوحة القيادة
     foodics_mapped_count = Item.query.filter(Item.foodics_id.isnot(None)).count()
@@ -5079,6 +5189,20 @@ def serve_upload(filepath):
 # ---------------------------------------------------------------
 # صفحات الأخطاء المخصصة (Error Handlers)
 # ---------------------------------------------------------------
+@app.teardown_request
+def teardown_request_func(exception=None):
+    if exception is not None:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+    if not app.config.get("TESTING"):
+        try:
+            db.session.remove()
+        except Exception:
+            pass
+
+
 @app.errorhandler(404)
 def handle_404(e):
     return render_template("error.html", error_code=404, error_message="الصفحة أو الرابط المطلوب غير موجود بالنظام."), 404
@@ -5091,6 +5215,10 @@ def handle_403(e):
 
 @app.errorhandler(500)
 def handle_500(e):
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
     ref_id = uuid.uuid4().hex[:8].upper()
     app.logger.error(f"Internal error [{ref_id}]: {str(e)}", exc_info=True)
     return render_template("error.html", error_code=500, error_message=f"حدث خطأ غير متوقع أثناء معالجة الطلب. رقم المرجع للدعم: {ref_id}"), 500

@@ -629,6 +629,8 @@ def post_roasting_order_to_xero(order) -> dict:
         "bill_id":             None,
         "errors":              [],
         "xero_status":         "failed",
+        "attachment_success":  False,
+        "attachment_errors":   [],
     }
 
     # ─ التحقق من الحالة ────────────────────────────────────────────────────
@@ -698,6 +700,7 @@ def post_roasting_order_to_xero(order) -> dict:
         try:
             att_b = attach_voucher_to_xero("Invoices", order.xero_bill_id, "roasting_order", order.id, order.order_number)
             if att_b.get("success"):
+                result["attachment_success"] = True
                 try:
                     uid = session.get("user_id") if flask_request else None
                     log_coffee_audit(
@@ -711,14 +714,22 @@ def post_roasting_order_to_xero(order) -> dict:
                     db.session.commit()
                 except Exception:
                     pass
+            else:
+                result["attachment_errors"].append(f"فاتورة المحمص: {att_b.get('error')}")
         except Exception as e:
             logger.warning("Failed to attach roasting voucher to bill: %s", e)
+            result["attachment_errors"].append(f"فاتورة المحمص: {e}")
 
     if order.xero_credit_note_id:
         try:
-            attach_voucher_to_xero("CreditNotes", order.xero_credit_note_id, "roasting_order", order.id, order.order_number)
+            att_cn = attach_voucher_to_xero("CreditNotes", order.xero_credit_note_id, "roasting_order", order.id, order.order_number)
+            if att_cn.get("success"):
+                result["attachment_success"] = True
+            else:
+                result["attachment_errors"].append(f"إشعار الأخضر: {att_cn.get('error')}")
         except Exception as e:
             logger.warning("Failed to attach roasting voucher to credit note: %s", e)
+            result["attachment_errors"].append(f"إشعار الأخضر: {e}")
 
     # ─ تسجيل في سجل التدقيق ───────────────────────────────────────────────
     try:
@@ -889,7 +900,7 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
             elif doc_type == "roasting_order":
                 order = RoastingOrder.query.get(entity_id)
                 if order:
-                    html_content = render_template("coffee/roasting_print.html", order=order)
+                    html_content = render_template("coffee/roasting_print.html", order=order, gw=order.green_warehouse, rw=order.roasted_warehouse)
         finally:
             if ctx:
                 ctx.pop()
@@ -948,12 +959,15 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
                         "--single-process",
                         "--disable-software-rasterizer",
                         "--disable-extensions",
+                        "--disable-background-networking",
+                        "--run-all-compositor-stages-before-draw",
+                        "--hide-scrollbars",
                         "--no-pdf-header-footer",
                         f"--print-to-pdf={temp_pdf}",
                         temp_html
                     ]
                     try:
-                        res = subprocess.run(cmd, capture_output=True, timeout=10)
+                        res = subprocess.run(cmd, capture_output=True, timeout=30)
                         if os.path.exists(temp_pdf) and os.path.getsize(temp_pdf) > 0:
                             with open(temp_pdf, "rb") as pf:
                                 pdf_bytes = pf.read()
@@ -993,12 +1007,14 @@ def attach_voucher_to_xero(endpoint: str, record_id: str, doc_type: str, entity_
     ext = "pdf" if mime_type == "application/pdf" else "png"
     safe_doc = re.sub(r"[^\w\-]", "_", (doc_number or "voucher").strip())
     filename = f"Voucher_{safe_doc}.{ext}"
+    quoted_filename = urllib.parse.quote(filename)
 
-    url = f"{XERO_BASE}/{endpoint}/{record_id}/Attachments/{filename}"
+    url = f"{XERO_BASE}/{endpoint}/{record_id}/Attachments/{quoted_filename}"
     headers = {
         "Authorization": f"Bearer {token}",
         "xero-tenant-id": tenant_id,
         "Content-Type": mime_type,
+        "Content-Length": str(len(content_bytes)),
         "Accept": "application/json",
         "X-Include-On-Online": "true",
     }

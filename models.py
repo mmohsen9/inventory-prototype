@@ -731,18 +731,16 @@ class CountSession(db.Model):
 
     @classmethod
     def generate_next_session_number(cls) -> str:
-        """يولد رقم تسلسلي أوتوماتيكي لجلسة الجرد (مثل Nov-0001)."""
-        last = SystemSetting.get_val("count_session_seq", None)
-        if last is None:
-            max_id = db.session.query(db.func.max(cls.id)).scalar() or 0
-            seq = max_id + 1
-        else:
-            try:
-                seq = int(last) + 1
-            except (ValueError, TypeError):
-                seq = 1
+        """يولد رقم تسلسلي أوتوماتيكي لجلسة الجرد يبدأ من بعد 1000 (مثل Nov-1001)."""
+        last = SystemSetting.get_val("count_session_seq", "1000")
+        try:
+            seq = int(last) + 1
+        except (ValueError, TypeError):
+            seq = 1001
+        if seq <= 1000:
+            seq = 1001
         SystemSetting.set_val("count_session_seq", str(seq))
-        return f"Nov-{seq:04d}"
+        return f"Nov-{seq}"
 
     @property
     def display_number(self):

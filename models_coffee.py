@@ -459,32 +459,34 @@ class GreenCoffeeIssue(db.Model):
     def generate_next_doc_number(cls, issue_type: str = "roasting", preview_only: bool = False) -> str:
         """
         توليد رقم تسلسلي تلقائي لسند صرف البن الأخضر موحد في جميع حالات الصرف:
-        يبدأ بـ GB-00001 ويتسلسل أوتوماتيكياً (GB-00001, GB-00002, ...).
+        يبدأ من بعد 1000 بتنسيق جديد (GB-1001 ويتسلسل أوتوماتيكياً).
         """
         from models_coffee import CoffeeSetting
         prefix = "GB"
         setting_key = "green_issue_seq_GB"
 
-        seq_str = CoffeeSetting.get(setting_key, "0")
+        seq_str = CoffeeSetting.get(setting_key, "1000")
         try:
             seq = int(seq_str)
         except (ValueError, TypeError):
-            seq = 0
+            seq = 1000
+        if seq < 1000:
+            seq = 1000
 
         candidate_seq = seq + 1
         # التأكد التام من عدم تكرار الرقم في قاعدة البيانات
         while cls.query.filter(
+            (cls.doc_number == f"GB-{candidate_seq}") |
             (cls.doc_number == f"GB-{candidate_seq:05d}") |
-            (cls.doc_number == f"GB {candidate_seq:05d}") |
             (cls.doc_number == f"GB {candidate_seq}") |
-            (cls.doc_number == f"GB-{candidate_seq}")
+            (cls.doc_number == f"GB {candidate_seq:05d}")
         ).first() is not None:
             candidate_seq += 1
 
         if not preview_only:
-            CoffeeSetting.set(setting_key, str(candidate_seq), "تسلسل سندات صرف البن الأخضر الموحد (GB-00001)")
+            CoffeeSetting.set(setting_key, str(candidate_seq), "تسلسل سندات صرف البن الأخضر الموحد (GB-1001 وما بعده)")
 
-        return f"GB-{candidate_seq:05d}"
+        return f"GB-{candidate_seq}"
 
     @property
     def all_lines(self):
@@ -666,10 +668,10 @@ class RoastedCoffeeDispatch(db.Model):
     @classmethod
     def generate_next_doc_number(cls, dispatch_type: str = "sale", preview_only: bool = False) -> str:
         """
-        يولد الرقم التسلسلي التالي لسند صرف البن المحمص أوتوماتيكياً:
-        - صرف الفروع (branch)   : سلسلة MP-00001، MP-00002، ...
-        - مبيعات سلة (salla/sl) : سلسلة SL-00001، SL-00002، ... (مميزة لسندات متجر سلة)
-        - باقي الحالات (مبيعات، عينات، داخلي، تجارب، تالف، أخرى) : سلسلة RB-00001، RB-00002، ...
+        يولد الرقم التسلسلي التالي لسند صرف البن المحمص أوتوماتيكياً من بعد 1000:
+        - صرف الفروع (branch)   : سلسلة MP-1001، MP-1002، ...
+        - مبيعات سلة (salla/sl) : سلسلة SL-1001، SL-1002، ...
+        - باقي الحالات (مبيعات، عينات، داخلي، تجارب، تالف، أخرى) : سلسلة RB-1001، RB-1002، ...
         """
         from models_coffee import CoffeeSetting
         dt = str(dispatch_type or "").strip().lower()
@@ -681,26 +683,28 @@ class RoastedCoffeeDispatch(db.Model):
             prefix = "RB"
         setting_key = f"dispatch_seq_{prefix}"
 
-        seq_str = CoffeeSetting.get(setting_key, "0")
+        seq_str = CoffeeSetting.get(setting_key, "1000")
         try:
             seq = int(seq_str)
         except (ValueError, TypeError):
-            seq = 0
+            seq = 1000
+        if seq < 1000:
+            seq = 1000
 
         candidate_seq = seq + 1
         # التأكد التام من عدم تكرار الرقم في قاعدة البيانات
         while cls.query.filter(
+            (cls.doc_number == f"{prefix}-{candidate_seq}") |
             (cls.doc_number == f"{prefix}-{candidate_seq:05d}") |
-            (cls.doc_number == f"{prefix} {candidate_seq:05d}") |
             (cls.doc_number == f"{prefix} {candidate_seq}") |
-            (cls.doc_number == f"{prefix}-{candidate_seq}")
+            (cls.doc_number == f"{prefix} {candidate_seq:05d}")
         ).first() is not None:
             candidate_seq += 1
 
         if not preview_only:
-            CoffeeSetting.set(setting_key, str(candidate_seq), f"تسلسل سندات صرف البن المحمص ({prefix}-00001)")
+            CoffeeSetting.set(setting_key, str(candidate_seq), f"تسلسل سندات صرف البن المحمص ({prefix}-1001 وما بعده)")
 
-        return f"{prefix}-{candidate_seq:05d}"
+        return f"{prefix}-{candidate_seq}"
 
     # ─── علاقات ─────────────────────────────────────────────────────────────
     source_warehouse = db.relationship("Location", foreign_keys=[source_warehouse_id])
@@ -1144,27 +1148,30 @@ def log_coffee_audit(event_type, entity_type, entity_id,
 # ─────────────────────────────────────────────────────────────────────────────
 
 def next_roasting_order_number(preview_only: bool = False) -> str:
-    """يولّد رقم أمر تشغيل تحميص فريد يبدأ بـ OP-00001 ويتسلسل أوتوماتيكياً."""
+    """يولّد رقم أمر تشغيل تحميص فريد يبدأ من بعد 1000 بتنسيق جديد (OP-1001 ويتسلسل أوتوماتيكياً)."""
     setting_key = "roasting_order_seq_OP"
-    last_seq = CoffeeSetting.get(setting_key, "0")
+    last_seq = CoffeeSetting.get(setting_key, "1000")
     try:
         seq = int(last_seq)
     except (ValueError, TypeError):
-        seq = 0
+        seq = 1000
+    if seq < 1000:
+        seq = 1000
 
     candidate_seq = seq + 1
     while RoastingOrder.query.filter(
+        (RoastingOrder.order_number == f"OP-{candidate_seq}") |
         (RoastingOrder.order_number == f"OP-{candidate_seq:05d}") |
-        (RoastingOrder.order_number == f"OP {candidate_seq:05d}") |
-        (RoastingOrder.order_number == f"OP-{candidate_seq}")
+        (RoastingOrder.order_number == f"OP {candidate_seq}") |
+        (RoastingOrder.order_number == f"OP {candidate_seq:05d}")
     ).first() is not None:
         candidate_seq += 1
 
     if not preview_only:
         CoffeeSetting.set(setting_key, str(candidate_seq),
-                          description="آخر رقم تسلسلي لأوامر تشغيل التحميص (OP-00001)")
+                          description="آخر رقم تسلسلي لأوامر تشغيل التحميص (OP-1001 وما بعده)")
 
-    return f"OP-{candidate_seq:05d}"
+    return f"OP-{candidate_seq}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1356,6 +1363,54 @@ def ensure_coffee_customer_schema():
                         notes=sc.get("notes")
                     ))
             db.session.commit()
+        # 5. ترقية وضبط تسلسل السندات لتبدأ من بعد 1000 (1001 فما فوق)
+        ensure_serial_numbers_above_1000()
+    except Exception:
+        db.session.rollback()
+
+
+def ensure_serial_numbers_above_1000():
+    """
+    ترقية وإعادة توجيه تسلسل السندات لتبدأ من بعد 1000 (1001 فما فوق):
+    - أوامر التحميص: OP-1001
+    - سندات صرف الأخضر: GB-1001
+    - سندات الفروع: MP-1001
+    - سندات سلة: SL-1001
+    - سندات المحمص العام: RB-1001
+    - جلسات الجرد: IC-1001
+    وترقية أمر التحميص العالق OP-00001 ليصبح OP-1001 حتى يتم ترحيله بنجاح لزيرو.
+    """
+    try:
+        from models_coffee import CoffeeSetting, RoastingOrder
+        seq_configs = [
+            ("roasting_order_seq_OP", "تسلسل أوامر التحميص (OP-1001 وما بعده)"),
+            ("green_issue_seq_GB", "تسلسل سندات صرف الأخضر (GB-1001 وما بعده)"),
+            ("dispatch_seq_MP", "تسلسل سندات الفروع (MP-1001 وما بعده)"),
+            ("dispatch_seq_SL", "تسلسل سندات سلة (SL-1001 وما بعده)"),
+            ("dispatch_seq_RB", "تسلسل سندات المحمص العام (RB-1001 وما بعده)"),
+            ("inventory_count_seq", "تسلسل محاضر جرد القهوة (IC-1001 وما بعده)"),
+        ]
+        for key, desc in seq_configs:
+            val = CoffeeSetting.get(key, None)
+            if val is None:
+                CoffeeSetting.set(key, "1000", desc)
+            else:
+                try:
+                    num = int(val)
+                    if num < 1000:
+                        CoffeeSetting.set(key, "1000", desc)
+                except (ValueError, TypeError):
+                    CoffeeSetting.set(key, "1000", desc)
+
+        # ترقية أي أمر تحميص غير مرحل كان يحمل رقماً قديماً مثل OP-00001
+        stuck_orders = RoastingOrder.query.filter(
+            RoastingOrder.xero_status != "posted"
+        ).all()
+        for ord_obj in stuck_orders:
+            if ord_obj.order_number in ("OP-00001", "OP-1", "OP-01"):
+                ord_obj.order_number = "OP-1001"
+                ord_obj.xero_error_message = None
+                db.session.commit()
     except Exception:
         db.session.rollback()
 

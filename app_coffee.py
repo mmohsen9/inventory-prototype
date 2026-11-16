@@ -1483,7 +1483,11 @@ def roasting_post_xero(order_id):
     result = post_roasting_order_to_xero(order)
 
     if result["xero_status"] == "posted":
-        flash(f"✅ تم ترحيل الأمر {order.order_number} إلى Xero بنجاح وتم إرفاق نسخة أمر التحميص الرسمية في زيرو 📎", "success")
+        if result.get("attachment_success"):
+            flash(f"✅ تم ترحيل الأمر {order.order_number} إلى Xero بنجاح وتم إرفاق نسخة أمر التحميص الرسمية في زيرو 📎", "success")
+        else:
+            att_err = " | ".join(result.get("attachment_errors", [])) if result.get("attachment_errors") else "تعذر توليد أو إرفاق ملف PDF"
+            flash(f"✅ تم ترحيل أمر التحميص {order.order_number} إلى Xero بنجاح. ⚠️ ملاحظة المرفق: ({att_err}). يمكنك الضغط على 'إعادة إرفاق السند لـ Xero' لإعادة المحاولة.", "warning")
     elif result["xero_status"] == "partial":
         flash(f"⚠️ ترحيل جزئي — {' | '.join(result['errors'])}", "warning")
     else:

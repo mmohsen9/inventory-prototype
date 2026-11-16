@@ -971,19 +971,19 @@ def test_roasted_branch_dispatch_mp_numbering_and_xero(db_session):
     CoffeeSetting.set("roasted_branch_issue_seq", "3580")
     CoffeeSetting.set("roasted_issue_seq", "5")
 
-    # 1. توليد رقم لسند فرع (يبدأ بسلسلة MP 00001 أوتوماتيكياً)
+    # 1. توليد رقم لسند فرع (يبدأ بسلسلة MP 1001 أوتوماتيكياً)
     mp_num1 = RoastedCoffeeDispatch.generate_next_doc_number(dispatch_type="branch")
-    assert mp_num1 == "MP-00001"
-    assert CoffeeSetting.get("dispatch_seq_MP") == "1"
+    assert mp_num1 == "MP-1001"
+    assert CoffeeSetting.get("dispatch_seq_MP") == "1001"
 
     mp_num2 = RoastedCoffeeDispatch.generate_next_doc_number(dispatch_type="branch")
-    assert mp_num2 == "MP-00002"
-    assert CoffeeSetting.get("dispatch_seq_MP") == "2"
+    assert mp_num2 == "MP-1002"
+    assert CoffeeSetting.get("dispatch_seq_MP") == "1002"
 
-    # 2. توليد رقم لسند بيع (مستقل بسلسلة RB 00001 أوتوماتيكياً)
+    # 2. توليد رقم لسند بيع (مستقل بسلسلة RB 1001 أوتوماتيكياً)
     rb_num = RoastedCoffeeDispatch.generate_next_doc_number(dispatch_type="sale")
-    assert rb_num == "RB-00001"
-    assert CoffeeSetting.get("dispatch_seq_RB") == "1"
+    assert rb_num == "RB-1001"
+    assert CoffeeSetting.get("dispatch_seq_RB") == "1001"
 
     # 3. إنشاء سند صرف لفرع بـ MP 3581 وفحص Payload إشعار دائن Xero
     rw = Location(name_ar="مستودع المحمص التجريبي", name_en="Roasted Coffee Warehouse Test", type="warehouse")
