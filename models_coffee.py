@@ -108,10 +108,10 @@ class CoffeeItem(db.Model):
     def extract_prefix_and_base(xero_code: str):
         r"""
         يستخرج البادئة والرقم الأساسي من نص Xero Item Code.
-        Regex:  ^\s*(GB|RB)\s*([0-9A-Za-z]+)
-        مثال: "GB0619-اريكا ووبنشي اخضر" → ('GB', '0619')
+        يدعم البادئة في بداية النص أو ضمنه (مثل: "GB0619-اريكا..." أو "كولومبي محمص - RB0465").
         """
-        m = re.match(r"^\s*(GB|RB)\s*([0-9A-Za-z]+)", (xero_code or "").strip(), re.IGNORECASE)
+        code_str = (xero_code or "").strip()
+        m = re.search(r"\b(GB|RB)\s*([0-9A-Za-z]+)", code_str, re.IGNORECASE)
         if m:
             return m.group(1).upper(), m.group(2).upper()
         return None, None

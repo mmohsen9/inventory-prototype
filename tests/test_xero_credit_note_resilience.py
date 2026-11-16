@@ -248,3 +248,81 @@ def test_line_total_rounding_mismatch_error_recovery(app, db_session):
 
         disp_after = RoastedCoffeeDispatch.query.get(disp.id)
         assert disp_after.xero_status == "posted"
+
+
+def test_voucher_pdf_linux_and_container_compatibility(app, db_session):
+    """التحقق من أن توليد مستند السند يدعم مسارات حاويات Linux/CranL مع وسائط --no-sandbox وتضمين الشعار."""
+    from coffee_xero import _generate_voucher_pdf
+    import os
+
+    rw = Location(name_ar="مستودع المحمص لاختبار الـ PDF", name_en="Roasted Warehouse PDF Test", type="warehouse")
+    br = Location(name_ar="فرع رفاء PDF", name_en="Rafa Branch PDF", type="branch")
+    db_session.add_all([rw, br])
+    db_session.flush()
+
+    it = Item(sku="RB-PDF-TEST", name_ar="بن محمص لفحص المستند", storage_unit="كجم", cost=50.0)
+    db_session.add(it)
+    db_session.flush()
+
+    ci = CoffeeItem(item_id=it.id, xero_item_code="RB-PDF-01", prefix="RB", base_code="PDF01", coffee_type="roasted")
+    db_session.add(ci)
+    db_session.flush()
+
+    disp = RoastedCoffeeDispatch(
+        doc_number="RB-00001",
+        dispatch_date=date.today(),
+        source_warehouse_id=rw.id,
+        branch_location_id=br.id,
+        dispatch_type="sale",
+        status="approved",
+        qty_kg=20.0,
+        unit_cost=50.0,
+        total_cost=1000.0,
+        coffee_item_id=ci.id,
+        customer_signature="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+    )
+    db_session.add(disp)
+    db_session.commit()
+
+    # محاكاة بيئة لينكس لحاويات CranL (حيث يوجد /usr/bin/chromium)
+    with patch("os.path.exists") as mock_exists, \
+         patch("subprocess.run") as mock_subproc:
+
+        def fake_exists(p):
+            if p == "/usr/bin/chromium":
+                return True
+            if "logo.png" in str(p):
+                return True
+            if str(p).endswith(".pdf"):
+                return True
+            return False
+
+        mock_exists.side_effect = fake_exists
+
+        # عند استدعاء subprocess.run نكتب ملف وهمي للـ pdf ونحاكي النجاح
+        def fake_run(cmd, **kwargs):
+            pdf_arg = next((arg for arg in cmd if arg.startswith("--print-to-pdf=")), None)
+            if pdf_arg:
+                out_path = pdf_arg.split("=", 1)[1]
+                with open(out_path, "wb") as pf:
+                    pf.write(b"%PDF-1.4 mock pdf content with full voucher details")
+            m = MagicMock()
+            m.returncode = 0
+            return m
+
+        mock_subproc.side_effect = fake_run
+
+        pdf_bytes, mime = _generate_voucher_pdf("roasted_dispatch", disp.id)
+
+        assert pdf_bytes is not None
+        assert mime == "application/pdf"
+        assert b"%PDF-1.4" in pdf_bytes
+
+        # التحقق من أن الأمر احتوى على مسار لينكس والوسائط الحتمية للحاويات
+        assert mock_subproc.called
+        called_cmd = mock_subproc.call_args[0][0]
+        assert called_cmd[0] == "/usr/bin/chromium"
+        assert "--no-sandbox" in called_cmd
+        assert "--disable-dev-shm-usage" in called_cmd
+        assert "--no-pdf-header-footer" in called_cmd
+

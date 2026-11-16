@@ -837,15 +837,36 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
     except Exception as e:
         logger.warning("Error rendering print HTML for %s #%s: %s", doc_type, entity_id, e)
 
-    # محاولة التحويل لـ PDF عبر متصفح النظام (Edge أو Chrome) بدون رأس وتذييل
+    # تضمين الشعار كـ base64 داخل HTML لتجاوز مشاكل المسارات النسبية في المتصفح الرأسي
     if html_content:
+        try:
+            root_dir = current_app.root_path if current_app else os.path.dirname(os.path.abspath(__file__))
+            logo_path = os.path.join(root_dir, "static", "img", "logo.png")
+            if os.path.exists(logo_path):
+                with open(logo_path, "rb") as lf:
+                    b64_logo = base64.b64encode(lf.read()).decode("ascii")
+                html_content = html_content.replace("/static/img/logo.png", f"data:image/png;base64,{b64_logo}")
+        except Exception as e:
+            logger.debug("Could not inline logo: %s", e)
+
+        # مسارات المتصفح المدعومة (بيئات Linux/Docker وحاويات CranL بالإضافة لبيئات Windows)
         browser_paths = [
-            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-            r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+            "/usr/bin/chromium",
+            "/usr/bin/chromium-browser",
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
             r"C:\Program Files\Google\Chrome\Application\chrome.exe",
             r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
         ]
         browser_exe = next((p for p in browser_paths if os.path.exists(p)), None)
+        if not browser_exe:
+            for name in ["chromium", "chromium-browser", "google-chrome", "google-chrome-stable", "chrome", "msedge"]:
+                w = shutil.which(name)
+                if w:
+                    browser_exe = w
+                    break
 
         if browser_exe:
             temp_html = None
@@ -856,21 +877,26 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
                     temp_html = f.name
                 temp_pdf = temp_html.replace(".html", ".pdf")
 
-                cmd = [
-                    browser_exe,
-                    "--headless",
-                    "--disable-gpu",
-                    "--no-pdf-header-footer",
-                    f"--print-to-pdf={temp_pdf}",
-                    temp_html
-                ]
-                subprocess.run(cmd, capture_output=True, timeout=20)
-                if os.path.exists(temp_pdf) and os.path.getsize(temp_pdf) > 0:
-                    with open(temp_pdf, "rb") as pf:
-                        pdf_bytes = pf.read()
-                    return pdf_bytes, "application/pdf"
-            except Exception as e:
-                logger.warning("PDF generation via browser failed: %s", e)
+                # تجربة --headless=new أولاً (المعيار الحديث) ثم --headless التقليدي
+                for headless_flag in ["--headless=new", "--headless"]:
+                    cmd = [
+                        browser_exe,
+                        headless_flag,
+                        "--disable-gpu",
+                        "--no-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--no-pdf-header-footer",
+                        f"--print-to-pdf={temp_pdf}",
+                        temp_html
+                    ]
+                    try:
+                        res = subprocess.run(cmd, capture_output=True, timeout=25)
+                        if os.path.exists(temp_pdf) and os.path.getsize(temp_pdf) > 0:
+                            with open(temp_pdf, "rb") as pf:
+                                pdf_bytes = pf.read()
+                            return pdf_bytes, "application/pdf"
+                    except Exception as sub_e:
+                        logger.debug("Headless attempt with %s failed: %s", headless_flag, sub_e)
             finally:
                 if temp_html and os.path.exists(temp_html):
                     try: os.remove(temp_html)
@@ -879,15 +905,7 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
                     try: os.remove(temp_pdf)
                     except Exception: pass
 
-    # الخطة الاحتياطية (Fallback): إرفاق صورة التوقيع الحي PNG المعتمدة
-    if signature_data and "base64," in signature_data:
-        try:
-            b64_str = signature_data.split("base64,")[1]
-            img_bytes = base64.b64decode(b64_str)
-            return img_bytes, "image/png"
-        except Exception as e:
-            logger.warning("Signature fallback decode failed: %s", e)
-
+    logger.warning("PDF voucher generation failed for %s #%s (no suitable headless browser or render error)", doc_type, entity_id)
     return None, None
 
 

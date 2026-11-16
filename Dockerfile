@@ -8,10 +8,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install system dependencies (for building packages if needed)
+# Install system dependencies (for building packages if needed) + headless browser & fonts for PDF vouchers
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
+    chromium \
+    fonts-liberation \
+    fonts-noto-core \
+    fonts-kacst \
     && rm -rf /var/lib/apt/lists/*
 
 # Install python dependencies

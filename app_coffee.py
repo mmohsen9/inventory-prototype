@@ -4240,7 +4240,7 @@ def import_excel():
 
     try:
         from coffee_importer import import_coffee_items_from_file
-        reset_balances = request.form.get("reset_balances") == "1"
+        reset_balances = request.form.get("reset_balances", "1") in ("1", "true", "True", "on")
         res = import_coffee_items_from_file(uploaded.stream, user_id=user.id if user else None, reset_balances=reset_balances)
         
         imported = res.get("imported", 0)

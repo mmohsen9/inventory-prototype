@@ -56,27 +56,33 @@ def parse_xlsx_rows(file_source):
         return parsed_rows
 
 
-def import_coffee_items_from_rows(rows, user_id=None, reset_balances=False):
+def import_coffee_items_from_rows(rows, user_id=None, reset_balances=True):
     """
     يستورد الأصناف من الصفوف المستخرجة:
-    - يضع فقط الأصناف غير الموجودة.
-    - إذا كان reset_balances=True، يعيد ضبط وتحديث أرصدة الأصناف المسجلة مسبقاً طبقاً للملف للبدء بأرصدة نظيفة.
-    - يتخطى الأصناف الموجودة مسبقاً مع إعداد تنبيه شامل في حال عدم تفعيل reset_balances.
+    - يضيف الأصناف غير المسجلة مع رصيدها الافتتاحي.
+    - يقوم بتحديث تكاليف وأسعار وأرصدة الأصناف المسجلة مسبقاً طبقاً للملف لضمان البدء بأرصدة نظيفة.
     - يربط الأصناف تلقائياً بين الأخضر والمحمص.
     """
     added_items = []
     updated_items = []
     skipped_items = []
 
-    # البحث عن مستودعات القهوة
-    gw = Location.query.filter(Location.name_ar.like("%أخضر%") | Location.name_ar.like("%اخضر%")).first()
-    rw = Location.query.filter(Location.name_ar.like("%محمص%") | Location.name_ar.like("%محموص%")).first()
-    default_wh = Location.query.filter_by(type="warehouse").first()
-
+    # البحث عن مستودعات القهوة أو إنشاؤها إذا لم تكن موجودة
+    gw = Location.query.filter_by(name_ar="مستودع البن الأخضر").first()
     if not gw:
-        gw = default_wh
+        gw = Location.query.filter(Location.name_ar.like("%أخضر%") | Location.name_ar.like("%اخضر%")).first()
+    if not gw:
+        gw = Location(name_ar="مستودع البن الأخضر", name_en="Warehouse - Green Coffee", type="warehouse")
+        db.session.add(gw)
+        db.session.flush()
+
+    rw = Location.query.filter_by(name_ar="مستودع البن المحمص").first()
     if not rw:
-        rw = default_wh
+        rw = Location.query.filter(Location.name_ar.like("%محمص%") | Location.name_ar.like("%محموص%")).first()
+    if not rw:
+        rw = Location(name_ar="مستودع البن المحمص", name_en="Warehouse - Roasted Coffee", type="warehouse")
+        db.session.add(rw)
+        db.session.flush()
 
     # تحديد صف الرأس (Header)
     header_idx = -1
@@ -106,8 +112,7 @@ def import_coffee_items_from_rows(rows, user_id=None, reset_balances=False):
         # تحديد البادئة والكود الأساسي
         prefix, base_code = CoffeeItem.extract_prefix_and_base(raw_code)
         if not prefix:
-            # محاولة الاستنتاج من نوع البن
-            if "محمص" in raw_type or "محموص" in raw_type or raw_code.upper().startswith("RB"):
+            if "محمص" in raw_type or "محموص" in raw_type or "RB" in raw_code.upper():
                 prefix = "RB"
             else:
                 prefix = "GB"
@@ -149,49 +154,42 @@ def import_coffee_items_from_rows(rows, user_id=None, reset_balances=False):
         ).first()
 
         if existing:
-            if reset_balances:
-                # تحديث التكاليف والأسعار إذا توفرت
-                if unit_cost > 0:
-                    existing.xero_cost_price = unit_cost
-                    if existing.item:
-                        existing.item.cost = unit_cost
-                if unit_sale > 0:
-                    existing.sale_price_per_kg = unit_sale
+            # تحديث التكاليف والأسعار
+            if unit_cost > 0:
+                existing.xero_cost_price = unit_cost
+                if existing.item:
+                    existing.item.cost = unit_cost
+            if unit_sale > 0:
+                existing.sale_price_per_kg = unit_sale
 
-                # إعادة تعيين الرصيد النظيف في المستودع
-                target_loc = gw if coffee_type == "green" else rw
-                base_item_id = existing.item_id or (existing.item.id if existing.item else None)
-                if target_loc and base_item_id:
-                    bal = StockBalance.query.filter_by(item_id=base_item_id, location_id=target_loc.id).first()
-                    old_qty = float(bal.quantity or 0.0) if bal else 0.0
-                    if not bal:
-                        bal = StockBalance(item_id=base_item_id, location_id=target_loc.id, quantity=initial_qty)
-                        db.session.add(bal)
-                    else:
-                        bal.quantity = initial_qty
+            # تطبيق وتحديث الرصيد النظيف في المستودع
+            target_loc = gw if coffee_type == "green" else rw
+            base_item_id = existing.item_id or (existing.item.id if existing.item else None)
+            if target_loc and base_item_id:
+                bal = StockBalance.query.filter_by(item_id=base_item_id, location_id=target_loc.id).first()
+                old_qty = float(bal.quantity or 0.0) if bal else 0.0
+                if not bal:
+                    bal = StockBalance(item_id=base_item_id, location_id=target_loc.id, quantity=initial_qty)
+                    db.session.add(bal)
+                else:
+                    bal.quantity = initial_qty
 
-                    mov = StockMovement(
-                        item_id=base_item_id,
-                        location_id=target_loc.id,
-                        movement_type="initial",
-                        reference_type="manual",
-                        quantity_change=round(initial_qty - old_qty, 4),
-                        balance_after=initial_qty,
-                        notes=f"إعادة تعيين رصيد نظيف من ملف الإكسيل ({raw_code})",
-                        created_by=user_id
-                    )
-                    db.session.add(mov)
-                    updated_items.append({
-                        "code": raw_code,
-                        "name": name_ar,
-                        "old_qty": old_qty,
-                        "new_qty": initial_qty
-                    })
-            else:
-                skipped_items.append({
+                mov = StockMovement(
+                    item_id=base_item_id,
+                    location_id=target_loc.id,
+                    movement_type="initial",
+                    reference_type="manual",
+                    quantity_change=round(initial_qty - old_qty, 4),
+                    balance_after=initial_qty,
+                    notes=f"إعادة تعيين رصيد نظيف من ملف الإكسيل ({raw_code})",
+                    created_by=user_id
+                )
+                db.session.add(mov)
+                updated_items.append({
                     "code": raw_code,
                     "name": name_ar,
-                    "reason": f"الصنف مسجل مسبقاً بكود ({existing.prefix}{existing.base_code})"
+                    "old_qty": old_qty,
+                    "new_qty": initial_qty
                 })
             continue
 
@@ -433,11 +431,11 @@ def ensure_default_coffee_items(force_sync=False, user_id=None):
                     existing_c.item.cost = cost
                 db.session.add(existing_c)
 
-        # التأكد من وجود رصيد افتتاحي إذا لم يكن له رصيد إطلاقاً
+        # التأكد من وجود رصيد افتتاحي وتحديثه في حال force_sync
         target_loc = gw if coffee_type == "green" else rw
         bal = StockBalance.query.filter_by(item_id=base_item.id, location_id=target_loc.id).first()
+        initial_qty = float(it.get("initial_qty", 50.0 if coffee_type == "green" else 20.0))
         if not bal:
-            initial_qty = 50.0 if coffee_type == "green" else 20.0
             bal = StockBalance(item_id=base_item.id, location_id=target_loc.id, quantity=initial_qty)
             db.session.add(bal)
             mov = StockMovement(
@@ -448,6 +446,20 @@ def ensure_default_coffee_items(force_sync=False, user_id=None):
                 quantity_change=initial_qty,
                 balance_after=initial_qty,
                 notes=f"رصيد تأسيسي دائم ({raw_code})",
+                created_by=user_id
+            )
+            db.session.add(mov)
+        elif force_sync:
+            old_qty = float(bal.quantity or 0.0)
+            bal.quantity = initial_qty
+            mov = StockMovement(
+                item_id=base_item.id,
+                location_id=target_loc.id,
+                movement_type="initial",
+                reference_type="manual",
+                quantity_change=round(initial_qty - old_qty, 4),
+                balance_after=initial_qty,
+                notes=f"تحديث رصيد تأسيسي نظيف ({raw_code})",
                 created_by=user_id
             )
             db.session.add(mov)

@@ -14,7 +14,8 @@
       "sack_allowed": true,
       "allowed_sack_weights": "[50]",
       "reference_loss_pct": 15.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 38.0
     },
     {
       "xero_item_code": "GB22025-مكسيكى باتشى مجفف اخضر",
@@ -30,7 +31,8 @@
       "sack_allowed": true,
       "allowed_sack_weights": "[30]",
       "reference_loss_pct": 15.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 973.0
     },
     {
       "xero_item_code": "GB52023-مكسيكى مغسولة اخضر",
@@ -46,23 +48,25 @@
       "sack_allowed": true,
       "allowed_sack_weights": "[30]",
       "reference_loss_pct": 15.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 5.0
     },
     {
-      "xero_item_code": "GB0617- قاراقاري قوتيتي اخضر",
+      "xero_item_code": "GB0617 -فاراقاري قوتيتي اخضر",
       "prefix": "GB",
       "base_code": "0617",
       "coffee_type": "green",
-      "name_ar": "قاراقاري قوتيتي اخضر",
+      "name_ar": "فاراقاري قوتيتي اخضر",
       "name_en": "Natural Yirgocheffe Garagari Gutity Eth25(bags60k)",
-      "sku": "GB0617- قاراقاري قوتيتي اخضر",
+      "sku": "GB0617 -فاراقاري قوتيتي اخضر",
       "cost": 35.2,
       "sale_price_per_kg": 53.0,
       "default_sack_weight": 60.0,
       "sack_allowed": true,
       "allowed_sack_weights": "[60]",
       "reference_loss_pct": 15.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 12020.0
     },
     {
       "xero_item_code": "GB0377- توليما كولمبى اخضر",
@@ -78,7 +82,8 @@
       "sack_allowed": true,
       "allowed_sack_weights": "[70]",
       "reference_loss_pct": 15.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 9982.0
     },
     {
       "xero_item_code": "GB52025-مكسيكى بدون كافين اخضر",
@@ -94,7 +99,8 @@
       "sack_allowed": true,
       "allowed_sack_weights": "[30]",
       "reference_loss_pct": 15.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 834.0
     },
     {
       "xero_item_code": "GB32025-مكسيكى كاتورمجففة اخضر",
@@ -110,7 +116,8 @@
       "sack_allowed": true,
       "allowed_sack_weights": "[30]",
       "reference_loss_pct": 15.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 1.0
     },
     {
       "xero_item_code": "GB12025-مكسيكي مجففة اخضر",
@@ -126,23 +133,25 @@
       "sack_allowed": true,
       "allowed_sack_weights": "[30]",
       "reference_loss_pct": 15.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 3281.0
     },
     {
-      "xero_item_code": "GB0620- قوجي ووبنشي اخضر",
+      "xero_item_code": "GB0620- قوجي ووبنشي اخضر",
       "prefix": "GB",
       "base_code": "0620",
       "coffee_type": "green",
-      "name_ar": "قوجي ووبنشي اخضر",
+      "name_ar": "قوجي ووبنشي اخضر",
       "name_en": "Natural Yirgocheffe Guji Wubanchi Eth25(bags60k)",
-      "sku": "GB0620- قوجي ووبنشي اخضر",
+      "sku": "GB0620- قوجي ووبنشي اخضر",
       "cost": 50.24,
       "sale_price_per_kg": 75.0,
       "default_sack_weight": 60.0,
       "sack_allowed": true,
       "allowed_sack_weights": "[60]",
       "reference_loss_pct": 15.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 3.0
     },
     {
       "xero_item_code": "GB0619-اريكا ووبنشي اخضر",
@@ -158,7 +167,8 @@
       "sack_allowed": true,
       "allowed_sack_weights": "[60]",
       "reference_loss_pct": 15.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 6.0
     },
     {
       "xero_item_code": "GB002A- قهوة رواندي طبيعة اخضر",
@@ -174,7 +184,8 @@
       "sack_allowed": true,
       "allowed_sack_weights": "[30]",
       "reference_loss_pct": 15.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 14.0
     },
     {
       "xero_item_code": "GB00466-كولمبي سودان رومى",
@@ -190,7 +201,8 @@
       "sack_allowed": true,
       "allowed_sack_weights": "[24]",
       "reference_loss_pct": 15.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 3.0
     },
     {
       "xero_item_code": "GB42025-مكسيك باتشى مغسول اخضر",
@@ -206,55 +218,59 @@
       "sack_allowed": true,
       "allowed_sack_weights": "[30]",
       "reference_loss_pct": 15.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 2243.0
     },
     {
-      "xero_item_code": "RB0617-   قاراقاري قوتيتي محمص",
+      "xero_item_code": "RB0617 -فاراقاري قوتيتي محمص",
       "prefix": "RB",
       "base_code": "0617",
       "coffee_type": "roasted",
-      "name_ar": "قاراقاري قوتيتي محمص",
+      "name_ar": "فاراقاري قوتيتي محمص",
       "name_en": "Roasted coffee Yirgocheffe Garagari Gutity1K",
-      "sku": "RB0617-   قاراقاري قوتيتي محمص",
+      "sku": "RB0617 -فاراقاري قوتيتي محمص",
       "cost": 42.5,
       "sale_price_per_kg": 106.0,
       "default_sack_weight": 0.0,
       "sack_allowed": false,
-      "allowed_sack_weights": "[60]",
+      "allowed_sack_weights": "[]",
       "reference_loss_pct": 0.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 144.2
     },
     {
-      "xero_item_code": "RB12025- مكسيكى مجففة محمص",
+      "xero_item_code": "RB12025-مكسيكي مجففة محمص",
       "prefix": "RB",
       "base_code": "12025",
       "coffee_type": "roasted",
-      "name_ar": "مكسيكى مجففة محمص",
+      "name_ar": "مكسيكي مجففة محمص",
       "name_en": "Mexico Arabica Natural coffee roasted(1kg)",
-      "sku": "RB12025- مكسيكى مجففة محمص",
+      "sku": "RB12025-مكسيكي مجففة محمص",
       "cost": 54.5,
       "sale_price_per_kg": 150.0,
       "default_sack_weight": 0.0,
       "sack_allowed": false,
-      "allowed_sack_weights": "[60]",
+      "allowed_sack_weights": "[]",
       "reference_loss_pct": 0.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 456.75
     },
     {
-      "xero_item_code": "RB22025-مكسيكى باتش مجففه محمص",
+      "xero_item_code": "RB22025-مكسيكى باتشى مجففه محمص",
       "prefix": "RB",
       "base_code": "22025",
       "coffee_type": "roasted",
-      "name_ar": "مكسيكى باتش مجففه محمص",
+      "name_ar": "مكسيكى باتشى مجففه محمص",
       "name_en": "Rosted Beanes Mexico Pache Natural",
-      "sku": "RB22025-مكسيكى باتش مجففه محمص",
+      "sku": "RB22025-مكسيكى باتشى مجففه محمص",
       "cost": 58.5,
       "sale_price_per_kg": 150.0,
       "default_sack_weight": 0.0,
       "sack_allowed": false,
-      "allowed_sack_weights": "[60]",
+      "allowed_sack_weights": "[]",
       "reference_loss_pct": 0.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 475.0
     },
     {
       "xero_item_code": "RB52025-مكسيك بدون كافيين محمص",
@@ -268,9 +284,10 @@
       "sale_price_per_kg": 150.0,
       "default_sack_weight": 0.0,
       "sack_allowed": false,
-      "allowed_sack_weights": "[60]",
+      "allowed_sack_weights": "[]",
       "reference_loss_pct": 0.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 5.0
     },
     {
       "xero_item_code": "RB42025-مكسيك بيتش مغسولة محمص",
@@ -284,101 +301,61 @@
       "sale_price_per_kg": 150.0,
       "default_sack_weight": 0.0,
       "sack_allowed": false,
-      "allowed_sack_weights": "[60]",
+      "allowed_sack_weights": "[]",
       "reference_loss_pct": 0.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 116.75
     },
     {
-      "xero_item_code": "RB0619-  اريكا ووبنشي محمص",
+      "xero_item_code": "RB0619-اريكا ووبنشي محمص",
       "prefix": "RB",
       "base_code": "0619",
       "coffee_type": "roasted",
       "name_ar": "اريكا ووبنشي محمص",
       "name_en": "Roasted coffee Yirgocheffe Aricha Wubanchi 1K",
-      "sku": "RB0619-  اريكا ووبنشي محمص",
+      "sku": "RB0619-اريكا ووبنشي محمص",
       "cost": 42.5,
       "sale_price_per_kg": 106.0,
       "default_sack_weight": 0.0,
       "sack_allowed": false,
-      "allowed_sack_weights": "[60]",
+      "allowed_sack_weights": "[]",
       "reference_loss_pct": 0.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 0.5
     },
     {
-      "xero_item_code": "RB0465- كولومبى محمص",
+      "xero_item_code": "كولومبي محمص - RB0465",
       "prefix": "RB",
       "base_code": "0465",
       "coffee_type": "roasted",
-      "name_ar": "كولومبى محمص",
+      "name_ar": "كولومبي محمص",
       "name_en": "Colombi roasted beans(1Kg)",
-      "sku": "RB0465- كولومبى محمص",
+      "sku": "كولومبي محمص - RB0465",
       "cost": 49.5,
       "sale_price_per_kg": 160.0,
       "default_sack_weight": 0.0,
       "sack_allowed": false,
-      "allowed_sack_weights": "[60]",
+      "allowed_sack_weights": "[]",
       "reference_loss_pct": 0.0,
-      "reorder_level_kg": 0.0
+      "reorder_level_kg": 0.0,
+      "initial_qty": 442.25
     },
     {
-      "xero_item_code": "RB32025 - كاتورا لاهوائى محمص",
+      "xero_item_code": "RB32025 -كاتورا لاهوائي محمص",
       "prefix": "RB",
       "base_code": "32025",
       "coffee_type": "roasted",
-      "name_ar": "كاتورا لاهوائى محمص",
+      "name_ar": "كاتورا لاهوائي محمص",
       "name_en": "Mexico Caturra Anaerobic Natural Rosted Beans",
-      "sku": "RB32025 - كاتورا لاهوائى محمص",
+      "sku": "RB32025 -كاتورا لاهوائي محمص",
       "cost": 57.5,
       "sale_price_per_kg": 145.0,
       "default_sack_weight": 0.0,
       "sack_allowed": false,
-      "allowed_sack_weights": "[60]",
+      "allowed_sack_weights": "[]",
       "reference_loss_pct": 0.0,
-      "reorder_level_kg": 0.0
-    }
-  ],
-  "links": [
-    {
-      "green_code": "GB22025-مكسيكى باتشى مجفف اخضر",
-      "roasted_code": "RB22025-مكسيكى باتش مجففه محمص",
-      "link_type": "auto",
-      "is_default": true
-    },
-    {
-      "green_code": "GB0617- قاراقاري قوتيتي اخضر",
-      "roasted_code": "RB0617-   قاراقاري قوتيتي محمص",
-      "link_type": "auto",
-      "is_default": true
-    },
-    {
-      "green_code": "GB52025-مكسيكى بدون كافين اخضر",
-      "roasted_code": "RB52025-مكسيك بدون كافيين محمص",
-      "link_type": "auto",
-      "is_default": true
-    },
-    {
-      "green_code": "GB32025-مكسيكى كاتورمجففة اخضر",
-      "roasted_code": "RB32025 - كاتورا لاهوائى محمص",
-      "link_type": "auto",
-      "is_default": true
-    },
-    {
-      "green_code": "GB12025-مكسيكي مجففة اخضر",
-      "roasted_code": "RB12025- مكسيكى مجففة محمص",
-      "link_type": "auto",
-      "is_default": true
-    },
-    {
-      "green_code": "GB0619-اريكا ووبنشي اخضر",
-      "roasted_code": "RB0619-  اريكا ووبنشي محمص",
-      "link_type": "auto",
-      "is_default": true
-    },
-    {
-      "green_code": "GB42025-مكسيك باتشى مغسول اخضر",
-      "roasted_code": "RB42025-مكسيك بيتش مغسولة محمص",
-      "link_type": "auto",
-      "is_default": true
+      "reorder_level_kg": 0.0,
+      "initial_qty": 90.75
     }
   ]
 }
