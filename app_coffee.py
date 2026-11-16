@@ -2958,7 +2958,16 @@ def dispatch_new():
                         xero_posted_msg = f"⚠️ تعذر ترحيل زيرو تلقائياً ({xres.get('error', 'خطأ')})"
                 else:
                     import threading
-                    threading.Thread(target=post_roasted_dispatch_to_xero, args=(doc.id,), daemon=True).start()
+                    app_obj = current_app._get_current_object()
+                    def _bg_post_single(app_ref, target_id):
+                        with app_ref.app_context():
+                            try:
+                                post_roasted_dispatch_to_xero(target_id)
+                            except Exception as e:
+                                logger.error("Error in background post dispatch %s: %s", target_id, e)
+                            finally:
+                                db.session.remove()
+                    threading.Thread(target=_bg_post_single, args=(app_obj, doc.id), daemon=True).start()
                     xero_posted_msg = "وجارٍ ترحيل السند إلى Xero في الخلفية ⚡"
             except Exception as xe:
                 xero_posted_msg = f"⚠️ تعذر الاتصال بـ Xero ({str(xe)[:100]})"
@@ -3635,7 +3644,16 @@ def roasted_dispatch_edit(dispatch_id):
                         xero_posted_msg = f"⚠️ تعذر ترحيل زيرو تلقائياً ({xres.get('error', 'خطأ')})"
                 else:
                     import threading
-                    threading.Thread(target=post_roasted_dispatch_to_xero, args=(dispatch.id,), daemon=True).start()
+                    app_obj = current_app._get_current_object()
+                    def _bg_post_single(app_ref, target_id):
+                        with app_ref.app_context():
+                            try:
+                                post_roasted_dispatch_to_xero(target_id)
+                            except Exception as e:
+                                logger.error("Error in background post dispatch %s: %s", target_id, e)
+                            finally:
+                                db.session.remove()
+                    threading.Thread(target=_bg_post_single, args=(app_obj, dispatch.id), daemon=True).start()
                     xero_posted_msg = "وجارٍ ترحيل السند إلى Xero في الخلفية ⚡"
             except Exception as xe:
                 xero_posted_msg = f"⚠️ تعذر الاتصال بـ Xero ({str(xe)[:100]})"

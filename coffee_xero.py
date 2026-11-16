@@ -430,9 +430,36 @@ def _post_credit_note_resilient(payload: dict, timeout: int = 30) -> requests.Re
                 timeout=timeout,
             )
             if resp2.status_code in (200, 201):
+                logger.info("Xero credit note posted successfully via resilient fallback (without ItemCode).")
                 return resp2
-        except Exception:
-            pass
+
+            logger.warning("Xero credit note fallback returned HTTP %s: %s", resp2.status_code, (resp2.text or "")[:300])
+
+            # فحص إضافي: إذا كان سبب الرفض هو Tracking Category أو Option غير معرف في زيرو
+            err2_text = (resp2.text or "").lower()
+            if any(k in err2_text for k in ("tracking", "option")):
+                no_track_payload = dict(fallback_payload)
+                no_track_lines = []
+                for li in fallback_payload.get("LineItems", []):
+                    clean_nt = dict(li)
+                    clean_nt.pop("Tracking", None)
+                    no_track_lines.append(clean_nt)
+                no_track_payload["LineItems"] = no_track_lines
+
+                resp3 = requests.post(
+                    f"{XERO_BASE}/CreditNotes",
+                    headers=_xero_headers(),
+                    json={"CreditNotes": [no_track_payload]},
+                    timeout=timeout,
+                )
+                if resp3.status_code in (200, 201):
+                    logger.info("Xero credit note posted successfully without Tracking.")
+                    return resp3
+                return resp3
+
+            return resp2
+        except Exception as e:
+            logger.warning("Exception during Xero credit note resilient fallback: %s", e)
 
     return resp
 
