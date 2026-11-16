@@ -48,7 +48,7 @@
                 👤 {{ purchase.creator.name if purchase.creator else '-' }}
             </div>
             <div class="kpi-desc" style="color: #15803d; font-weight: 700; margin-top: 2px;">
-                🕒 {{ purchase.created_at.strftime('%Y-%m-%d %H:%M') }}
+                🕒 {{ purchase.created_at.strftime('%Y-%m-%d %H:%M') if purchase.created_at else '-' }}
             </div>
         </div>
         <div class="kpi-icon" style="background: #dcfce7; color: #166534;">📥</div>
@@ -57,17 +57,39 @@
         <div class="kpi-content">
             {% if user.role != 'branch_staff' %}
             <h4>{{ t('total') }}</h4>
-            <div class="kpi-value" style="color: var(--primary);">{{ "{:,.2f}".format(purchase.total_amount) }} <span style="font-size: 14px; font-weight: normal;">{{ currency }}</span></div>
-            <div class="kpi-desc">{{ t('items') }}: {{ purchase.lines|length }} | {{ t('invoice_date_label') }}: {{ purchase.invoice_date or purchase.created_at.strftime('%Y-%m-%d') }}</div>
+            <div class="kpi-value" style="color: var(--primary);">{{ "{:,.2f}".format(purchase.total_amount or 0) }} <span style="font-size: 14px; font-weight: normal;">{{ currency }}</span></div>
+            <div class="kpi-desc">{{ t('items') }}: {{ purchase.lines|length }} | {{ t('invoice_date_label') }}: {{ purchase.invoice_date or (purchase.created_at.strftime('%Y-%m-%d') if purchase.created_at else '-') }}</div>
             {% else %}
             <h4>{{ 'عدد الأصناف المستلمة' if lang == 'ar' else 'Received Items Count' }}</h4>
             <div class="kpi-value" style="color: var(--primary);">{{ purchase.lines|length }} <span style="font-size: 14px; font-weight: normal;">{{ 'صنف' if lang == 'ar' else 'items' }}</span></div>
-            <div class="kpi-desc">{{ 'إجمالي الكميات' if lang == 'ar' else 'Total Quantities' }}: {{ purchase.lines|sum(attribute='quantity') }} | {{ purchase.invoice_date or purchase.created_at.strftime('%Y-%m-%d') }}</div>
+            <div class="kpi-desc">{{ 'إجمالي الكميات' if lang == 'ar' else 'Total Quantities' }}: {{ purchase.lines|sum(attribute='quantity') }} | {{ purchase.invoice_date or (purchase.created_at.strftime('%Y-%m-%d') if purchase.created_at else '-') }}</div>
             {% endif %}
         </div>
         <div class="kpi-icon icon-green">📦</div>
     </div>
 </div>
+
+{% if sync_job and sync_job.status == 'failed' %}
+<!-- تنبيه تعثر الترحيل وحل تعارض رقم الفاتورة المكرر -->
+<div class="card no-print" style="margin-bottom: 20px; border: 2px solid #ef4444; background: #fff1f2; border-radius: 12px; padding: 16px;">
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+        <div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 800; color: #991b1b; margin-bottom: 6px;">
+                <span>⚠️</span>
+                <span>{{ 'تعثر ترحيل هذا السند إلى فوديكس' if lang == 'ar' else 'Foodics Sync Failed' }}</span>
+            </div>
+            <p style="font-size: 13px; color: #7f1d1d; margin: 0 0 8px 0; line-height: 1.5;">
+                <strong>سبب الخطأ:</strong> {{ sync_job.latest_log.translated_error_ar if sync_job.latest_log else 'تعثر الترحيل من فوديكس' }}
+            </p>
+            {% if sync_job.latest_log and ('duplicate' in (sync_job.latest_log.raw_error or '').lower() or 'مكرر' in (sync_job.latest_log.translated_error_ar or '')) %}
+            <p style="font-size: 12px; color: #b91c1c; margin: 0; line-height: 1.5;">
+                💡 <strong>طريقة الحل السريعة:</strong> رقم الفاتورة الحالي (<code>{{ purchase.invoice_number or '-' }}</code>) مسجل مسبقاً في فوديكس. يمكنك الضغط على زر <strong>"⚡ إضافة لاحقة فريدة"</strong> أدناه ثم حفظ التعديل لإعادة الترحيل فوراً برقم جديد.
+            </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
 
 {% if user.role == 'admin' or (user.role == 'accountant' and purchase.status == 'draft') %}
 <!-- بطاقة تعديل بيانات السند والمورد والموقع (صلاحية مدير النظام) -->
@@ -101,18 +123,23 @@
 
             <div class="form-group">
                 <label style="font-weight: 700; font-size: 13px; color: #1e293b; display: block; margin-bottom: 4px;">📄 {{ t('invoice_number') }}:</label>
-                <input type="text" name="invoice_number" value="{{ purchase.invoice_number or '' }}" class="form-control" style="font-size: 13px;">
+                <div style="display: flex; gap: 6px;">
+                    <input type="text" id="invoiceNumberInput" name="invoice_number" value="{{ purchase.invoice_number or '' }}" class="form-control" style="font-size: 13px;">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="appendUniqueSuffix()" title="إضافة لاحقة -R1 لحل تعارض فوديكس" style="white-space: nowrap; font-size: 11px; padding: 4px 8px; font-weight: 700;">
+                        ⚡ لاحقة (-R1)
+                    </button>
+                </div>
             </div>
 
             <div class="form-group">
                 <label style="font-weight: 700; font-size: 13px; color: #1e293b; display: block; margin-bottom: 4px;">📅 {{ t('invoice_date_label') }}:</label>
-                <input type="date" name="invoice_date" value="{{ purchase.invoice_date or purchase.created_at.strftime('%Y-%m-%d') }}" class="form-control" style="font-size: 13px;">
+                <input type="date" name="invoice_date" value="{{ purchase.invoice_date or (purchase.created_at.strftime('%Y-%m-%d') if purchase.created_at else '') }}" class="form-control" style="font-size: 13px;">
             </div>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 12px; flex-wrap: wrap; gap: 10px;">
             <label style="font-size: 12px; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer;">
-                <input type="checkbox" name="requeue_sync" value="1" {% if purchase.status == 'failed' %}checked{% endif %}>
+                <input type="checkbox" name="requeue_sync" value="1" {% if purchase.status == 'failed' or (sync_job and sync_job.status == 'failed') %}checked{% endif %}>
                 <span>🔄 إعادة السند إلى طابور الترحيل لفوديكس فوراً بعد الحفظ</span>
             </label>
             <button type="submit" class="btn btn-primary btn-sm" style="padding: 8px 20px; font-weight: 800; background: #2563eb; border-color: #2563eb;">
@@ -295,7 +322,7 @@
                             <button type="submit" class="btn btn-secondary btn-sm" title="{{ t('update_qty') }}">💾</button>
                         </form>
                         {% else %}
-                        {{ "{:,.2f}".format(line.unit_cost) }} {{ currency }}
+                        {{ "{:,.2f}".format(line.unit_cost or 0) }} {{ currency }}
                         {% endif %}
                     </td>
                     {% endif %}
@@ -315,7 +342,7 @@
                     </td>
                     {% if user.role != 'branch_staff' %}
                     <td style="font-weight: 700; color: #1e1b4b;">
-                        {{ "{:,.2f}".format(line.total_cost) }} {{ currency }}
+                        {{ "{:,.2f}".format(line.total_cost or 0) }} {{ currency }}
                     </td>
                     {% endif %}
                     {% if purchase.status == 'draft' or user.role == 'admin' or (user.role == 'accountant' and purchase.status not in ['posted', 'queued']) %}
@@ -348,7 +375,7 @@
                     <td>-</td>
                     {% if user.role != 'branch_staff' %}
                     <td style="color: var(--primary); font-size: 17px;">
-                        {{ "{:,.2f}".format(purchase.total_amount) }} {{ currency }}
+                        {{ "{:,.2f}".format(purchase.total_amount or 0) }} {{ currency }}
                     </td>
                     {% endif %}
                     {% if purchase.status == 'draft' or user.role == 'admin' or (user.role == 'accountant' and purchase.status not in ['posted', 'queued']) %}
@@ -381,7 +408,7 @@
             </div>
             <div style="font-size: 13px; color: var(--gray-700); margin-top: 4px;">
                 <strong>{{ 'تاريخ ووقت الاستلام:' if lang == 'ar' else 'Receipt Date & Time:' }}</strong>
-                <span style="font-weight: 700; color: #166534;">🕒 {{ purchase.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                <span style="font-weight: 700; color: #166534;">🕒 {{ purchase.created_at.strftime('%Y-%m-%d %H:%M') if purchase.created_at else '-' }}</span>
             </div>
             <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--gray-200); font-size: 12px; color: var(--gray-500);">
                 توقيع المستلم: _______________________
@@ -552,6 +579,29 @@ function openDeletePurchaseModal() {
 function closeDeletePurchaseModal() {
     const m = document.getElementById("deletePurchaseModal");
     if (m) m.style.display = "none";
+}
+
+function appendUniqueSuffix() {
+    const inp = document.getElementById("invoiceNumberInput");
+    if (!inp) return;
+    let val = (inp.value || "").trim();
+    if (!val) {
+        val = "REC-{{ purchase.id }}-R1";
+    } else if (val.endsWith("-R1")) {
+        val = val.replace(/-R1$/, "-R2");
+    } else if (/-R\d+$/.test(val)) {
+        const num = parseInt(val.match(/-R(\d+)$/)[1], 10);
+        val = val.replace(/-R\d+$/, "-R" + (num + 1));
+    } else {
+        val = val + "-R1";
+    }
+    inp.value = val;
+    inp.style.background = "#fef9c3";
+    inp.style.borderColor = "#eab308";
+    setTimeout(() => {
+        inp.style.background = "";
+        inp.style.borderColor = "";
+    }, 1200);
 }
 </script>
 {% endblock %}

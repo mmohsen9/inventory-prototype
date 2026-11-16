@@ -39,12 +39,13 @@ logger = logging.getLogger(__name__)
 
 from flask import (
     Blueprint, render_template, request, redirect, url_for,
-    session, jsonify, flash, abort, Response
+    session, jsonify, flash, abort, Response, current_app
 )
 from sqlalchemy.orm import joinedload, selectinload
 from models import (
     db, Location, Item, StockBalance, StockMovement, record_stock_movement,
-    TransferOrder, TransferLine, PurchaseTransaction, PurchaseLine, Supplier
+    TransferOrder, TransferLine, PurchaseTransaction, PurchaseLine, Supplier,
+    SyncQueue
 )
 from models_coffee import (
     CoffeeItem, CoffeeItemLink, RoastingOrder, RoastingOrderLine,
@@ -2909,16 +2910,23 @@ def dispatch_new():
 
             # إرسال سند الاستلام إلى طابور المزامنة مع فوديكس
             try:
-                from sync_queue import enqueue, process_job
-                job = enqueue("purchase", purchase.id)
+                from sync_queue import enqueue, process_job, generate_idempotency_key
+                sq_item = SyncQueue.query.filter_by(source_type="purchase", source_id=purchase.id).first()
+                if sq_item:
+                    sq_item.status = "queued"
+                    sq_item.retry_count = 0
+                    sq_item.idempotency_key = generate_idempotency_key("purchase", purchase.id)
+                    job = sq_item
+                else:
+                    job = enqueue("purchase", purchase.id)
                 if job:
                     if current_app.config.get("TESTING"):
                         ok, jmsg = process_job(job)
                         if not ok:
                             flash(f"⚠️ تنبيه فوديكس: أُضيف سند الاستلام لطابور المزامنة ولكن تعذر الإرسال الفوري ({jmsg})", "warning")
                     else:
-                        import threading
-                        threading.Thread(target=process_job, args=(job,), daemon=True).start()
+                        from background_worker import enqueue_foodics_job_async
+                        enqueue_foodics_job_async(job.id)
             except Exception as e:
                 flash(f"⚠️ تعذر جدولة ترحيل سند الاستلام إلى فوديكس: {str(e)[:150]}", "warning")
 
@@ -3492,16 +3500,33 @@ def roasted_dispatch_edit(dispatch_id):
                 db.session.add(supplier)
                 db.session.flush()
 
-            purchase = PurchaseTransaction(
-                location_id=dispatch.branch_location_id,
-                supplier_name=sup_name,
-                invoice_number=dispatch.doc_number,
-                invoice_date=dispatch.dispatch_date,
-                created_by=user.id if user else None,
-                status="approved",
-                foodics_reference=dispatch.doc_number,
-            )
-            db.session.add(purchase)
+            # فحص وجود سند استلام مسبق لمنع التكرار
+            existing_purchase = PurchaseTransaction.query.filter(
+                (PurchaseTransaction.invoice_number == dispatch.doc_number) |
+                (PurchaseTransaction.foodics_reference == dispatch.doc_number)
+            ).first()
+
+            if existing_purchase:
+                purchase = existing_purchase
+                purchase.location_id = dispatch.branch_location_id
+                purchase.invoice_date = dispatch.dispatch_date or datetime.utcnow().date()
+                purchase.status = "approved"
+                if not purchase.created_at:
+                    purchase.created_at = datetime.utcnow()
+                PurchaseLine.query.filter_by(purchase_id=purchase.id).delete()
+                StockMovement.query.filter_by(reference_type="purchase", reference_id=purchase.id).delete()
+            else:
+                purchase = PurchaseTransaction(
+                    location_id=dispatch.branch_location_id,
+                    supplier_name=sup_name,
+                    invoice_number=dispatch.doc_number,
+                    invoice_date=dispatch.dispatch_date or datetime.utcnow().date(),
+                    created_by=user.id if user else None,
+                    status="approved",
+                    foodics_reference=dispatch.doc_number,
+                    created_at=datetime.utcnow(),
+                )
+                db.session.add(purchase)
             db.session.flush()
 
             for pl in parsed_lines:
@@ -3569,16 +3594,23 @@ def roasted_dispatch_edit(dispatch_id):
 
             # إرسال سند الاستلام إلى طابور المزامنة مع فوديكس
             try:
-                from sync_queue import enqueue, process_job
-                job = enqueue("purchase", purchase.id)
+                from sync_queue import enqueue, process_job, generate_idempotency_key
+                sq_item = SyncQueue.query.filter_by(source_type="purchase", source_id=purchase.id).first()
+                if sq_item:
+                    sq_item.status = "queued"
+                    sq_item.retry_count = 0
+                    sq_item.idempotency_key = generate_idempotency_key("purchase", purchase.id)
+                    job = sq_item
+                else:
+                    job = enqueue("purchase", purchase.id)
                 if job:
                     if current_app.config.get("TESTING"):
                         ok, jmsg = process_job(job)
                         if not ok:
                             flash(f"⚠️ تنبيه فوديكس: أُضيف سند الاستلام لطابور المزامنة ولكن تعذر الإرسال الفوري ({jmsg})", "warning")
                     else:
-                        import threading
-                        threading.Thread(target=process_job, args=(job,), daemon=True).start()
+                        from background_worker import enqueue_foodics_job_async
+                        enqueue_foodics_job_async(job.id)
             except Exception as e:
                 flash(f"⚠️ تعذر جدولة ترحيل سند الاستلام إلى فوديكس: {str(e)[:150]}", "warning")
 
@@ -6452,16 +6484,31 @@ def _approve_single_roasted_dispatch(dispatch, user):
         ).first() or Item.query.filter(Item.name_ar.like("%بن محمص عام%")).first()
 
         supplier_name = "اكياس القهوة المحمصه للفروع"
-        purchase = PurchaseTransaction(
-            location_id=dispatch.branch_location_id,
-            supplier_name=supplier_name,
-            invoice_number=dispatch.doc_number,
-            invoice_date=dispatch.dispatch_date,
-            created_by=user.id if user else 1,
-            status="posted",
-            foodics_reference=dispatch.doc_number,
-        )
-        db.session.add(purchase)
+        existing_p = PurchaseTransaction.query.filter(
+            (PurchaseTransaction.invoice_number == dispatch.doc_number) |
+            (PurchaseTransaction.foodics_reference == dispatch.doc_number)
+        ).first()
+
+        if existing_p:
+            purchase = existing_p
+            purchase.location_id = dispatch.branch_location_id
+            purchase.invoice_date = dispatch.dispatch_date or datetime.utcnow().date()
+            if not purchase.created_at:
+                purchase.created_at = datetime.utcnow()
+            PurchaseLine.query.filter_by(purchase_id=purchase.id).delete()
+            StockMovement.query.filter_by(reference_type="purchase", reference_id=purchase.id).delete()
+        else:
+            purchase = PurchaseTransaction(
+                location_id=dispatch.branch_location_id,
+                supplier_name=supplier_name,
+                invoice_number=dispatch.doc_number,
+                invoice_date=dispatch.dispatch_date or datetime.utcnow().date(),
+                created_by=user.id if user else 1,
+                status="posted",
+                foodics_reference=dispatch.doc_number,
+                created_at=datetime.utcnow(),
+            )
+            db.session.add(purchase)
         db.session.flush()
 
         for l in dispatch.all_lines:
@@ -6498,8 +6545,15 @@ def _approve_single_roasted_dispatch(dispatch, user):
         db.session.flush()
 
         try:
-            from sync_queue import enqueue, process_job
-            job = enqueue("purchase", purchase.id)
+            from sync_queue import enqueue, process_job, generate_idempotency_key
+            sq_item = SyncQueue.query.filter_by(source_type="purchase", source_id=purchase.id).first()
+            if sq_item:
+                sq_item.status = "queued"
+                sq_item.retry_count = 0
+                sq_item.idempotency_key = generate_idempotency_key("purchase", purchase.id)
+                job = sq_item
+            else:
+                job = enqueue("purchase", purchase.id)
             if job:
                 process_job(job)
         except Exception:

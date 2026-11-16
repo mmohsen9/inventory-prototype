@@ -721,8 +721,9 @@
                             </span>
                         </td>
                         <td>
-                            {% if d.xero_error_message %}
-                            <span style="color: #b91c1c; font-size: 11px; font-weight: 700;">{{ d.xero_error_message }}</span>
+                            {% set err_msg = d.xero_error or d.xero_error_message %}
+                            {% if err_msg %}
+                            <span style="color: #b91c1c; font-size: 11px; font-weight: 700; line-height: 1.4; display: block; max-width: 280px;">{{ err_msg }}</span>
                             {% else %}
                             —
                             {% endif %}
@@ -985,8 +986,9 @@
                             </span>
                         </td>
                         <td>
-                            {% if gi.xero_error_message %}
-                            <span style="color: #b91c1c; font-size: 11px; font-weight: 700;">{{ gi.xero_error_message }}</span>
+                            {% set err_msg = gi.xero_error or gi.xero_error_message %}
+                            {% if err_msg %}
+                            <span style="color: #b91c1c; font-size: 11px; font-weight: 700; line-height: 1.4; display: block; max-width: 280px;">{{ err_msg }}</span>
                             {% else %}
                             —
                             {% endif %}

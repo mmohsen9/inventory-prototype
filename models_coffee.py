@@ -423,6 +423,10 @@ class GreenCoffeeIssue(db.Model):
     xero_posted_at      = db.Column(db.DateTime)
     xero_error          = db.Column(db.Text)
 
+    @property
+    def xero_error_message(self):
+        return self.xero_error or ""
+
     # بيانات التسليم والشحن لشركات النقل (سمسا، ناقل، أرامكس، سبل...)
     delivery_method          = db.Column(db.String(30), default="direct")  # 'direct' | 'shipping'
     shipping_company         = db.Column(db.String(100), nullable=True)
@@ -631,6 +635,10 @@ class RoastedCoffeeDispatch(db.Model):
     xero_status         = db.Column(db.String(20), default="pending")  # pending | posted | failed
     xero_posted_at      = db.Column(db.DateTime)
     xero_error          = db.Column(db.Text)
+
+    @property
+    def xero_error_message(self):
+        return self.xero_error or ""
 
     coffee_item_id      = db.Column(db.Integer, db.ForeignKey("coffee_items.id"), nullable=True)
     qty_kg              = db.Column(db.Float, nullable=True, default=0.0)
@@ -1031,8 +1039,10 @@ class CoffeeSetting(db.Model):
     def get(key, default=None):
         try:
             s = CoffeeSetting.query.filter_by(key=key).first()
-            if s and s.value and str(s.value).strip():
-                return str(s.value).strip()
+            if s is not None:
+                if s.value is not None:
+                    return str(s.value).strip()
+                return ""
         except Exception:
             pass
 

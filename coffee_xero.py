@@ -235,12 +235,27 @@ def _find_existing_xero_document(endpoint: str, doc_number: str, expected_total:
     if not doc_number:
         return None
     try:
-        encoded_num = urllib.parse.quote(doc_number.strip())
-        resp = requests.get(
-            f"{XERO_BASE}/{endpoint}/{encoded_num}",
-            headers=_xero_headers(),
-            timeout=25
-        )
+        clean_num = doc_number.strip()
+        encoded_num = urllib.parse.quote(clean_num)
+        if endpoint == "CreditNotes":
+            # في Xero مسار CreditNotes/{id} يقبل فقط معرف GUID، وللبحث برقم الإشعار يُستخدم query parameter
+            resp = requests.get(
+                f"{XERO_BASE}/CreditNotes?CreditNoteNumber={encoded_num}",
+                headers=_xero_headers(),
+                timeout=25
+            )
+            if resp.status_code != 200:
+                resp = requests.get(
+                    f'{XERO_BASE}/CreditNotes?where=CreditNoteNumber%3D%3D%22{encoded_num}%22',
+                    headers=_xero_headers(),
+                    timeout=25
+                )
+        else:
+            resp = requests.get(
+                f"{XERO_BASE}/{endpoint}/{encoded_num}",
+                headers=_xero_headers(),
+                timeout=25
+            )
         if resp.status_code == 200:
             data = resp.json()
             items = data.get(endpoint, [])
@@ -254,8 +269,8 @@ def _find_existing_xero_document(endpoint: str, doc_number: str, expected_total:
                         )
                         return None
                 return doc
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Error querying existing Xero document: {e}")
     return None
 
 
@@ -1064,6 +1079,24 @@ def post_green_issue_to_xero(issue_id: int) -> dict:
                 headers=_xero_headers(),
                 timeout=25
             )
+            # إعادة المحاولة التلقائية بدون ItemCode إذا كان الكود غير معرف في زيرو
+            if resp.status_code not in (200, 201) and ("item code" in (resp.text or "").lower() or "itemcode" in (resp.text or "").lower()):
+                fallback_payload = dict(payload)
+                fallback_lines = []
+                for li in payload.get("LineItems", []):
+                    clean_li = dict(li)
+                    clean_li.pop("ItemCode", None)
+                    fallback_lines.append(clean_li)
+                fallback_payload["LineItems"] = fallback_lines
+                resp2 = requests.post(
+                    f"{XERO_BASE}/CreditNotes",
+                    json={"CreditNotes": [fallback_payload]},
+                    headers=_xero_headers(),
+                    timeout=25
+                )
+                if resp2.status_code in (200, 201):
+                    resp = resp2
+
             if resp.status_code in (200, 201):
                 data = resp.json()
                 cn = data.get("CreditNotes", [{}])[0]
@@ -1526,6 +1559,24 @@ def post_roasted_dispatch_to_xero(dispatch_id: int) -> dict:
                 headers=_xero_headers(),
                 timeout=25
             )
+            # إعادة المحاولة التلقائية بدون ItemCode إذا كان الكود غير معرف في زيرو
+            if resp.status_code not in (200, 201) and ("item code" in (resp.text or "").lower() or "itemcode" in (resp.text or "").lower()):
+                fallback_payload = dict(payload)
+                fallback_lines = []
+                for li in payload.get("LineItems", []):
+                    clean_li = dict(li)
+                    clean_li.pop("ItemCode", None)
+                    fallback_lines.append(clean_li)
+                fallback_payload["LineItems"] = fallback_lines
+                resp2 = requests.post(
+                    f"{XERO_BASE}/CreditNotes",
+                    json={"CreditNotes": [fallback_payload]},
+                    headers=_xero_headers(),
+                    timeout=25
+                )
+                if resp2.status_code in (200, 201):
+                    resp = resp2
+
             if resp.status_code in (200, 201):
                 data = resp.json()
                 cn = data.get("CreditNotes", [{}])[0]
@@ -1629,6 +1680,24 @@ def post_roasted_dispatch_to_xero(dispatch_id: int) -> dict:
                 headers=_xero_headers(),
                 timeout=25
             )
+            # إعادة المحاولة التلقائية بدون ItemCode إذا كان الكود غير معرف في زيرو
+            if resp.status_code not in (200, 201) and ("item code" in (resp.text or "").lower() or "itemcode" in (resp.text or "").lower()):
+                fallback_payload = dict(payload)
+                fallback_lines = []
+                for li in payload.get("LineItems", []):
+                    clean_li = dict(li)
+                    clean_li.pop("ItemCode", None)
+                    fallback_lines.append(clean_li)
+                fallback_payload["LineItems"] = fallback_lines
+                resp2 = requests.post(
+                    f"{XERO_BASE}/CreditNotes",
+                    json={"CreditNotes": [fallback_payload]},
+                    headers=_xero_headers(),
+                    timeout=25
+                )
+                if resp2.status_code in (200, 201):
+                    resp = resp2
+
             if resp.status_code in (200, 201):
                 data = resp.json()
                 cn = data.get("CreditNotes", [{}])[0]

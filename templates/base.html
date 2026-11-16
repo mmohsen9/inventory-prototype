@@ -338,6 +338,10 @@
                         <span class="nav-counter-pill alert">{{ pending_reviews_count }}</span>
                         {% endif %}
                     </a>
+                    <a href="{{ url_for('coffee.xero_status') }}" class="nav-drawer-link {% if request.endpoint == 'coffee.xero_status' %}active{% endif %}">
+                        <span>📈 مركز متابعة الترحيل المحاسبي</span>
+                        <span class="badge" style="font-size: 10px; background: #eff6ff; color: #1e40af;">Xero API</span>
+                    </a>
                     {% endif %}
                     <a href="{{ url_for('reports_stock') }}" class="nav-drawer-link {% if 'reports' in request.endpoint and 'coffee' not in request.endpoint %}active{% endif %}">
                         <span>📈 تقارير المخزون وحركات الأصناف</span>

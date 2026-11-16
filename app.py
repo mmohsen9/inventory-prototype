@@ -2564,6 +2564,12 @@ def purchase_edit(purchase_id):
     # Allow admin full modification, and accountant for non-posted vouchers
     can_modify = (purchase.status == "draft") or (u.role == "admin") or (u.role == "accountant" and purchase.status not in ["posted", "queued"])
 
+    # ضمان تهيئة التواريخ لتفادي أي خطأ في العرض
+    if not purchase.created_at:
+        purchase.created_at = datetime.utcnow()
+    if not purchase.invoice_date:
+        purchase.invoice_date = purchase.created_at.date() if purchase.created_at else datetime.utcnow().date()
+
     if request.method == "POST":
         action = request.form.get("action")
 
@@ -2696,18 +2702,30 @@ def purchase_edit(purchase_id):
                 except (ValueError, TypeError):
                     pass
 
-            # إعادة ضبط الترحيل في حال طلب الإرسال إلى فوديكس
-            if request.form.get("requeue_sync") == "1" or purchase.status == "failed":
+            # إعادة ضبط الترحيل في حال طلب الإرسال إلى فوديكس أو كان السند متعثراً
+            sq_item = None
+            if request.form.get("requeue_sync") == "1" or purchase.status in ["failed", "queued"]:
                 sq_item = SyncQueue.query.filter_by(source_type="purchase", source_id=purchase.id).first()
                 if sq_item:
                     sq_item.status = "queued"
                     sq_item.retry_count = 0
+                    sq_item.idempotency_key = sq.generate_idempotency_key("purchase", purchase.id)
+                    log = SyncLog(queue_id=sq_item.id, api_status="retrying", raw_error=None, translated_error_ar=f"تم تحديث بيانات السند ورقم الفاتورة إلى ({purchase.invoice_number}) وإعادة الترحيل")
+                    db.session.add(log)
                 else:
-                    sq.enqueue("purchase", purchase.id)
+                    sq_item = sq.enqueue("purchase", purchase.id)
                 purchase.status = "queued"
 
             db.session.commit()
-            flash("تم تحديث بيانات سند الاستلام (المورد والفرع والفاتورة) بنجاح ✅", "success")
+
+            if sq_item and not is_test_env:
+                try:
+                    from background_worker import enqueue_foodics_job_async
+                    enqueue_foodics_job_async(sq_item.id)
+                except Exception:
+                    pass
+
+            flash("تم تحديث بيانات سند الاستلام (المورد والفرع والفاتورة) وجدولة ترحيله بنجاح ✅", "success")
             return redirect(url_for("purchase_edit", purchase_id=purchase.id))
 
         if action in ["add_line", "update_line", "delete_line", "upload_attachment"] and not can_modify:
@@ -2935,7 +2953,18 @@ def purchase_edit(purchase_id):
 
         return redirect(url_for("purchase_edit", purchase_id=purchase.id))
 
-    attachments = json.loads(purchase.attachments or "[]")
+    try:
+        attachments = json.loads(purchase.attachments or "[]")
+        if isinstance(attachments, str):
+            attachments = [attachments]
+        elif not isinstance(attachments, list):
+            attachments = []
+    except Exception:
+        attachments = [purchase.attachments] if purchase.attachments else []
+
+    # جلب آخر حالة ترحيل في فوديكس لهذا السند
+    sync_job = SyncQueue.query.filter_by(source_type="purchase", source_id=purchase.id).order_by(SyncQueue.id.desc()).first()
+
     locations = Location.get_operational_locations()
     loc_ids = {l.id for l in locations}
     if purchase.location and purchase.location.id not in loc_ids:
@@ -2966,6 +2995,7 @@ def purchase_edit(purchase_id):
         suppliers=suppliers,
         supplier=supplier,
         supplier_items=supplier_items,
+        sync_job=sync_job,
         user=u
     )
 
@@ -4190,6 +4220,51 @@ def sync_process():
     return redirect(url_for(return_to) if return_to in ("foodics_hub", "accountant_review") else url_for("accountant_review"))
 
 
+@app.route("/sync/resolve-duplicate/<int:job_id>", methods=["POST"])
+@login_required
+@role_required("accountant", "admin")
+def sync_resolve_duplicate(job_id):
+    """
+    حل تعارض رقم الفاتورة المكرر (Duplicate invoice number) في فوديكس
+    عن طريق تحديث رقم الفاتورة لسند الاستلام وتوليد مفتاح جديد وإعادة الترحيل فوراً.
+    """
+    from background_worker import enqueue_foodics_job_async
+    return_to = request.form.get("return_to") or ("foodics_hub" if request.referrer and "foodics" in request.referrer else "accountant_review")
+    job = SyncQueue.query.get_or_404(job_id)
+    new_inv = (request.form.get("new_invoice_number") or "").strip()
+
+    if job.source_type == "purchase":
+        purchase = db.session.get(PurchaseTransaction, job.source_id)
+        if purchase:
+            if not new_inv:
+                # توليد لاحقة فريدة تلقائية إذا ترك الحقل فارغاً
+                base_num = purchase.invoice_number or f"REC-{purchase.id}"
+                new_inv = f"{base_num}-R1"
+            purchase.invoice_number = new_inv
+            purchase.status = "queued"
+
+    job.status = "queued"
+    job.retry_count = 0
+    job.idempotency_key = sq.generate_idempotency_key(job.source_type, job.source_id)
+    log = SyncLog(
+        queue_id=job.id,
+        api_status="retrying",
+        raw_error=None,
+        translated_error_ar=f"تم تعديل رقم الفاتورة إلى '{new_inv}' وحل التعارض وإعادة الجدولة"
+    )
+    db.session.add(log)
+    db.session.commit()
+
+    if is_test_env:
+        sq.process_job(job)
+        flash(f"✅ تم تحديث رقم الفاتورة إلى '{new_inv}' وإعادة محاولة ترحيل السند بنجاح.", "success")
+    else:
+        enqueue_foodics_job_async(job.id)
+        flash(f"✅ تم تحديث رقم الفاتورة إلى '{new_inv}' وجدولة ترحيل السند في الخلفية.", "success")
+
+    return redirect(url_for(return_to) if return_to in ("foodics_hub", "accountant_review") else url_for("foodics_hub"))
+
+
 @app.route("/sync/retry/<int:job_id>", methods=["POST"])
 @login_required
 @role_required("accountant", "admin")
@@ -4206,6 +4281,56 @@ def sync_retry(job_id):
     else:
         enqueue_foodics_job_async(job.id)
         flash("تم إرسال العملية للمعالج الخلفي لإعادة المحاولة بنجاح.", "info")
+    return redirect(url_for(return_to) if return_to in ("foodics_hub", "accountant_review") else url_for("accountant_review"))
+
+
+@app.route("/sync/cancel/<int:job_id>", methods=["POST"])
+@login_required
+@role_required("accountant", "admin")
+def sync_cancel(job_id):
+    """
+    إلغاء واستبعاد مهمة معلقة أو متعثرة من طابور الترحيل لفوديكس.
+    يتيح خيار حذف السند وعكس حركاته المخزنية إذا كان السند نفسه مكرراً أو ملغياً.
+    """
+    return_to = request.form.get("return_to") or ("foodics_hub" if request.referrer and "foodics" in request.referrer else "accountant_review")
+    job = SyncQueue.query.get_or_404(job_id)
+    delete_voucher = request.form.get("delete_voucher") in ("1", "true", "yes")
+
+    ref_label = f"#{job.id}"
+    if job.source_type == "purchase":
+        purchase = db.session.get(PurchaseTransaction, job.source_id)
+        if purchase:
+            ref_label = purchase.invoice_number or f"سند استلام #{purchase.id}"
+            if delete_voucher:
+                # عكس أي حركات مخزنية
+                movements = StockMovement.query.filter_by(reference_type="purchase", reference_id=purchase.id).all()
+                for mov in movements:
+                    bal = StockBalance.query.filter_by(item_id=mov.item_id, location_id=mov.location_id).first()
+                    if bal:
+                        bal.quantity = round((bal.quantity or 0.0) - mov.quantity_change, 4)
+                        bal.last_updated = datetime.utcnow()
+                    db.session.delete(mov)
+                PurchaseLine.query.filter_by(purchase_id=purchase.id).delete()
+                db.session.delete(purchase)
+            else:
+                purchase.status = "draft"
+    elif job.source_type == "transfer":
+        transfer = db.session.get(TransferOrder, job.source_id)
+        if transfer:
+            ref_label = transfer.order_number or f"سند تحويل #{transfer.id}"
+            if not delete_voucher and transfer.status == "posted":
+                transfer.status = "approved"
+
+    # حذف سجلات المزامنة والمهمة من طابور فوديكس
+    SyncLog.query.filter_by(queue_id=job.id).delete()
+    db.session.delete(job)
+    db.session.commit()
+
+    if delete_voucher:
+        flash(f"تم حذف السند ({ref_label}) وعكس كمياته واستبعاده من طابور فوديكس بنجاح 🗑️", "success")
+    else:
+        flash(f"تم استبعاد المعاملة ({ref_label}) من طابور فوديكس بنجاح (مع الاحتفاظ بالسند محلياً) ✓", "info")
+
     return redirect(url_for(return_to) if return_to in ("foodics_hub", "accountant_review") else url_for("accountant_review"))
 
 

@@ -373,9 +373,9 @@ class Location(db.Model):
             return cls.query.order_by(cls.type.desc(), cls.name_ar.asc()).all()
 
         query = cls.query.filter(
-            (cls.type == "warehouse") |
             (cls.foodics_id.isnot(None)) |
-            (cls.name_ar.in_(["المستودع الرئيسي", "Warehouse 1", "المستودع المركزي", "مستودع البن الأخضر", "مستودع البن المحمص", "Green Coffee Warehouse", "Roasted Coffee Warehouse"]))
+            (cls.name_ar.in_(["المستودع الرئيسي", "Warehouse 1", "المستودع المركزي", "مستودع البن الأخضر", "مستودع البن المحمص"])) |
+            (cls.name_en.in_(["Main Warehouse", "Warehouse 1", "Central Warehouse", "Green Coffee Warehouse", "Roasted Coffee Warehouse"]))
         )
         locs = query.order_by(cls.type.desc(), cls.name_ar.asc()).all()
         return locs if locs else cls.query.order_by(cls.type.desc(), cls.name_ar.asc()).all()

@@ -100,6 +100,10 @@ def translate_foodics_error(error_code):
 
         return "أصناف السند غير مرتبطة بالمورد في فوديكس — يرجى التحقق من ربط المورد بالأصناف"
 
+    if "duplicate invoice number" in err_str.lower():
+
+        return "رقم الفاتورة/السند مكرر ومسجل مسبقاً في فوديكس — يرجى تعديل رقم الفاتورة أو توليد لاحقة جديدة من شاشة السند"
+
     return f"خطأ من فوديكس: {err_str}"
 
 
