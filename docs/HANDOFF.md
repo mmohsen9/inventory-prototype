@@ -3,6 +3,24 @@
 - **آخر تحديث:** 2026-11-16
 
 - **نقطة التوقف الحالية:**
+  0. فحص الجودة الشامل، ربط خادم CranL MCP الأصلي، وتحصين مسارات Xero واستعلام المستندات (done+tested):
+     - **ربط خادم CranL MCP وأدوات التحكم:**
+       * تم ربط خادم CranL MCP الأصلي (114 أداة تحكم) عبر `C:\Users\accon\.gemini\config\mcp_config.json`.
+       * تم إنشاء أداة `scripts/cranl_cli.py` للتحكم من سطر الأوامر (حالة التطبيق، سجلات التشغيل، فحص الصحة، سجل النشر، وإطلاق النشر).
+       * فحص صحة السيرفر الحي: `PASS (HTTP 200)` واستجابة سريعة `548ms` على `https://novembercafe-tdaj1x.cranl.net`.
+     - **تشخيص أخطاء التشغيل الحي عبر CranL Telemetry:**
+       * رصدت تيليميتري السيرفر خطأ `HTTPSConnectionPool(host='api.xero.com', port=443): Read timed out (timeout=25)`.
+       * **السبب الجذري الأول:** دالة `_find_existing_xero_document` كانت تستخدم استعلام `CreditNotes?CreditNoteNumber=...`، وهو معامل غير معروف في Xero مما جعل Xero يحاول فحص كافة الإشعارات تاريخياً بدون ترقيم صفحات ويعلق لأكثر من 25 ثانية. تم تحويله إلى `where=CreditNoteNumber=="..."` بدقة وتخفيض المهلة لـ 15 ثانية.
+       * **السبب الجذري الثاني:** فواتير المبيعات كانت تستعلم مسار GUID بدلاً من معامل `InvoiceNumbers=...`. تم تحديثها لاستخدام المعامل الرسمي المباشر مع بديل `where`.
+       * **السبب الجذري الثالث:** استثناءات `resp.status_code == 400` في `_post_credit_note_resilient` كانت تحاول عمل fallback للبنود حتى لو كان الخطأ متعلقاً بوجود السند مسبقاً (`not of valid status`). تم تحصين الفحص ليتخطى المحاولة الزائدة ويحول مباشرة للبحث عن السند الموجود وربطه.
+       * **السبب الجذري الرابع:** تم إضافة عزل وتنظيف جلسات قاعدة البيانات `db.session.remove()` في `finally` الخاصة بـ Background Thread لمنع أي تداخل بين السندات المتتالية.
+     - **الفحوصات وضبط الجودة (done+tested):**
+       * `tests/test_xero_credit_note_resilience.py` (5/5 passed - 100%)
+       * `tests/test_coffee_features_v3.py` (62/62 passed - 100%)
+       * `tests/test_coffee_module.py` (9/9 passed - 100%)
+       * `tests/test_foodics_full_sync.py` (4/4 passed - 100%)
+       * `tests/test_coffee_packaging_and_retail.py` (6/6 passed - 100%)
+       * إجمالي الاختبارات الناجحة: **86 اختبار بنسبة نجاح 100%**.
   0. حل انقطاع الاتصال (504 Gateway Timeout) في ترحيل دفعة سندات Xero (done+tested):
      - **تشخيص وحل المشكلة:**
        * مسار `/coffee/xero/post-batch` كان ينفذ استدعاءات ترحيل السندات ورفع الـ PDF متزامنة بشكل متتالي داخل نفس طلب الويب، مما تجاوز مهلة بروكسي ScaleBit (30 ثانية) وأظهر خطأ 504.

@@ -3829,11 +3829,15 @@ def xero_post_batch():
                         post_roasted_dispatch_to_xero(did)
                     except Exception as e:
                         logger.error("Error in background post dispatch %s: %s", did, e)
+                    finally:
+                        db.session.remove()
                 for gid in g_ids:
                     try:
                         post_green_issue_to_xero(gid)
                     except Exception as e:
                         logger.error("Error in background post green issue %s: %s", gid, e)
+                    finally:
+                        db.session.remove()
                 for roid in r_ids:
                     try:
                         ro_item = RoastingOrder.query.get(roid)
@@ -3841,6 +3845,8 @@ def xero_post_batch():
                             post_roasting_order_to_xero(ro_item)
                     except Exception as e:
                         logger.error("Error in background post roasting %s: %s", roid, e)
+                    finally:
+                        db.session.remove()
 
         import threading
         t = threading.Thread(target=_bg_batch_post, args=(app_obj, dispatch_ids, green_issue_ids, roasting_order_ids), daemon=True)

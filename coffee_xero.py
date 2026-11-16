@@ -238,24 +238,24 @@ def _find_existing_xero_document(endpoint: str, doc_number: str, expected_total:
         clean_num = doc_number.strip()
         encoded_num = urllib.parse.quote(clean_num)
         if endpoint == "CreditNotes":
-            # في Xero مسار CreditNotes/{id} يقبل فقط معرف GUID، وللبحث برقم الإشعار يُستخدم query parameter
+            # في Xero مسار CreditNotes/{id} يقبل فقط معرف GUID، وللبحث برقم الإشعار يُستخدم query parameter where بدقة
             resp = requests.get(
-                f"{XERO_BASE}/CreditNotes?CreditNoteNumber={encoded_num}",
+                f'{XERO_BASE}/CreditNotes?where=CreditNoteNumber%3D%3D%22{encoded_num}%22',
                 headers=_xero_headers(),
-                timeout=25
+                timeout=15
+            )
+        else:
+            resp = requests.get(
+                f"{XERO_BASE}/Invoices?InvoiceNumbers={encoded_num}",
+                headers=_xero_headers(),
+                timeout=15
             )
             if resp.status_code != 200:
                 resp = requests.get(
-                    f'{XERO_BASE}/CreditNotes?where=CreditNoteNumber%3D%3D%22{encoded_num}%22',
+                    f'{XERO_BASE}/Invoices?where=InvoiceNumber%3D%3D%22{encoded_num}%22',
                     headers=_xero_headers(),
-                    timeout=25
+                    timeout=15
                 )
-        else:
-            resp = requests.get(
-                f"{XERO_BASE}/{endpoint}/{encoded_num}",
-                headers=_xero_headers(),
-                timeout=25
-            )
         if resp.status_code == 200:
             data = resp.json()
             items = data.get(endpoint, [])
@@ -397,10 +397,20 @@ def _post_credit_note_resilient(payload: dict, timeout: int = 30) -> requests.Re
         return resp
 
     err_text = (resp.text or "").lower()
+    if not err_text and hasattr(resp, "json"):
+        try:
+            err_text = json.dumps(resp.json()).lower()
+        except Exception:
+            pass
+
+    # إذا كان المستند موجوداً مسبقاً في زيرو أو لا يمكن تعديله، فلا فائدة من محاولة fallback بالبنود
+    if any(k in err_text for k in ("not of valid status", "cannot be edited", "already in use", "already exists")):
+        return resp
+
     is_recoverable = any(k in err_text for k in (
         "item code", "itemcode", "cost pool", "tracked", "inventory",
         "line total", "expected line total", "validationerror"
-    )) or resp.status_code == 400
+    ))
 
     if is_recoverable:
         fallback_payload = dict(payload)
