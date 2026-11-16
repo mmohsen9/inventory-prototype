@@ -1,0 +1,727 @@
+[
+  {
+    "name": "عبده",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "احمد",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "السيد",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "محمد",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "عميل نقدي",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "حسن",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "السيد عصب",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة كايف لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "عوض",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "عوض المغصى",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "المشجري",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة سما برهان لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة لايت كونسابت كوفي التجارية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة عربة وافل لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "عبدالرحمن العطوي",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة فلسفة عطر للعطور",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة كاسب المتحدة المحدودة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة المحصول الانيق للتجارة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "عملاء موقع سلة Salla website",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة زاوية الاختيار للتجارة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة المجال الحديثة لخدمات الاعاشة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "محمصه مرسى",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة آي بي كوفي",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة الخزامي التجارية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة مستشفي المحمدية للرعاية الطبية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة قطرة المحدودة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهى لدن اربعين لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهي حنان محسن حسين الكويليت لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة دنيا التوريد التجارية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة خطوات التحميص للتجارة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة صالح عبدالله صالح الصغير",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة زاوية التوزيع للتجارة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة طول لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة زهى الفندقية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "فرحان مطر",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "عبدالمجيد الجبر",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة جذور الجودة للتجارة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهي دنان القهوة لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة كالي لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة محمد ابراهيم محمد",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة قصة القهوة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "زياد الزاير",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "محامص ضحى الشرق للقهوة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهى تنوير لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهي سنام نجد لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة سين التحميص لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "خطوة واعدة لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة قهوه عمق التجارية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "القهوة السحرية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة صدارة الطعام لتقديم الوجبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة محمد سليمان لتقديم الوجبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة كنافة اصيل النابلسية للحلويات والمكسرات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة الكوب المتقن لتقديم الوجبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة كيندا بين",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهى ستة اوقيات لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة الطائر الأبيض لتقديم الوجبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة رحلة التحميص لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة ذرة السعادة لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة نجاح عبدالله الشمرى للحلويات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "محمصة راز",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة الالماس الاخضر",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة مكيث لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة خيشة البن التجارية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة الكوب الامثل لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة هاشم ابراهيم حسن الحيدري للمقاولات المعمارية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "ذا مود لاب) مؤسسة مصعب عبداالله بن عيسى العديل )",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهى فقاعات كفي لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "دؤل",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "الخط السامى العالمية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهى اناقة البن لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقى حبات كرزية لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "عبدالمحسن المحيش",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة اصياف للتجارة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة سعود ابراهيم المحميد",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة هيت قهوة مختصه لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة ابراهيم محمد ابراهيم الدسيماني لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة داوا لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة مدى الأطعمة لخدمات الاعاشة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة أركان الاكتساب للتجارة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة عالم رونة التجارية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة ملتقي الفنان التجارية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهي الشارع الخلفي للقهوة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة دار هاشم النزهة للشقق المخدومة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة دوائر الكيك للتجارة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "محامص ناصر عوض العنزى",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة حكاية كوب لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة المحاصيل الفاخرة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهى أسس صانع القهوة لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "محمد العتيبي",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة لوازم للتجارة والتسويق",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة اشجار لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "قوافل البن التجارية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهي دلة داود لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهى يوسف قاعد قبلان للمشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة الجرام الفريد لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة نجيز / Peri Bakery",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة ايار لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مطعم حصة الأسد لتقديم الوجبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركه عون الامداد للتجارة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة خلاصة البن",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسه محمد فهد المجماح",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "انس",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "(شركة الاطعمة المختلفة التجارية(محامص بيا",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "القطرة السوداء Black Drop Coffee shop",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "حلول نشيل التجارية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهى سلطان سعد على العويدى(فيموس كفى)",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهى مذاق لذيذ لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة لقاءات الانجاز لتقديم المشروبات (ثريد)",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "(Treet Cafe)أطعمتي المطورة",
+    "phone": "0557678777",
+    "notes": null
+  },
+  {
+    "name": "مؤسسة ارم الحديثة التجارية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة لغات المتحدة العقارية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة نحن لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مازن بن مساعد",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة صحف البن لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة قها لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسه السكب للقهوة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة ارتو للحلويات",
+    "phone": "0555226919",
+    "notes": null
+  },
+  {
+    "name": "مقهى اوفر لتقديم الوجبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة حرف الكاف للتجارة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة المحاصيل الفاخرة لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة حبة القهوة للتجارة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهي الجليلة لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "محامص ميل للقهوة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة بورست التجارية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهى قصائد الشعر(هايكو كوفى)",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة راشد عبدالعزيز ال ناجي \"حمصة للصناعات الغذائية\"(كافيولى كفى)",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة كمية البن للتجارة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة موطن البن للتجارة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة جذل لتقديم المشروبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة مجموعة سليمان الحبيب للخدمات الطبية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "الظباء العربية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهى فهد القحطانى",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "كوفا كافية (ياسر العثيم)",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة عبدالاله البصرى لتقديم الوجبات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مقهى شيخة الشمرى",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "مؤسسة الصويا التجارية",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة كلاس البن للتجارة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "شركة مرامر للمقاولات",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "هنوفيرين Hanoviran ساحة المجد",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "عمار ال اسماعيل ( The Chemist)",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "محامص كيلة البن للقهوة",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "عبد العزيز العجلان",
+    "phone": "0554700004",
+    "notes": null
+  },
+  {
+    "name": "بيكرى بايتس BAKERY BITES.",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "ارتو",
+    "phone": null,
+    "notes": null
+  },
+  {
+    "name": "كايف",
+    "phone": null,
+    "notes": null
+  }
+]

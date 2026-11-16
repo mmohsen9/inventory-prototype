@@ -1336,6 +1336,26 @@ def ensure_coffee_customer_schema():
             if not cust:
                 db.session.add(CoffeeCustomer(name=name))
         db.session.commit()
+
+        # 4. تثبيت العملاء المعتمدين مسبقاً من ملف البذار coffee_customers_seed.json
+        import os, json
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        seed_cust_path = os.path.join(base_dir, "coffee_customers_seed.json")
+        if os.path.exists(seed_cust_path):
+            with open(seed_cust_path, "r", encoding="utf-8") as f:
+                seed_list = json.load(f)
+            for sc in seed_list:
+                s_name = (sc.get("name") or "").strip()
+                if not s_name:
+                    continue
+                c_exists = CoffeeCustomer.query.filter(db.func.lower(CoffeeCustomer.name) == s_name.lower()).first()
+                if not c_exists:
+                    db.session.add(CoffeeCustomer(
+                        name=s_name,
+                        phone=sc.get("phone"),
+                        notes=sc.get("notes")
+                    ))
+            db.session.commit()
     except Exception:
         db.session.rollback()
 

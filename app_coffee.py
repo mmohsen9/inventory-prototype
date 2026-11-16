@@ -4240,22 +4240,58 @@ def import_excel():
 
     try:
         from coffee_importer import import_coffee_items_from_file
-        res = import_coffee_items_from_file(uploaded.stream, user_id=user.id if user else None)
+        reset_balances = request.form.get("reset_balances") == "1"
+        res = import_coffee_items_from_file(uploaded.stream, user_id=user.id if user else None, reset_balances=reset_balances)
         
         imported = res.get("imported", 0)
+        updated  = res.get("updated", 0)
         skipped  = res.get("skipped", 0)
         skipped_items = res.get("skipped_items", [])
         
-        msg_parts = [f"✅ تم استيراد {imported} صنف جديد بنجاح."]
-        if skipped > 0:
+        msg_parts = []
+        if imported > 0:
+            msg_parts.append(f"✅ تم استيراد {imported} صنف جديد بنجاح.")
+        if updated > 0:
+            msg_parts.append(f"🔄 تم تحديث وإعادة تعيين أرصدة {updated} صنف بنجاح لبدء العمل بأرصدة نظيفة.")
+        if skipped > 0 and not reset_balances:
             msg_parts.append(f"⚠️ تم تخطي {skipped} صنف موجود مسبقاً لمنع التكرار ({', '.join(skipped_items[:5])}{'...' if len(skipped_items) > 5 else ''}).")
         
-        flash(" ".join(msg_parts), "success" if imported > 0 else "warning")
+        if not msg_parts:
+            msg_parts.append("لم يتم إجراء أي تغييرات على الأصناف.")
+        
+        flash(" ".join(msg_parts), "success" if (imported > 0 or updated > 0) else "warning")
 
     except Exception as e:
         db.session.rollback()
         flash(f"❌ خطأ أثناء استيراد الملف: {e}", "error")
 
+    return redirect(url_for("coffee.settings"))
+
+
+@coffee_bp.route("/settings/apply-seed-balances", methods=["POST"])
+def apply_seed_balances():
+    r = _require_login()
+    if r: return r
+    denied = _require_perm("coffee.adjust_stock")
+    if denied: return denied
+    user = _current_user()
+    import os
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    xlsx_path = os.path.join(base_dir, "Inventory_Item_List.xlsx")
+    if not os.path.exists(xlsx_path):
+        flash("ملف Inventory_Item_List.xlsx غير موجود على الخادم", "error")
+        return redirect(url_for("coffee.settings"))
+
+    try:
+        from coffee_importer import import_coffee_items_from_file
+        with open(xlsx_path, "rb") as f:
+            res = import_coffee_items_from_file(f, user_id=user.id if user else None, reset_balances=True)
+        imported = res.get("imported", 0)
+        updated  = res.get("updated", 0)
+        flash(f"✅ تم تطبيق الأرصدة النظيفة بنجاح من ملف Inventory_Item_List.xlsx: تحديث {updated} صنف وإضافة {imported} صنف.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"❌ خطأ أثناء تطبيق الأرصدة: {e}", "error")
     return redirect(url_for("coffee.settings"))
 
 

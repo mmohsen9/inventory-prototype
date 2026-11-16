@@ -158,21 +158,33 @@
         </div>
     </div>
 
-    <!-- بطاقة استيراد أصناف إضافية من ملف Excel (اختياري) -->
+    <!-- بطاقة استيراد وتحديث أصناف وأرصدة البن من ملف Excel -->
     <div class="settings-card">
-        <div class="settings-card-header">
-            <h3>📥 استيراد أصناف بن إضافية جديدة من ملف Excel (اختياري)</h3>
+        <div class="settings-card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <h3>📥 استيراد وتحديث أصناف وأرصدة البن (Excel)</h3>
+            <form method="POST" action="{{ url_for('coffee.apply_seed_balances') }}" style="margin: 0;" onsubmit="return confirm('هل أنت متأكد من رغبتك في إعادة ضبط وتعيين أرصدة مستودعات البن الأخضر والمحمص من ملف Inventory_Item_List.xlsx المعتمد؟');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-sm" style="background: #ecfdf5; color: #047857; border: 1.5px solid #a7f3d0; padding: 7px 14px; border-radius: 6px; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>⚡ تطبيق الأرصدة النظيفة من ملف السيرفر المدمج</span>
+                </button>
+            </form>
         </div>
         <p style="font-size: 13px; color: var(--gray-600); margin-bottom: 16px;">
-            <strong>ملاحظة:</strong> الأصناف الأساسية (21 صنفاً) مثبتة مسبقاً في قاعدة البيانات تلقائياً. استخدم هذا النموذج فقط إذا كان لديك ملف Excel يحتوي على أصناف بن جديدة تماماً ترغب في إضافتها إلى النظام.
+            يمكنك رفع ملف Excel يحتوي على أصناف وأرصدة البن الأخضر والمحمص. إذا كنت ترغب في بدء العمل بأرصدة نظيفة وتحديث كميات الأصناف الحالية في المستودعات، فعّل خيار "إعادة ضبط وتحديث الأرصدة" بالأسفل.
         </p>
 
-        <form method="POST" action="{{ url_for('coffee.import_excel') }}" enctype="multipart/form-data" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <form method="POST" action="{{ url_for('coffee.import_excel') }}" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 12px;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="file" name="excel_file" accept=".xlsx, .xls" class="form-control" style="width: auto; flex-grow: 1;" required>
-            <button type="submit" class="btn-secondary" style="border: 1px solid var(--gray-300); padding: 10px 24px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer;">
-                🚀 استيراد أصناف إضافية
-            </button>
+            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <input type="file" name="excel_file" accept=".xlsx, .xls" class="form-control" style="width: auto; flex-grow: 1;" required>
+                <button type="submit" class="btn-secondary" style="border: 1px solid var(--gray-300); padding: 10px 24px; font-weight: 700; border-radius: var(--radius-sm); cursor: pointer;">
+                    🚀 تحميل ومعالجة الملف
+                </button>
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #1e293b; cursor: pointer; user-select: none;">
+                <input type="checkbox" name="reset_balances" value="1" style="width: 16px; height: 16px; accent-color: #059669;">
+                <span>🔄 إعادة ضبط وتحديث أرصدة الأصناف المسجلة مسبقاً والبدء بأرصدة نظيفة طبقاً للملف</span>
+            </label>
         </form>
     </div>
 

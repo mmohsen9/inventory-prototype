@@ -56,14 +56,16 @@ def parse_xlsx_rows(file_source):
         return parsed_rows
 
 
-def import_coffee_items_from_rows(rows, user_id=None):
+def import_coffee_items_from_rows(rows, user_id=None, reset_balances=False):
     """
     يستورد الأصناف من الصفوف المستخرجة:
     - يضع فقط الأصناف غير الموجودة.
-    - يتخطى الأصناف الموجودة مسبقاً مع إعداد تنبيه شامل.
+    - إذا كان reset_balances=True، يعيد ضبط وتحديث أرصدة الأصناف المسجلة مسبقاً طبقاً للملف للبدء بأرصدة نظيفة.
+    - يتخطى الأصناف الموجودة مسبقاً مع إعداد تنبيه شامل في حال عدم تفعيل reset_balances.
     - يربط الأصناف تلقائياً بين الأخضر والمحمص.
     """
     added_items = []
+    updated_items = []
     skipped_items = []
 
     # البحث عن مستودعات القهوة
@@ -147,11 +149,50 @@ def import_coffee_items_from_rows(rows, user_id=None):
         ).first()
 
         if existing:
-            skipped_items.append({
-                "code": raw_code,
-                "name": name_ar,
-                "reason": f"الصنف مسجل مسبقاً بكود ({existing.prefix}{existing.base_code})"
-            })
+            if reset_balances:
+                # تحديث التكاليف والأسعار إذا توفرت
+                if unit_cost > 0:
+                    existing.xero_cost_price = unit_cost
+                    if existing.item:
+                        existing.item.cost = unit_cost
+                if unit_sale > 0:
+                    existing.sale_price_per_kg = unit_sale
+
+                # إعادة تعيين الرصيد النظيف في المستودع
+                target_loc = gw if coffee_type == "green" else rw
+                base_item_id = existing.item_id or (existing.item.id if existing.item else None)
+                if target_loc and base_item_id:
+                    bal = StockBalance.query.filter_by(item_id=base_item_id, location_id=target_loc.id).first()
+                    old_qty = float(bal.quantity or 0.0) if bal else 0.0
+                    if not bal:
+                        bal = StockBalance(item_id=base_item_id, location_id=target_loc.id, quantity=initial_qty)
+                        db.session.add(bal)
+                    else:
+                        bal.quantity = initial_qty
+
+                    mov = StockMovement(
+                        item_id=base_item_id,
+                        location_id=target_loc.id,
+                        movement_type="initial",
+                        reference_type="manual",
+                        quantity_change=round(initial_qty - old_qty, 4),
+                        balance_after=initial_qty,
+                        notes=f"إعادة تعيين رصيد نظيف من ملف الإكسيل ({raw_code})",
+                        created_by=user_id
+                    )
+                    db.session.add(mov)
+                    updated_items.append({
+                        "code": raw_code,
+                        "name": name_ar,
+                        "old_qty": old_qty,
+                        "new_qty": initial_qty
+                    })
+            else:
+                skipped_items.append({
+                    "code": raw_code,
+                    "name": name_ar,
+                    "reason": f"الصنف مسجل مسبقاً بكود ({existing.prefix}{existing.base_code})"
+                })
             continue
 
         # إنشاء أو جلب Item الأساسي
@@ -259,8 +300,10 @@ def import_coffee_items_from_rows(rows, user_id=None):
     db.session.commit()
     return ImportResult({
         "imported": len(added_items),
+        "updated": len(updated_items),
         "skipped": len(skipped_items),
         "added_items": added_items,
+        "updated_items": updated_items,
         "skipped_items": skipped_items,
         "linked_count": linked_count,
     })
@@ -273,10 +316,10 @@ class ImportResult(dict):
         yield self["skipped_items"]
 
 
-def import_coffee_items_from_file(file_source, user_id=None):
-    """يقرأ ملف Excel مباشرة ويستورد الأصناف الجديدة فقط مع تخطي المكررة."""
+def import_coffee_items_from_file(file_source, user_id=None, reset_balances=False):
+    """يقرأ ملف Excel مباشرة ويستورد الأصناف الجديدة أو يعيد تعيين الأرصدة النظيفة."""
     rows = parse_xlsx_rows(file_source)
-    return import_coffee_items_from_rows(rows, user_id=user_id)
+    return import_coffee_items_from_rows(rows, user_id=user_id, reset_balances=reset_balances)
 
 
 def ensure_default_coffee_items(force_sync=False, user_id=None):

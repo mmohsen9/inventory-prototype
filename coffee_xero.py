@@ -373,6 +373,60 @@ def build_roasted_bill_payload(order) -> dict:
     }
 
 
+def _post_credit_note_resilient(payload: dict, timeout: int = 30) -> requests.Response:
+    """
+    يرسل مستند Credit Note إلى Xero مع إعادة محاولة ذكية فورية:
+    إذا رفض Xero الطلب بأحد الأخطاء التالية:
+    1) خطأ تعثر المخزون التتبعي:
+       'The total cost pool of tracked inventory items cannot be reduced to less than zero'
+       أو كود غير صالح 'The Item code ... is not valid':
+       -> يتم تجريد ItemCode فوراً ليتم القيد المالي المباشر على الحساب (636/635) بدون لمس رصيد المخزون في زيرو.
+    2) خطأ فروق التقريب بالهللات:
+       'The line total X does not match the expected line total Y':
+       -> يتم تجريد LineAmount ليحسبه محرك زيرو الداخلي بدقة تامة ويقبل السند.
+    3) أي خطأ Validation آخر بالبنود:
+       -> يتم تجريد ItemCode و LineAmount مع الاحتفاظ بالحساب المالي والكمية وسعر الوحدة والوصف ومراكز التكلفة (Tracking).
+    """
+    resp = requests.post(
+        f"{XERO_BASE}/CreditNotes",
+        headers=_xero_headers(),
+        json={"CreditNotes": [payload]},
+        timeout=timeout,
+    )
+    if resp.status_code in (200, 201):
+        return resp
+
+    err_text = (resp.text or "").lower()
+    is_recoverable = any(k in err_text for k in (
+        "item code", "itemcode", "cost pool", "tracked", "inventory",
+        "line total", "expected line total", "validationerror"
+    )) or resp.status_code == 400
+
+    if is_recoverable:
+        fallback_payload = dict(payload)
+        fallback_lines = []
+        for li in payload.get("LineItems", []):
+            clean_li = dict(li)
+            clean_li.pop("ItemCode", None)
+            clean_li.pop("LineAmount", None)
+            fallback_lines.append(clean_li)
+        fallback_payload["LineItems"] = fallback_lines
+
+        try:
+            resp2 = requests.post(
+                f"{XERO_BASE}/CreditNotes",
+                headers=_xero_headers(),
+                json={"CreditNotes": [fallback_payload]},
+                timeout=timeout,
+            )
+            if resp2.status_code in (200, 201):
+                return resp2
+        except Exception:
+            pass
+
+    return resp
+
+
 def post_credit_note(order) -> Tuple[bool, Optional[str], Optional[str]]:
     """
     يُنشئ Payable Credit Note (ACCPAYCREDIT) في Xero.
@@ -386,21 +440,17 @@ def post_credit_note(order) -> Tuple[bool, Optional[str], Optional[str]]:
     payload = build_green_credit_note_payload(order)
 
     try:
-        resp = requests.post(
-            f"{XERO_BASE}/CreditNotes",
-            headers=_xero_headers(),
-            json={"CreditNotes": [payload]},
-            timeout=30,
-        )
+        resp = _post_credit_note_resilient(payload, timeout=30)
         resp.raise_for_status()
         data = resp.json()
         cn   = data["CreditNotes"][0]
         cn_id = cn["CreditNoteID"]
+        actual_total = float(cn.get("Total") or total)
 
         # ─ إغلاق Credit Note بـ Cash Refund على الحساب الوسيط ────────────
         clearing = _get_setting("xero_clearing_account", "851")
-        if clearing and cn_id:
-            _apply_cash_refund(cn_id, total, order.order_date, clearing)
+        if clearing and cn_id and actual_total > 0:
+            _apply_cash_refund(cn_id, actual_total, order.order_date, clearing)
 
         url = f"https://go.xero.com/AccountsPayable/View.aspx?creditnoteID={cn_id}"
         return True, cn_id, None
@@ -1073,40 +1123,19 @@ def post_green_issue_to_xero(issue_id: int) -> dict:
         total_amount = round(sum(item["LineAmount"] for item in payload["LineItems"]), 2)
 
         try:
-            resp = requests.post(
-                f"{XERO_BASE}/CreditNotes",
-                json={"CreditNotes": [payload]},
-                headers=_xero_headers(),
-                timeout=25
-            )
-            # إعادة المحاولة التلقائية بدون ItemCode إذا كان الكود غير معرف في زيرو
-            if resp.status_code not in (200, 201) and ("item code" in (resp.text or "").lower() or "itemcode" in (resp.text or "").lower()):
-                fallback_payload = dict(payload)
-                fallback_lines = []
-                for li in payload.get("LineItems", []):
-                    clean_li = dict(li)
-                    clean_li.pop("ItemCode", None)
-                    fallback_lines.append(clean_li)
-                fallback_payload["LineItems"] = fallback_lines
-                resp2 = requests.post(
-                    f"{XERO_BASE}/CreditNotes",
-                    json={"CreditNotes": [fallback_payload]},
-                    headers=_xero_headers(),
-                    timeout=25
-                )
-                if resp2.status_code in (200, 201):
-                    resp = resp2
+            resp = _post_credit_note_resilient(payload, timeout=25)
 
             if resp.status_code in (200, 201):
                 data = resp.json()
                 cn = data.get("CreditNotes", [{}])[0]
                 cn_id = cn.get("CreditNoteID")
                 cn_num = cn.get("CreditNoteNumber")
+                actual_total = float(cn.get("Total") or total_amount)
 
                 # سداد وإقفال الإشعار بـ Cash Refund على حساب عينات قهوة (كود 345)
                 samples_acc = _get_setting("xero_samples_account", "345")
-                if samples_acc and cn_id and total_amount > 0:
-                    _apply_cash_refund(cn_id, total_amount, issue.issue_date, samples_acc)
+                if samples_acc and cn_id and actual_total > 0:
+                    _apply_cash_refund(cn_id, actual_total, issue.issue_date, samples_acc)
 
                 issue.xero_invoice_id = cn_id
                 issue.xero_invoice_number = cn_num or issue.doc_number
@@ -1553,40 +1582,19 @@ def post_roasted_dispatch_to_xero(dispatch_id: int) -> dict:
         total_amount = round(sum(item["LineAmount"] for item in payload["LineItems"]), 2)
 
         try:
-            resp = requests.post(
-                f"{XERO_BASE}/CreditNotes",
-                json={"CreditNotes": [payload]},
-                headers=_xero_headers(),
-                timeout=25
-            )
-            # إعادة المحاولة التلقائية بدون ItemCode إذا كان الكود غير معرف في زيرو
-            if resp.status_code not in (200, 201) and ("item code" in (resp.text or "").lower() or "itemcode" in (resp.text or "").lower()):
-                fallback_payload = dict(payload)
-                fallback_lines = []
-                for li in payload.get("LineItems", []):
-                    clean_li = dict(li)
-                    clean_li.pop("ItemCode", None)
-                    fallback_lines.append(clean_li)
-                fallback_payload["LineItems"] = fallback_lines
-                resp2 = requests.post(
-                    f"{XERO_BASE}/CreditNotes",
-                    json={"CreditNotes": [fallback_payload]},
-                    headers=_xero_headers(),
-                    timeout=25
-                )
-                if resp2.status_code in (200, 201):
-                    resp = resp2
+            resp = _post_credit_note_resilient(payload, timeout=25)
 
             if resp.status_code in (200, 201):
                 data = resp.json()
                 cn = data.get("CreditNotes", [{}])[0]
                 cn_id = cn.get("CreditNoteID")
                 cn_num = cn.get("CreditNoteNumber")
+                actual_total = float(cn.get("Total") or total_amount)
 
                 # سداد الإشعار بـ Cash Refund على حساب مخزون فودكس (كود 631)
                 foodics_acc = _get_setting("xero_foodics_inventory_account", "631")
-                if foodics_acc and cn_id and total_amount > 0:
-                    _apply_cash_refund(cn_id, total_amount, dispatch.dispatch_date, foodics_acc)
+                if foodics_acc and cn_id and actual_total > 0:
+                    _apply_cash_refund(cn_id, actual_total, dispatch.dispatch_date, foodics_acc)
 
                 dispatch.xero_invoice_id = cn_id
                 dispatch.xero_invoice_number = cn_num or dispatch.doc_number
@@ -1674,40 +1682,19 @@ def post_roasted_dispatch_to_xero(dispatch_id: int) -> dict:
         total_amount = round(sum(item["LineAmount"] for item in payload["LineItems"]), 2)
 
         try:
-            resp = requests.post(
-                f"{XERO_BASE}/CreditNotes",
-                json={"CreditNotes": [payload]},
-                headers=_xero_headers(),
-                timeout=25
-            )
-            # إعادة المحاولة التلقائية بدون ItemCode إذا كان الكود غير معرف في زيرو
-            if resp.status_code not in (200, 201) and ("item code" in (resp.text or "").lower() or "itemcode" in (resp.text or "").lower()):
-                fallback_payload = dict(payload)
-                fallback_lines = []
-                for li in payload.get("LineItems", []):
-                    clean_li = dict(li)
-                    clean_li.pop("ItemCode", None)
-                    fallback_lines.append(clean_li)
-                fallback_payload["LineItems"] = fallback_lines
-                resp2 = requests.post(
-                    f"{XERO_BASE}/CreditNotes",
-                    json={"CreditNotes": [fallback_payload]},
-                    headers=_xero_headers(),
-                    timeout=25
-                )
-                if resp2.status_code in (200, 201):
-                    resp = resp2
+            resp = _post_credit_note_resilient(payload, timeout=25)
 
             if resp.status_code in (200, 201):
                 data = resp.json()
                 cn = data.get("CreditNotes", [{}])[0]
                 cn_id = cn.get("CreditNoteID")
                 cn_num = cn.get("CreditNoteNumber") or dispatch.doc_number
+                actual_total = float(cn.get("Total") or total_amount)
 
                 # سداد وإقفال الإشعار بـ Cash Refund على حساب عينات قهوة (كود 345)
                 samples_acc = _get_setting("xero_samples_account", "345")
-                if samples_acc and cn_id and total_amount > 0:
-                    _apply_cash_refund(cn_id, total_amount, dispatch.dispatch_date, samples_acc)
+                if samples_acc and cn_id and actual_total > 0:
+                    _apply_cash_refund(cn_id, actual_total, dispatch.dispatch_date, samples_acc)
 
                 dispatch.xero_invoice_id = cn_id
                 dispatch.xero_invoice_number = cn_num
@@ -2117,6 +2104,7 @@ def import_xero_items(selected_items: list, user_id=None) -> dict:
         "imported_items": added,
         "linked_items": linked
     }
+
 
 
 
