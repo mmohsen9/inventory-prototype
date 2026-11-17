@@ -84,9 +84,9 @@
     "semantic_hash": ""
   },
   "coffee_xero.py": {
-    "mtime": 1794921614.6513908,
-    "seen": 1794921908.692875,
-    "ast_hash": "6c9b7f280bb3959e8b769a5c1781f58e",
+    "mtime": 1794923440.5982828,
+    "seen": 1794923696.8458319,
+    "ast_hash": "8cacdbcf6b2858f6277aebc3062bbbcd",
     "semantic_hash": ""
   },
   "foodics_oauth.py": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "docs/CHANGELOG.md": {
-    "mtime": 1794921832.718886,
-    "seen": 1794921908.9031603,
-    "ast_hash": "9d0f0594873e47b60644263069a019d2",
+    "mtime": 1794923584.5961154,
+    "seen": 1794923696.9758797,
+    "ast_hash": "d183e47429c61c2f7586c1327ac79884",
     "semantic_hash": ""
   },
   "docs/DECISIONS.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": ""
   },
   "docs/HANDOFF.md": {
-    "mtime": 1794921841.8821218,
-    "seen": 1794921908.9052339,
-    "ast_hash": "6f399a60d4dbe93e8f0797d69d80c9b5",
+    "mtime": 1794923596.7556465,
+    "seen": 1794923696.9758797,
+    "ast_hash": "06f92de9f8c05d473a449a653db52672",
     "semantic_hash": ""
   },
   "docs/IDEAS.md": {
@@ -552,9 +552,9 @@
     "semantic_hash": ""
   },
   "templates/coffee/dispatch_print.html": {
-    "mtime": 1794913307.6486778,
-    "seen": 1794921908.9217403,
-    "ast_hash": "da01e59176a6ae76e86f4e24fc595188",
+    "mtime": 1794923358.7543283,
+    "seen": 1794923696.9979641,
+    "ast_hash": "c822fe3e21ab01b2baddc6a60a015652",
     "semantic_hash": ""
   },
   "templates/coffee/dispatches_list.html": {
@@ -576,9 +576,9 @@
     "semantic_hash": ""
   },
   "templates/coffee/green_issue_print.html": {
-    "mtime": 1794913307.9618843,
-    "seen": 1794921908.926006,
-    "ast_hash": "7d122c8877db8be386d9037969933662",
+    "mtime": 1794923367.0522506,
+    "seen": 1794923697.001976,
+    "ast_hash": "169b9b0ec8a2c203ee4ca5593304ddf7",
     "semantic_hash": ""
   },
   "templates/coffee/green_issues_list.html": {
@@ -654,9 +654,9 @@
     "semantic_hash": ""
   },
   "templates/coffee/roasting_print.html": {
-    "mtime": 1794913309.3506036,
-    "seen": 1794921908.944576,
-    "ast_hash": "0015f3148c5e32f5672e3f1a62b64374",
+    "mtime": 1794923373.680376,
+    "seen": 1794923697.0135117,
+    "ast_hash": "1ba1b22e1dca04d0cad6d6e592e850ff",
     "semantic_hash": ""
   },
   "templates/coffee/settings.html": {
@@ -1836,9 +1836,9 @@
     "semantic_hash": ""
   },
   "railpack.json": {
-    "mtime": 1794921538.634645,
-    "seen": 1794921908.710809,
-    "ast_hash": "02d12fa1d67091c707d27b4b33711292",
+    "mtime": 1794922117.7958686,
+    "seen": 1794923696.8671505,
+    "ast_hash": "d2ce78f9571de3c84f6734f38ed03de5",
     "semantic_hash": ""
   }
 }

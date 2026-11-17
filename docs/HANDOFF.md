@@ -3,6 +3,13 @@
 - **آخر تحديث:** 2026-11-17
 
 - **نقطة التوقف الحالية:**
+  0. منع إرفاق صورة التوقيع الخام وحصر المرفقات على وثائق PDF الرسمية مع تجريد LineAmount الاستباقي (done+tested):
+     - حذف مسار التراجع لصورة التوقيع الخام في `_generate_voucher_pdf` وفرض التحقق في `attach_voucher_to_xero` بألا يُقبل أي ملف إلا إذا كان بصيغة `application/pdf` وبامتداد `.pdf`.
+     - تجريد استباقي لـ `LineAmount` قبل إرسال إشعارات الدائن في `_post_credit_note_resilient`، لمنع أي خطأ تقريب هللات (`The line total 180.62 does not match expected 180.63`).
+     - تعزيز استقرار تشغيل كروميوم بالوسائط الحاوية (`--user-data-dir`, `--run-all-compositor-stages-before-draw`, `--disable-software-rasterizer`).
+     - تحديث حزم الخطوط العربية في قوالب الطباعة لتشمل `Noto Sans Arabic` و `DejaVu Sans`.
+     - اجتياز كامل اختبارات الصمود وتوليد السندات بنجاح 100% (34/34 passed).
+
   0. تثبيت كروميوم عبر Railpack و Nixpacks لحل مشكلة إرفاق التوقيع فقط بدلاً من السند الكامل (done+tested):
      - تشخيص أن CranL تبني عبر Railpack / Mise بدون تشغيل Dockerfile، مما تسبب بعدم وجود chromium.
      - إضافة `railpack.json`, `nixpacks.toml`, `Aptfile` وضبط `RAILPACK_DEPLOY_APT_PACKAGES` لتثبيت chromium والخطوط العربية.

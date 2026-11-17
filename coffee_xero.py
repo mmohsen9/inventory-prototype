@@ -388,10 +388,19 @@ def _post_credit_note_resilient(payload: dict, timeout: int = 30) -> requests.Re
     3) أي خطأ Validation آخر بالبنود:
        -> يتم تجريد ItemCode و LineAmount مع الاحتفاظ بالحساب المالي والكمية وسعر الوحدة والوصف ومراكز التكلفة (Tracking).
     """
+    # تجريد LineAmount دائماً قبل الإرسال لزيرو ليحسبه محرك Xero الداخلي مباشرة ويمنع خطأ فروق التقريب بالهللات
+    clean_payload = dict(payload)
+    clean_lines = []
+    for li in payload.get("LineItems", []):
+        clean_li = dict(li)
+        clean_li.pop("LineAmount", None)
+        clean_lines.append(clean_li)
+    clean_payload["LineItems"] = clean_lines
+
     resp = requests.post(
         f"{XERO_BASE}/CreditNotes",
         headers=_xero_headers(),
-        json={"CreditNotes": [payload]},
+        json={"CreditNotes": [clean_payload]},
         timeout=timeout,
     )
     if resp.status_code in (200, 201):
@@ -987,13 +996,15 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
         if browser_exe:
             temp_html = None
             temp_pdf = None
+            user_data_dir = None
             try:
                 with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w", encoding="utf-8") as f:
                     f.write(html_content)
                     temp_html = f.name
                 temp_pdf = temp_html.replace(".html", ".pdf")
+                user_data_dir = tempfile.mkdtemp(prefix="chrome_pdf_")
 
-                # تجربة --headless=new أولاً (المعيار الحديث) ثم --headless التقليدي بدون --single-process التي تسبب انهيار كروميوم
+                # تجربة --headless=new أولاً (المعيار الحديث) ثم --headless التقليدي
                 for headless_flag in ["--headless=new", "--headless"]:
                     cmd = [
                         browser_exe,
@@ -1002,9 +1013,12 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
                         "--disable-setuid-sandbox",
                         "--disable-dev-shm-usage",
                         "--disable-gpu",
+                        "--disable-software-rasterizer",
+                        "--run-all-compositor-stages-before-draw",
                         "--no-pdf-header-footer",
+                        f"--user-data-dir={user_data_dir}",
                         f"--print-to-pdf={temp_pdf}",
-                        temp_html
+                        f"file://{os.path.abspath(temp_html)}"
                     ]
                     try:
                         res = subprocess.run(cmd, capture_output=True, timeout=30)
@@ -1024,15 +1038,9 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
                 if temp_pdf and os.path.exists(temp_pdf):
                     try: os.remove(temp_pdf)
                     except Exception: pass
-
-    # خيار احتياطي موثوق: إذا توفر توقيع حي، نرسل صورة التوقيع
-    if signature_data and "," in signature_data:
-        try:
-            sig_bytes = base64.b64decode(signature_data.split(",", 1)[1])
-            if sig_bytes:
-                return sig_bytes, "image/png"
-        except Exception as e:
-            logger.debug("Could not decode signature fallback: %s", e)
+                if user_data_dir and os.path.exists(user_data_dir):
+                    try: shutil.rmtree(user_data_dir, ignore_errors=True)
+                    except Exception: pass
 
     logger.warning("PDF voucher generation failed for %s #%s (no suitable headless browser or render error)", doc_type, entity_id)
     return None, None
@@ -1040,7 +1048,7 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
 
 def attach_voucher_to_xero(endpoint: str, record_id: str, doc_type: str, entity_id: int, doc_number: str) -> dict:
     """
-    يرفع نسخة السند الرسمي (PDF أو صورة التوقيع المعتمد) كمرفق مباشر في زيرو:
+    يرفع نسخة السند الرسمي (PDF المعتمد) كمرفق مباشر في زيرو:
     - endpoint: 'Invoices' أو 'CreditNotes'
     - record_id: المعرف الفريد للفاتورة أو الإشعار في Xero (InvoiceID أو CreditNoteID)
     """
@@ -1053,12 +1061,12 @@ def attach_voucher_to_xero(endpoint: str, record_id: str, doc_type: str, entity_
         return {"success": False, "error": "بيانات التوثيق أو معرف زيرو غير متوفرة"}
 
     content_bytes, mime_type = _generate_voucher_pdf(doc_type, entity_id)
-    if not content_bytes:
-        return {"success": False, "error": "تعذر توليد ملف السند أو التوقيع للإرفاق"}
+    if not content_bytes or mime_type != "application/pdf":
+        return {"success": False, "error": "تعذر توليد ملف السند الرسمي كـ PDF للإرفاق في زيرو"}
 
-    ext = "pdf" if mime_type == "application/pdf" else "png"
+    ext = "pdf"
     safe_doc = re.sub(r"[^\w\-]", "_", (doc_number or "voucher").strip())
-    filename = f"Voucher_{safe_doc}.{ext}"
+    filename = f"Voucher_{safe_doc}.pdf"
     quoted_filename = urllib.parse.quote(filename)
 
     url = f"{XERO_BASE}/{endpoint}/{record_id}/Attachments/{quoted_filename}"
