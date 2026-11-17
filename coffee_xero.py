@@ -2034,6 +2034,11 @@ def fetch_xero_items_diff(only_with_stock: bool = False) -> dict:
     new_items = []
     total_coffee = 0
     existing_count = 0
+    existing_green_bases = {
+        ci.base_code.strip().upper()
+        for ci in CoffeeItem.query.filter_by(coffee_type="green").all()
+        if ci.base_code
+    }
 
     for it in items:
         code = (it.get("Code") or "").strip()
@@ -2096,6 +2101,8 @@ def fetch_xero_items_diff(only_with_stock: bool = False) -> dict:
             except ValueError:
                 pass
 
+        has_green_pair = (c_type == "roasted") and bool(b and b.strip().upper() in existing_green_bases)
+
         new_items.append({
             "item_id": it.get("ItemID"),
             "code": code,
@@ -2109,6 +2116,7 @@ def fetch_xero_items_diff(only_with_stock: bool = False) -> dict:
             "quantity_on_hand": qoh,
             "is_tracked": is_tracked,
             "default_sack_weight": sack_weight,
+            "has_green_pair": has_green_pair,
             "description": desc
         })
 
@@ -2146,12 +2154,20 @@ def import_xero_items(selected_items: list, user_id=None) -> dict:
             continue
 
         prefix = item_data.get("prefix") or ""
+        base_code = item_data.get("base_code") or ""
+        p_clean, b_clean = CoffeeItem.extract_prefix_and_base(code)
+        if p_clean and not prefix:
+            prefix = p_clean
+        if b_clean:
+            base_code = b_clean
+        elif not base_code:
+            base_code = code
+
         c_type = item_data.get("coffee_type") or item_data.get("category")
         if not c_type:
             c_type = "roasted" if prefix == "RB" else "green"
         if not prefix:
             prefix = "GB" if c_type == "green" else "RB"
-        base_code = item_data.get("base_code") or code
 
         # التحقق من عدم التكرار
         existing = CoffeeItem.query.filter(

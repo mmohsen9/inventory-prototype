@@ -516,3 +516,145 @@ def ensure_default_coffee_items(force_sync=False, user_id=None):
         "seeded": seeded_count,
         "newly_linked": linked_count,
     }
+
+
+def ensure_2026_roasted_coffee_items():
+    """
+    تثبيت وتأكيد أصناف البن المحمص لعام 2026 وربطها التلقائي مع أصناف البن الأخضر المقابلة لها.
+    """
+    from models import db, Item
+    from models_coffee import CoffeeItem, CoffeeItemLink
+
+    items_2026 = [
+        {
+            "code": "-RB12026",
+            "base_code": "12026",
+            "name_ar": "مكسيكي مجففة محمص",
+            "name_en": "Mexico Arabica Natural coffee roasted(1kg)",
+            "cost": 59.50,
+            "sale": 90.00,
+        },
+        {
+            "code": "-RB22026",
+            "base_code": "22026",
+            "name_ar": "مكسيكي باتش مجففه محمص",
+            "name_en": "Rosted Beanes Mexico Pache Natural",
+            "cost": 66.00,
+            "sale": 99.00,
+        },
+        {
+            "code": "-RB32026",
+            "base_code": "32026",
+            "name_ar": "كاتورا لاهواشي محمص",
+            "name_en": "Mexico Caturra Anaerobic Natural Rosted Beans",
+            "cost": 64.00,
+            "sale": 96.00,
+        },
+        {
+            "code": "-RB42026",
+            "base_code": "42026",
+            "name_ar": "مكسيك بيتش مغسولة محمص",
+            "name_en": "Mexico Pache Washed Rosted Beans(1kg)",
+            "cost": 46.00,
+            "sale": 70.00,
+        },
+        {
+            "code": "-RB52026",
+            "base_code": "52026",
+            "name_ar": "مكسيك بدون كافيين محمص",
+            "name_en": "Mexico Decaffeinated coffee Rosted Beans(1kg)",
+            "cost": 57.15,
+            "sale": 86.00,
+        },
+        {
+            "code": "-RB62026",
+            "base_code": "62026",
+            "name_ar": "جيشا مكسيكي محمص",
+            "name_en": "Mexico Geisha Natural Rosted Beans (KG)",
+            "cost": 63.80,
+            "sale": 96.00,
+        },
+        {
+            "code": "-RB72026",
+            "base_code": "72026",
+            "name_ar": "مكسيكي عسلية محمص",
+            "name_en": "Rosted Beanes Mexico Arabica honey",
+            "cost": 54.90,
+            "sale": 82.00,
+        },
+        {
+            "code": "-RB82026",
+            "base_code": "82026",
+            "name_ar": "كاتورا مغسولة محمص",
+            "name_en": "Mexico Caturra Washed (1Kg)MX26",
+            "cost": 48.00,
+            "sale": 75.00,
+        },
+    ]
+
+    added = []
+    linked = []
+    for it in items_2026:
+        code = it["code"]
+        b = it["base_code"]
+        existing = CoffeeItem.query.filter(
+            (CoffeeItem.xero_item_code == code) |
+            ((CoffeeItem.prefix == "RB") & (CoffeeItem.base_code == b))
+        ).first()
+
+        if not existing:
+            base_item = Item.query.filter_by(sku=code).first()
+            if not base_item:
+                base_item = Item(
+                    sku=code,
+                    name_ar=it["name_ar"],
+                    name_en=it["name_en"],
+                    cost=it["cost"],
+                    storage_unit="kg",
+                    ingredient_unit="kg",
+                    storage_to_ingredient_factor=1.0,
+                    sync_status="synced"
+                )
+                db.session.add(base_item)
+                db.session.flush()
+
+            existing = CoffeeItem(
+                item_id=base_item.id,
+                xero_item_code=code,
+                prefix="RB",
+                base_code=b,
+                coffee_type="roasted",
+                name_ar=it["name_ar"],
+                name_en=it["name_en"],
+                sack_allowed=False,
+                default_sack_weight=0.0,
+                allowed_sack_weights='[60]',
+                sale_price_per_kg=it["sale"],
+                xero_cost_price=it["cost"],
+                reference_loss_pct=0.0,
+                data_source="xero_sync",
+                active=True
+            )
+            db.session.add(existing)
+            db.session.flush()
+            added.append(code)
+
+        # ربط مع صنف الأخضر المقابل
+        green_opp = CoffeeItem.query.filter_by(prefix="GB", base_code=b).first()
+        if green_opp:
+            lnk = CoffeeItemLink.query.filter_by(green_item_id=green_opp.id, roasted_item_id=existing.id).first()
+            if not lnk:
+                lnk = CoffeeItemLink(
+                    green_item_id=green_opp.id,
+                    roasted_item_id=existing.id,
+                    link_type="auto",
+                    is_default=True,
+                    reason=f"ربط دائم مثبت ({b})"
+                )
+                db.session.add(lnk)
+                linked.append(f"{green_opp.xero_item_code} ↔ {code}")
+
+    if added or linked:
+        db.session.commit()
+
+    return {"added": added, "linked": linked}

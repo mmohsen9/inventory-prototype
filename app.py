@@ -1072,20 +1072,8 @@ def _get_cached_notifications(user=None):
     try:
         cleanup_supplier_linked_notifications()
         q = get_unread_notifications_query(user)
-        if user and user.role == "branch_staff":
-            notifs = q.order_by(Notification.created_at.desc()).limit(10).all()
-            cnt = q.count()
-            return notifs, cnt
-
-        import time
-        now = time.time()
-        if now - _globals_cache["notifs_ts"] < 15.0:
-            return _globals_cache["notifs"], _globals_cache["notifs_count"]
         notifs = q.order_by(Notification.created_at.desc()).limit(10).all()
         cnt = q.count()
-        _globals_cache["notifs"] = notifs
-        _globals_cache["notifs_count"] = cnt
-        _globals_cache["notifs_ts"] = now
         return notifs, cnt
     except Exception:
         try:
@@ -1095,21 +1083,14 @@ def _get_cached_notifications(user=None):
         return [], 0
 
 def _get_cached_foodics_recent():
-    import time
-    now = time.time()
-    if now - _globals_cache["foodics_ts"] < 30.0 and _globals_cache["foodics_items"]:
-        return _globals_cache["foodics_items"]
     try:
-        items = Item.query.filter(Item.foodics_id.isnot(None)).order_by(Item.id.desc()).limit(5).all()
-        _globals_cache["foodics_items"] = items
-        _globals_cache["foodics_ts"] = now
-        return items
+        return Item.query.filter(Item.foodics_id.isnot(None)).order_by(Item.id.desc()).limit(5).all()
     except Exception:
         try:
             db.session.rollback()
         except Exception:
             pass
-        return _globals_cache.get("foodics_items", [])
+        return []
 
 
 @app.context_processor
@@ -1681,7 +1662,7 @@ def api_search_items():
 def users_list():
     users = User.query.order_by(User.id.asc()).all()
     roles = Role.query.order_by(Role.id.asc()).all()
-    locations = Location.get_operational_locations()
+    locations = Location.get_operational_locations(include_coffee_warehouses=False)
     active_tab = request.args.get("tab", "users")
     return render_template(
         "users.html",
@@ -2011,7 +1992,7 @@ def reports_stock():
     search = request.args.get("search", "").strip()
     low_stock = request.args.get("low_stock") == "1"
 
-    locations = Location.get_operational_locations()
+    locations = Location.get_operational_locations(include_coffee_warehouses=False)
 
     query = db.session.query(StockBalance, Item, Location).join(
         Item, StockBalance.item_id == Item.id
@@ -2098,7 +2079,7 @@ def reports_movements():
         flash("سجل دفتر الأستاذ مخصص للإدارة والمحاسبة", "warning")
         return redirect(url_for("reports_stock"))
 
-    locations = Location.get_operational_locations()
+    locations = Location.get_operational_locations(include_coffee_warehouses=False)
     items = Item.query.limit(50).all()
 
     location_id = request.args.get("location_id")
@@ -2237,7 +2218,7 @@ def reports_suppliers():
             all_suppliers.append(r[0])
     all_suppliers.sort()
 
-    locations = Location.get_operational_locations()
+    locations = Location.get_operational_locations(include_coffee_warehouses=False)
 
     return render_template(
         "reports_suppliers.html",
@@ -2569,7 +2550,7 @@ def purchases_list():
 @login_required
 def purchase_new():
     u = current_user()
-    locations = Location.get_operational_locations()
+    locations = Location.get_operational_locations(include_coffee_warehouses=False)
     ensure_suppliers_seed()
     suppliers_db = Supplier.query.order_by(Supplier.name.asc()).all()
     suppliers = [s.name for s in suppliers_db]
@@ -3080,7 +3061,7 @@ def purchase_edit(purchase_id):
     # جلب آخر حالة ترحيل في فوديكس لهذا السند
     sync_job = SyncQueue.query.filter_by(source_type="purchase", source_id=purchase.id).order_by(SyncQueue.id.desc()).first()
 
-    locations = Location.get_operational_locations()
+    locations = Location.get_operational_locations(include_coffee_warehouses=False)
     loc_ids = {l.id for l in locations}
     if purchase.location and purchase.location.id not in loc_ids:
         locations.append(purchase.location)
@@ -3308,8 +3289,8 @@ def transfers_list():
 @role_required("warehouse", "accountant", "admin")
 def transfer_new():
     u = current_user()
-    # حصر الفروع على فوديكس مع شمول مستودعات البن الأخضر والمحمص والمستودع الرئيسي
-    locations = Location.get_operational_locations()
+    # حصر الفروع على فوديكس مع قصر المستودعات على المستودع الرئيسي فقط واستبعاد مستودعات البن (الأخضر والمحمص)
+    locations = Location.get_operational_locations(include_coffee_warehouses=False)
     warehouse_loc = Location.query.filter_by(type="warehouse").filter(Location.foodics_id.isnot(None)).first() or Location.query.filter_by(type="warehouse").first()
 
     if request.method == "POST":
@@ -3375,8 +3356,8 @@ def transfer_edit(transfer_id):
         flash("عفواً، لا تملك صلاحية الوصول لسند تحويل يخص فرعاً آخر", "error")
         return redirect(url_for("transfers_list"))
 
-    # حصر المواقع على فوديكس ومستودعات القهوة مع الحفاظ على مواقع السند الحالي إن وجدت
-    locations = Location.get_operational_locations()
+    # حصر المواقع على فوديكس والمستودع الرئيسي مع استبعاد مستودعات البن والحفاظ على مواقع السند الحالي إن وجدت
+    locations = Location.get_operational_locations(include_coffee_warehouses=False)
     loc_ids = {l.id for l in locations}
     if transfer.from_location and transfer.from_location.id not in loc_ids:
         locations.append(transfer.from_location)
@@ -3917,7 +3898,7 @@ def count_new():
         else:
             locations = []
     else:
-        locations = Location.get_operational_locations()
+        locations = Location.get_operational_locations(include_coffee_warehouses=False)
 
     if request.method == "POST":
         location_id = int(request.form.get("location_id") or 0)

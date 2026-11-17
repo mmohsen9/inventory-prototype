@@ -90,7 +90,7 @@ class User(db.Model):
     def authorized_locations(self):
         """قائمة بكافة المواقع والفروع المصرح للمستخدم بالعمل فيها."""
         if self.role in ("admin", "accountant"):
-            return Location.get_operational_locations()
+            return Location.get_operational_locations(include_coffee_warehouses=False)
         if self.is_roving:
             return Location.get_operational_branches()
         locs = []
@@ -360,23 +360,37 @@ class Location(db.Model):
         return self.name_ar or self.name_en
 
     @classmethod
-    def get_operational_locations(cls):
+    def get_operational_locations(cls, include_coffee_warehouses: bool = True):
         """
         إرجاع المواقع التشغيلية المعتمدة فقط:
-        - كافة المستودعات التشغيلية (المستودع الرئيسي، مستودع الأخضر، مستودع المحمص)
-        - الفروع المربوطة بفوديكس (foodics_id is not None)
-        - استبعاد الفروع التجريبية/الوهمية غير المربوطة
+        - المستودع الرئيسي، والفروع المربوطة بفوديكس (foodics_id is not None)
+        - مستودعات البن (الأخضر والمحمص) تظهر فقط إذا كان include_coffee_warehouses=True
+        - استبعاد الفروع والمستودعات التجريبية/الوهمية غير المربوطة
         """
+        coffee_names_ar = ["مستودع البن الأخضر", "مستودع البن المحمص"]
+        coffee_names_en = ["Green Coffee Warehouse", "Roasted Coffee Warehouse", "Warehouse - Green Coffee", "Warehouse - Roasted Coffee"]
+
         has_foodics_locs = cls.query.filter(cls.foodics_id.isnot(None)).first() is not None
         if not has_foodics_locs:
-            # قبل إتمام أول مزامنة مع فوديكس: إتاحة كافة مواقع النظام الأولية
-            return cls.query.order_by(cls.type.desc(), cls.name_ar.asc()).all()
+            q = cls.query
+            if not include_coffee_warehouses:
+                q = q.filter(~cls.name_ar.in_(coffee_names_ar), ~cls.name_en.in_(coffee_names_en))
+            return q.order_by(cls.type.desc(), cls.name_ar.asc()).all()
+
+        allowed_names_ar = ["المستودع الرئيسي", "Warehouse 1", "المستودع المركزي"]
+        allowed_names_en = ["Main Warehouse", "Warehouse 1", "Central Warehouse"]
+        if include_coffee_warehouses:
+            allowed_names_ar.extend(coffee_names_ar)
+            allowed_names_en.extend(coffee_names_en)
 
         query = cls.query.filter(
             (cls.foodics_id.isnot(None)) |
-            (cls.name_ar.in_(["المستودع الرئيسي", "Warehouse 1", "المستودع المركزي", "مستودع البن الأخضر", "مستودع البن المحمص"])) |
-            (cls.name_en.in_(["Main Warehouse", "Warehouse 1", "Central Warehouse", "Green Coffee Warehouse", "Roasted Coffee Warehouse"]))
+            (cls.name_ar.in_(allowed_names_ar)) |
+            (cls.name_en.in_(allowed_names_en))
         )
+        if not include_coffee_warehouses:
+            query = query.filter(~cls.name_ar.in_(coffee_names_ar), ~cls.name_en.in_(coffee_names_en))
+
         locs = query.order_by(cls.type.desc(), cls.name_ar.asc()).all()
         return locs if locs else cls.query.order_by(cls.type.desc(), cls.name_ar.asc()).all()
 

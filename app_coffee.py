@@ -740,6 +740,12 @@ def roasting_new():
     denied = _require_perm("coffee.create_roasting_order")
     if denied: return denied
 
+    try:
+        from coffee_importer import ensure_2026_roasted_coffee_items
+        ensure_2026_roasted_coffee_items()
+    except Exception:
+        pass
+
     gw = _get_green_warehouse()
     rw = _get_roasted_warehouse()
     green_items  = CoffeeItem.query.filter_by(coffee_type="green",   active=True).order_by(CoffeeItem.base_code).all()
@@ -4355,6 +4361,12 @@ def xero_items_sync():
 
     denied = _require_perm("coffee.manage_settings")
     if denied: return denied
+
+    try:
+        from coffee_importer import ensure_2026_roasted_coffee_items
+        ensure_2026_roasted_coffee_items()
+    except Exception:
+        pass
 
     from coffee_xero import fetch_xero_items_diff, import_xero_items
 

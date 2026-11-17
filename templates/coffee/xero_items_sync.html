@@ -217,16 +217,26 @@
             <input type="hidden" name="action" id="formAction" value="import_selected">
 
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px 18px; border-radius: 8px; margin-bottom: 16px;">
-                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                     <span style="font-weight: 700; font-size: 13px; color: var(--gray-700);">تصفية العرض:</span>
                     <button type="button" class="filter-btn active" onclick="filterType('all', this)">الكل ({{ diff.get('new_count') }})</button>
                     <button type="button" class="filter-btn" onclick="filterType('green', this)">بن أخضر 🌱</button>
                     <button type="button" class="filter-btn" onclick="filterType('roasted', this)">بن محمص ☕</button>
+                    <button type="button" class="filter-btn" onclick="filterGreenPairOnly(this)" id="btnFilterGreenPair" style="font-weight: 700;">🌱 لها مقابل أخضر بالتحميص</button>
                     {% if not stock_only %}
                     <button type="button" class="filter-btn" onclick="filterStockOnly(this)" id="btnFilterStockOnly">ذات رصيد فقط ⭐</button>
                     {% endif %}
                     
-                    <input type="text" id="searchInput" placeholder="🔍 بحث بالاسم أو الكود..." style="padding: 6px 12px; border: 1px solid var(--gray-300); border-radius: 6px; font-size: 13px; min-width: 220px;" oninput="applySearch()">
+                    <input type="text" id="searchInput" placeholder="🔍 بحث بالاسم أو الكود (مثال: 2026)..." style="padding: 6px 12px; border: 1px solid var(--gray-300); border-radius: 6px; font-size: 13px; min-width: 200px;" oninput="applySearch()">
+                    
+                    <div style="display: inline-flex; gap: 6px; margin-right: 6px;">
+                        <button type="button" onclick="selectVisibleOnly()" class="btn-sm" style="background: #ecfdf5; border: 1px solid #059669; color: #047857; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                            ✅ تحديد المعروض فقط
+                        </button>
+                        <button type="button" onclick="deselectAll()" class="btn-sm" style="background: #f8fafc; border: 1px solid #cbd5e1; color: #64748b; font-weight: 600; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                            ⭕ إلغاء التحديد
+                        </button>
+                    </div>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                     <button type="submit" onclick="document.getElementById('formAction').value='import_selected'" class="btn-primary" style="background: #15803d; border: none; padding: 9px 20px; font-weight: 700; border-radius: 6px; color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(21,128,61,0.2);">
@@ -258,7 +268,7 @@
                     </thead>
                     <tbody id="itemsTableBody">
                         {% for it in diff.get('new_items', []) %}
-                        <tr class="item-row" data-type="{{ it.coffee_type }}" data-qoh="{{ it.quantity_on_hand }}" data-code="{{ it.code | lower }}" data-name="{{ (it.name_ar ~ ' ' ~ it.name_en) | lower }}">
+                        <tr class="item-row" data-type="{{ it.coffee_type }}" data-qoh="{{ it.quantity_on_hand }}" data-code="{{ it.code | lower }}" data-name="{{ (it.name_ar ~ ' ' ~ it.name_en) | lower }}" data-green-pair="{{ '1' if it.has_green_pair else '0' }}">
                             <td style="text-align: center;">
                                 <input type="checkbox" name="selected_codes" value="{{ it.code }}" class="item-checkbox" onchange="updateSelectedCount()" style="cursor: pointer; transform: scale(1.15);">
                             </td>
@@ -267,6 +277,13 @@
                             </td>
                             <td>
                                 <strong>{{ it.name_ar }}</strong>
+                                {% if it.has_green_pair %}
+                                <div>
+                                    <span style="font-size: 10px; font-weight: 700; color: #166534; background: #dcfce7; border: 1px solid #86efac; padding: 2px 7px; border-radius: 6px; display: inline-flex; align-items: center; gap: 3px; margin-top: 3px;">
+                                        🌱 يقابله بن أخضر بالتحميص
+                                    </span>
+                                </div>
+                                {% endif %}
                             </td>
                             <td style="color: var(--gray-600); font-size: 12px;">
                                 {{ it.name_en }}
@@ -334,12 +351,34 @@
         updateSelectedCount();
     }
 
+    function selectVisibleOnly() {
+        const visibleRows = Array.from(document.querySelectorAll('.item-row')).filter(r => r.style.display !== 'none');
+        // Uncheck all first
+        document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
+        // Check only visible
+        visibleRows.forEach(row => {
+            const cb = row.querySelector('.item-checkbox');
+            if (cb) cb.checked = true;
+        });
+        const master = document.getElementById('selectAllCheckbox');
+        if (master) master.checked = visibleRows.length > 0;
+        updateSelectedCount();
+    }
+
+    function deselectAll() {
+        document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
+        const master = document.getElementById('selectAllCheckbox');
+        if (master) master.checked = false;
+        updateSelectedCount();
+    }
+
     let currentTypeFilter = 'all';
     let onlyStockFilter = false;
+    let onlyGreenPairFilter = false;
 
     function filterType(type, btn) {
         currentTypeFilter = type;
-        document.querySelectorAll('.filter-btn:not(#btnFilterStockOnly)').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.filter-btn:not(#btnFilterStockOnly):not(#btnFilterGreenPair)').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         applySearch();
     }
@@ -360,6 +399,22 @@
         applySearch();
     }
 
+    function filterGreenPairOnly(btn) {
+        onlyGreenPairFilter = !onlyGreenPairFilter;
+        if (onlyGreenPairFilter) {
+            btn.classList.add('active');
+            btn.style.background = '#15803d';
+            btn.style.color = '#fff';
+            btn.style.borderColor = '#15803d';
+        } else {
+            btn.classList.remove('active');
+            btn.style.background = '#fff';
+            btn.style.color = '';
+            btn.style.borderColor = '';
+        }
+        applySearch();
+    }
+
     function applySearch() {
         const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
         const rows = document.querySelectorAll('.item-row');
@@ -370,12 +425,14 @@
             const rowCode = row.getAttribute('data-code');
             const rowName = row.getAttribute('data-name');
             const rowQoh = parseFloat(row.getAttribute('data-qoh') || 0);
+            const rowGreenPair = row.getAttribute('data-green-pair');
 
             const matchesType = (currentTypeFilter === 'all') || (rowType === currentTypeFilter);
             const matchesStock = !onlyStockFilter || (rowQoh > 0);
+            const matchesGreenPair = !onlyGreenPairFilter || (rowGreenPair === '1');
             const matchesQuery = !query || rowCode.includes(query) || rowName.includes(query);
 
-            if (matchesType && matchesStock && matchesQuery) {
+            if (matchesType && matchesStock && matchesGreenPair && matchesQuery) {
                 row.style.display = '';
                 visible++;
             } else {
@@ -389,13 +446,9 @@
         updateSelectedCount();
     }
 
-    // Auto-select all by default to make it super fast for the user!
+    // Default: Checkboxes start unchecked so user can pick selectively
     window.addEventListener('DOMContentLoaded', () => {
-        const master = document.getElementById('selectAllCheckbox');
-        if (master) {
-            master.checked = true;
-            toggleSelectAll(master);
-        }
+        updateSelectedCount();
     });
 </script>
 {% endblock %}
