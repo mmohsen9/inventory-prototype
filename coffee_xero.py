@@ -416,18 +416,13 @@ def _post_credit_note_resilient(payload: dict, timeout: int = 30) -> requests.Re
     if is_recoverable:
         fallback_payload = dict(payload)
         fallback_lines = []
+        needs_strip_item = any(k in err_text for k in ("item code", "itemcode", "cost pool", "tracked"))
         for li in payload.get("LineItems", []):
             clean_li = dict(li)
-            clean_li.pop("ItemCode", None)
-            try:
-                q = float(clean_li.get("Quantity") or 0.0)
-                u = float(clean_li.get("UnitAmount") or 0.0)
-                if q > 0 and u > 0:
-                    clean_li["LineAmount"] = round(q * u, 2)
-                else:
-                    clean_li.pop("LineAmount", None)
-            except Exception:
-                clean_li.pop("LineAmount", None)
+            # تجريد LineAmount دائماً في الـ fallback ليحسبه محرك Xero الداخلي مباشرة ويمنع خطأ فروق التقريب بالهللات
+            clean_li.pop("LineAmount", None)
+            if needs_strip_item:
+                clean_li.pop("ItemCode", None)
             fallback_lines.append(clean_li)
         fallback_payload["LineItems"] = fallback_lines
 
@@ -439,18 +434,39 @@ def _post_credit_note_resilient(payload: dict, timeout: int = 30) -> requests.Re
                 timeout=timeout,
             )
             if resp2.status_code in (200, 201):
-                logger.info("Xero credit note posted successfully via resilient fallback (without ItemCode).")
+                logger.info("Xero credit note posted successfully via resilient fallback (without LineAmount).")
                 return resp2
 
             logger.warning("Xero credit note fallback returned HTTP %s: %s", resp2.status_code, (resp2.text or "")[:300])
+            err2_text = (resp2.text or "").lower()
+
+            # محاولة إضافية 2: إذا كان الخطأ بسبب كود الصنف أو المخزون التتبعي
+            if not needs_strip_item and any(k in err2_text for k in ("item code", "itemcode", "cost pool", "tracked", "validationerror")):
+                no_item_lines = []
+                for li in fallback_lines:
+                    clean_ni = dict(li)
+                    clean_ni.pop("ItemCode", None)
+                    no_item_lines.append(clean_ni)
+                no_item_payload = dict(fallback_payload)
+                no_item_payload["LineItems"] = no_item_lines
+                resp2 = requests.post(
+                    f"{XERO_BASE}/CreditNotes",
+                    headers=_xero_headers(),
+                    json={"CreditNotes": [no_item_payload]},
+                    timeout=timeout,
+                )
+                if resp2.status_code in (200, 201):
+                    logger.info("Xero credit note posted successfully after stripping ItemCode.")
+                    return resp2
+                err2_text = (resp2.text or "").lower()
 
             # فحص إضافي: إذا كان سبب الرفض هو Tracking Category أو Option غير معرف في زيرو
-            err2_text = (resp2.text or "").lower()
             if any(k in err2_text for k in ("tracking", "option")):
                 no_track_payload = dict(fallback_payload)
                 no_track_lines = []
                 for li in fallback_payload.get("LineItems", []):
                     clean_nt = dict(li)
+                    clean_nt.pop("ItemCode", None)
                     clean_nt.pop("Tracking", None)
                     no_track_lines.append(clean_nt)
                 no_track_payload["LineItems"] = no_track_lines
@@ -880,7 +896,7 @@ def build_green_issue_sale_invoice_payload(issue) -> dict:
 
 def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes], Optional[str]]:
     """
-    يولد مستند PDF للسند الرسمي المطبوع شاملاً الترويسة والأصناف والأختام والتوقيع الحي.
+    يولد مستند PDF للسند الرسمي المطبوع شاملاً الترويسة والأصناف والأختام والشعار والتوقيع الحي.
     يعيد: (pdf_bytes, mime_type)
     إذا تعذر تشغيل المتصفح، يعيد صورة التوقيع الحي PNG كخيار احتياطي موثوق.
     """
@@ -889,6 +905,19 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
 
     html_content = ""
     signature_data = None
+    b64_logo = ""
+
+    # 1. تجهيز الشعار كـ base64 مسبقاً وتمريره للقالب وتضمينه في الـ HTML
+    try:
+        root_dir = current_app.root_path if current_app else os.path.dirname(os.path.abspath(__file__))
+        logo_path = os.path.join(root_dir, "static", "img", "logo.png")
+        if not os.path.exists(logo_path):
+            logo_path = os.path.join(root_dir, "static", "img", "logo.jpg")
+        if os.path.exists(logo_path):
+            with open(logo_path, "rb") as lf:
+                b64_logo = base64.b64encode(lf.read()).decode("ascii")
+    except Exception as e:
+        logger.debug("Could not read logo: %s", e)
 
     try:
         ctx = current_app.test_request_context() if current_app else None
@@ -899,35 +928,36 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
             if doc_type == "roasted_dispatch":
                 disp = RoastedCoffeeDispatch.query.get(entity_id)
                 if disp:
-                    html_content = render_template("coffee/dispatch_print.html", dispatch=disp)
+                    html_content = render_template("coffee/dispatch_print.html", dispatch=disp, logo_b64=b64_logo)
                     signature_data = disp.customer_signature
             elif doc_type == "green_issue":
                 issue = GreenCoffeeIssue.query.get(entity_id)
                 if issue:
-                    html_content = render_template("coffee/green_issue_print.html", issue=issue)
+                    html_content = render_template("coffee/green_issue_print.html", issue=issue, logo_b64=b64_logo)
                     signature_data = issue.customer_signature
             elif doc_type == "roasting_order":
                 order = RoastingOrder.query.get(entity_id)
                 if order:
-                    html_content = render_template("coffee/roasting_print.html", order=order, gw=order.green_warehouse, rw=order.roasted_warehouse)
+                    html_content = render_template("coffee/roasting_print.html", order=order, gw=order.green_warehouse, rw=order.roasted_warehouse, logo_b64=b64_logo)
         finally:
             if ctx:
                 ctx.pop()
     except Exception as e:
         logger.warning("Error rendering print HTML for %s #%s: %s", doc_type, entity_id, e)
 
-    # تضمين الشعار كـ base64 داخل HTML لتجاوز مشاكل المسارات النسبية في المتصفح الرأسي
-    if html_content:
-        try:
-            root_dir = current_app.root_path if current_app else os.path.dirname(os.path.abspath(__file__))
-            logo_path = os.path.join(root_dir, "static", "img", "logo.png")
-            if os.path.exists(logo_path):
-                with open(logo_path, "rb") as lf:
-                    b64_logo = base64.b64encode(lf.read()).decode("ascii")
-                html_content = html_content.replace("/static/img/logo.png", f"data:image/png;base64,{b64_logo}")
-        except Exception as e:
-            logger.debug("Could not inline logo: %s", e)
+    # استبدال أي مسار متبقي للشعار بـ Data URI لضمان ظهوره في المتصفح الرأسي
+    if html_content and b64_logo:
+        data_uri = f"data:image/png;base64,{b64_logo}"
+        html_content = re.sub(
+            r'(src|href)=["\'][^"\']*(?:logo\.(?:png|jpg|jpeg))["\']',
+            rf'\1="{data_uri}"',
+            html_content,
+            flags=re.IGNORECASE
+        )
+        html_content = html_content.replace("/static/img/logo.png", data_uri)
+        html_content = html_content.replace("/static/img/logo.jpg", data_uri)
 
+    if html_content:
         # مسارات المتصفح المدعومة (بيئات Linux/Docker وحاويات CranL بالإضافة لبيئات Windows)
         browser_paths = [
             "/usr/bin/chromium",
@@ -956,21 +986,15 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
                     temp_html = f.name
                 temp_pdf = temp_html.replace(".html", ".pdf")
 
-                # تجربة --headless=new أولاً (المعيار الحديث) ثم --headless التقليدي
+                # تجربة --headless=new أولاً (المعيار الحديث) ثم --headless التقليدي بدون --single-process التي تسبب انهيار كروميوم
                 for headless_flag in ["--headless=new", "--headless"]:
                     cmd = [
                         browser_exe,
                         headless_flag,
-                        "--disable-gpu",
                         "--no-sandbox",
+                        "--disable-setuid-sandbox",
                         "--disable-dev-shm-usage",
-                        "--no-zygote",
-                        "--single-process",
-                        "--disable-software-rasterizer",
-                        "--disable-extensions",
-                        "--disable-background-networking",
-                        "--run-all-compositor-stages-before-draw",
-                        "--hide-scrollbars",
+                        "--disable-gpu",
                         "--no-pdf-header-footer",
                         f"--print-to-pdf={temp_pdf}",
                         temp_html
@@ -981,8 +1005,11 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
                             with open(temp_pdf, "rb") as pf:
                                 pdf_bytes = pf.read()
                             return pdf_bytes, "application/pdf"
+                        else:
+                            err_msg = res.stderr.decode('utf-8', errors='replace')[:400] if res.stderr else ''
+                            logger.warning("Chromium %s returned code %s: %s", headless_flag, res.returncode, err_msg)
                     except Exception as sub_e:
-                        logger.debug("Headless attempt with %s failed: %s", headless_flag, sub_e)
+                        logger.warning("Headless attempt with %s failed: %s", headless_flag, sub_e)
             finally:
                 if temp_html and os.path.exists(temp_html):
                     try: os.remove(temp_html)
@@ -990,6 +1017,15 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
                 if temp_pdf and os.path.exists(temp_pdf):
                     try: os.remove(temp_pdf)
                     except Exception: pass
+
+    # خيار احتياطي موثوق: إذا توفر توقيع حي، نرسل صورة التوقيع
+    if signature_data and "," in signature_data:
+        try:
+            sig_bytes = base64.b64decode(signature_data.split(",", 1)[1])
+            if sig_bytes:
+                return sig_bytes, "image/png"
+        except Exception as e:
+            logger.debug("Could not decode signature fallback: %s", e)
 
     logger.warning("PDF voucher generation failed for %s #%s (no suitable headless browser or render error)", doc_type, entity_id)
     return None, None

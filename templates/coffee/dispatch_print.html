@@ -418,7 +418,7 @@
 
                 <!-- الوسط: الشعار الرسمي متناسق وبارز في المنتصف تماماً -->
                 <div class="header-col-logo">
-                    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="NOVEMBER COFFEE ROASTERS">
+                    <img src="{% if logo_b64 %}data:image/png;base64,{{ logo_b64 }}{% else %}{{ url_for('static', filename='img/logo.png') }}{% endif %}" alt="NOVEMBER COFFEE ROASTERS">
                 </div>
 
                 <!-- اليسار: بيانات التوثيق والتاريخ والاسم بالإنجليزي -->
