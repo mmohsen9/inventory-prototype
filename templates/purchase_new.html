@@ -16,6 +16,76 @@
 </div>
 
 <div class="card" style="max-width: 780px; margin: 0 auto;">
+    <!-- أداة قراءة الفاتورة بالذكاء الاصطناعي -->
+    <div style="background: var(--gray-50); border: 1px dashed var(--primary); padding: 14px; border-radius: var(--radius-md); margin-bottom: 16px;">
+        <label style="display: block; font-weight: 700; margin-bottom: 8px; color: var(--primary);">
+            🤖 قراءة فاتورة المورد تلقائياً بالذكاء الاصطناعي (صورة أو PDF)
+        </label>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="file" id="ai_invoice_input" class="form-control" accept="image/*,application/pdf">
+            <button type="button" id="btn_scan_invoice" class="btn btn-primary" style="white-space: nowrap;" onclick="scanInvoiceWithAI()">
+                ✨ مسح وتعبئة السند
+            </button>
+        </div>
+        <small id="ai_scan_status" style="display: none; margin-top: 8px; color: var(--primary); font-weight: 600;">
+            ⏳ جاري تحليل الفاتورة واستخراج الأصناف والأسعار...
+        </small>
+    </div>
+
+    <script>
+    async function scanInvoiceWithAI() {
+        const fileInput = document.getElementById('ai_invoice_input');
+        const statusEl = document.getElementById('ai_scan_status');
+        const btnEl = document.getElementById('btn_scan_invoice');
+
+        if (!fileInput.files.length) {
+            alert('الرجاء اختيار صورة الفاتورة أو ملف PDF أولاً');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('invoice_file', fileInput.files[0]);
+
+        statusEl.style.display = 'block';
+        btnEl.disabled = true;
+
+        try {
+            const res = await fetch('/api/ai/parse-invoice', {
+                method: 'POST',
+                body: formData
+            });
+            const json = await res.json();
+            if (json.status !== 'success') throw new Error(json.message || 'فشل تحليل الفاتورة');
+
+            const data = json.data;
+
+            // 1. تعبئة اسم المورد في حقل supplier_name
+            const suppInput = document.getElementById('supplier_name');
+            if (suppInput) {
+                suppInput.value = data.matched_supplier_name || data.supplier_name || '';
+                suppInput.dispatchEvent(new Event('input', { bubbles: true }));
+                suppInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            // 2. تعبئة رقم فاتورة المورد
+            const invInput = document.querySelector('[name="supplier_invoice_no"], [name="invoice_number"], [name="reference_no"], #supplier_invoice_no, #invoice_number');
+            if (invInput && data.invoice_number) invInput.value = data.invoice_number;
+
+            // 3. تعبئة تاريخ الفاتورة
+            const dateInput = document.querySelector('[name="receipt_date"], [name="transaction_date"], [name="date"], input[type="date"]');
+            if (dateInput && data.invoice_date) dateInput.value = data.invoice_date;
+
+            console.log('البيانات المستخرجة من الفاتورة:', data);
+            alert(`✅ تم قراءة الفاتورة (${data.invoice_number || 'بدون رقم'}) واستخراج ${data.items.length} أصناف بنجاح!`);
+        } catch (err) {
+            alert('❌ خطأ أثناء قراءة الفاتورة: ' + err.message);
+        } finally {
+            statusEl.style.display = 'none';
+            btnEl.disabled = false;
+        }
+    }
+    </script>
+
     <form method="POST" enctype="multipart/form-data">
         <div class="form-grid">
             <!-- حقل المورد مع إمكانية البحث والإضافة السريعة -->
