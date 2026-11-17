@@ -84,9 +84,9 @@
     "semantic_hash": ""
   },
   "coffee_xero.py": {
-    "mtime": 1794911893.012622,
-    "seen": 1794912021.7804646,
-    "ast_hash": "83dfed2a72e40b178ddf186e3c327186",
+    "mtime": 1794921614.6513908,
+    "seen": 1794921908.692875,
+    "ast_hash": "6c9b7f280bb3959e8b769a5c1781f58e",
     "semantic_hash": ""
   },
   "foodics_oauth.py": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "docs/CHANGELOG.md": {
-    "mtime": 1794911947.3184733,
-    "seen": 1794912021.9831078,
-    "ast_hash": "1fcad7f639e82910c9bf08bbe7408f2f",
+    "mtime": 1794921832.718886,
+    "seen": 1794921908.9031603,
+    "ast_hash": "9d0f0594873e47b60644263069a019d2",
     "semantic_hash": ""
   },
   "docs/DECISIONS.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": ""
   },
   "docs/HANDOFF.md": {
-    "mtime": 1794911953.5636778,
-    "seen": 1794912021.984136,
-    "ast_hash": "f6c9127b31bbd9bec70dcd1c02e4f4b7",
+    "mtime": 1794921841.8821218,
+    "seen": 1794921908.9052339,
+    "ast_hash": "6f399a60d4dbe93e8f0797d69d80c9b5",
     "semantic_hash": ""
   },
   "docs/IDEAS.md": {
@@ -552,8 +552,8 @@
     "semantic_hash": ""
   },
   "templates/coffee/dispatch_print.html": {
-    "mtime": 1794911856.2970471,
-    "seen": 1794912022.0011954,
+    "mtime": 1794913307.6486778,
+    "seen": 1794921908.9217403,
     "ast_hash": "da01e59176a6ae76e86f4e24fc595188",
     "semantic_hash": ""
   },
@@ -576,8 +576,8 @@
     "semantic_hash": ""
   },
   "templates/coffee/green_issue_print.html": {
-    "mtime": 1794911873.7382195,
-    "seen": 1794912022.0049582,
+    "mtime": 1794913307.9618843,
+    "seen": 1794921908.926006,
     "ast_hash": "7d122c8877db8be386d9037969933662",
     "semantic_hash": ""
   },
@@ -654,8 +654,8 @@
     "semantic_hash": ""
   },
   "templates/coffee/roasting_print.html": {
-    "mtime": 1794911865.7360415,
-    "seen": 1794912022.0150418,
+    "mtime": 1794913309.3506036,
+    "seen": 1794921908.944576,
     "ast_hash": "0015f3148c5e32f5672e3f1a62b64374",
     "semantic_hash": ""
   },
@@ -1833,6 +1833,12 @@
     "mtime": 1794840294.3181813,
     "seen": 1794908575.9055088,
     "ast_hash": "213617bc69e97ef0d8e5e5dc3492c30c",
+    "semantic_hash": ""
+  },
+  "railpack.json": {
+    "mtime": 1794921538.634645,
+    "seen": 1794921908.710809,
+    "ast_hash": "02d12fa1d67091c707d27b4b33711292",
     "semantic_hash": ""
   }
 }

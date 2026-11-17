@@ -3,6 +3,11 @@
 - **آخر تحديث:** 2026-11-17
 
 - **نقطة التوقف الحالية:**
+  0. تثبيت كروميوم عبر Railpack و Nixpacks لحل مشكلة إرفاق التوقيع فقط بدلاً من السند الكامل (done+tested):
+     - تشخيص أن CranL تبني عبر Railpack / Mise بدون تشغيل Dockerfile، مما تسبب بعدم وجود chromium.
+     - إضافة `railpack.json`, `nixpacks.toml`, `Aptfile` وضبط `RAILPACK_DEPLOY_APT_PACKAGES` لتثبيت chromium والخطوط العربية.
+     - اجتياز اختبارات الصمود وتوليد السندات بنجاح 100%.
+
   0. حل خطأ تقريب الهللات (180.62 vs 180.63)، استقرار كروميوم لتوليد PDF وتضمين شعار الشركة Base64 (done+tested):
      - تجريد LineAmount في fallback إشعار دائن زيرو ليقبله زيرو ويحسبه بنفسه بدقة دون أي خطأ تعارض.
      - تصحيح وسائط Chromium لحاويات Docker بإزالة `--single-process` و `--no-zygote`.

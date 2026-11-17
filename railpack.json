@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "buildAptPackages": [
+    "build-essential"
+  ],
+  "deploy": {
+    "aptPackages": [
+      "chromium",
+      "fonts-liberation",
+      "fonts-noto-core",
+      "fonts-kacst"
+    ]
+  }
+}

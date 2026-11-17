@@ -958,18 +958,25 @@ def _generate_voucher_pdf(doc_type: str, entity_id: int) -> Tuple[Optional[bytes
         html_content = html_content.replace("/static/img/logo.jpg", data_uri)
 
     if html_content:
-        # مسارات المتصفح المدعومة (بيئات Linux/Docker وحاويات CranL بالإضافة لبيئات Windows)
+        # مسارات المتصفح المدعومة (بيئات Linux/Docker/Nix وحاويات CranL بالإضافة لبيئات Windows)
         browser_paths = [
+            os.environ.get("PUPPETEER_EXECUTABLE_PATH", ""),
+            os.environ.get("CHROME_BIN", ""),
+            os.environ.get("CHROMIUM_PATH", ""),
             "/usr/bin/chromium",
             "/usr/bin/chromium-browser",
             "/usr/bin/google-chrome",
             "/usr/bin/google-chrome-stable",
+            "/root/.nix-profile/bin/chromium",
+            "/nix/var/nix/profiles/default/bin/chromium",
+            "/usr/local/bin/chromium",
+            "/usr/local/bin/chrome",
             r"C:\Program Files\Google\Chrome\Application\chrome.exe",
             r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
             r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
             r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
         ]
-        browser_exe = next((p for p in browser_paths if os.path.exists(p)), None)
+        browser_exe = next((p for p in browser_paths if p and os.path.exists(p)), None)
         if not browser_exe:
             for name in ["chromium", "chromium-browser", "google-chrome", "google-chrome-stable", "chrome", "msedge"]:
                 w = shutil.which(name)
