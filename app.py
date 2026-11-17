@@ -987,21 +987,14 @@ _globals_cache = {
 }
 
 def _get_cached_suppliers():
-    import time
-    now = time.time()
-    if now - _globals_cache["suppliers_ts"] < 60.0 and _globals_cache["suppliers"]:
-        return _globals_cache["suppliers"]
     try:
-        suppliers = Supplier.query.order_by(Supplier.name.asc()).all()
-        _globals_cache["suppliers"] = suppliers
-        _globals_cache["suppliers_ts"] = now
-        return suppliers
+        return Supplier.query.order_by(Supplier.name.asc()).all()
     except Exception:
         try:
             db.session.rollback()
         except Exception:
             pass
-        return _globals_cache.get("suppliers", [])
+        return []
 
 def cleanup_supplier_linked_notifications():
     """تنظيف وإغلاق إشعارات أصناف المخزون غير المشمولة أو المربوطة بمورد لعدم إشغال شارة وجرس الإشعارات وإظهار المتفق عليه فقط."""

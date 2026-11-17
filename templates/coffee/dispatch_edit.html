@@ -517,7 +517,7 @@
             <div style="margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <label style="font-weight: 800; font-size: 14px; color: var(--navy-dark);">
-                        📋 الأصناف المضافة في هذا السند (<span id="lineCountBadge">0</span> أصناف):
+                        📋 الأصناف المضافة في هذا السند (<span id="lineCountBadge">{{ dispatch.all_lines|length }}</span> أصناف):
                     </label>
                 </div>
 
@@ -534,16 +534,36 @@
                             </tr>
                         </thead>
                         <tbody id="linesTableBody">
+                            {% if dispatch.all_lines %}
+                                {% for l in dispatch.all_lines %}
+                                <tr style="border-bottom: 1px solid #e2e8f0;">
+                                    <td style="padding: 10px 14px; font-weight: 600;">{{ loop.index }}</td>
+                                    <td style="padding: 10px 14px;"><strong>[{{ l.coffee_item.xero_item_code if l.coffee_item else '' }}]</strong> {{ l.coffee_item.name_ar if l.coffee_item else '' }}</td>
+                                    <td style="padding: 10px 14px; font-weight: 600; color: #1e3a8a;">{{ (l.package_type_label_ar if l.package_type_label_ar is defined else l.package_type) or 'سائب' }}</td>
+                                    <td style="padding: 10px 14px; font-weight: 700; color: #b45309;">{{ "%.2f"|format(l.qty_kg or 0.0) }} كجم</td>
+                                    <td style="padding: 10px 14px; color: #64748b; font-size: 13px;">{{ l.notes or '-' }}</td>
+                                    <td style="padding: 10px 14px; text-align: center;">
+                                        {% if dispatch.customer_signature and dispatch.status != 'draft' %}
+                                        <span style="color: #64748b; font-size: 11px; font-weight: 700; background: #f1f5f9; padding: 3px 8px; border-radius: 4px;">🔒 مقفل</span>
+                                        {% else %}
+                                        <button type="button" onclick="editLine({{ loop.index0 }})" style="background: none; border: none; cursor: pointer; color: #2563eb; font-size: 15px; margin-left: 6px;" title="تعديل">✏️</button>
+                                        <button type="button" onclick="removeLine({{ loop.index0 }})" style="background: none; border: none; cursor: pointer; color: #ef4444; font-size: 15px;" title="حذف">🗑️</button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
                             <tr id="emptyRow">
                                 <td colspan="6" style="text-align: center; padding: 24px; color: #94a3b8;">
                                     لم يتم إضافة أصناف بعد. اختر الصنف والكمية أعلاه واضغط على "إضافة الصنف للسند".
                                 </td>
                             </tr>
+                            {% endif %}
                         </tbody>
-                        <tfoot id="tableFooter" style="background: #f1f5f9; font-weight: 700; display: none;">
+                        <tfoot id="tableFooter" style="background: #f1f5f9; font-weight: 700; {% if not dispatch.all_lines %}display: none;{% endif %}">
                             <tr>
                                 <td colspan="3" style="padding: 12px 14px;">الإجمالي الكلي للسند:</td>
-                                <td id="footerTotalQty" style="padding: 12px 14px; color: #b45309; font-size: 14px;">0.00 كجم</td>
+                                <td id="footerTotalQty" style="padding: 12px 14px; color: #b45309; font-size: 14px;">{{ "%.2f"|format(dispatch.total_qty_kg or 0.0) }} كجم</td>
                                 <td colspan="2"></td>
                             </tr>
                         </tfoot>

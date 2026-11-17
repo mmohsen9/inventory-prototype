@@ -36,9 +36,9 @@
     "semantic_hash": ""
   },
   "app.py": {
-    "mtime": 1794908393.1903045,
-    "seen": 1794908575.864227,
-    "ast_hash": "67827701628c5f970eb14dd064539e90",
+    "mtime": 1794925987.6822858,
+    "seen": 1794926216.593399,
+    "ast_hash": "b8e517761128101a5eda53fd50d1c426",
     "semantic_hash": ""
   },
   "app_coffee.py": {
@@ -84,8 +84,8 @@
     "semantic_hash": ""
   },
   "coffee_xero.py": {
-    "mtime": 1794923440.5982828,
-    "seen": 1794923696.8458319,
+    "mtime": 1794924344.3654609,
+    "seen": 1794926216.6010087,
     "ast_hash": "8cacdbcf6b2858f6277aebc3062bbbcd",
     "semantic_hash": ""
   },
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "docs/CHANGELOG.md": {
-    "mtime": 1794923584.5961154,
-    "seen": 1794923696.9758797,
-    "ast_hash": "d183e47429c61c2f7586c1327ac79884",
+    "mtime": 1794926133.7008696,
+    "seen": 1794926216.7245407,
+    "ast_hash": "fc51e60407521c6ec78562d4fc39c26f",
     "semantic_hash": ""
   },
   "docs/DECISIONS.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": ""
   },
   "docs/HANDOFF.md": {
-    "mtime": 1794923596.7556465,
-    "seen": 1794923696.9758797,
-    "ast_hash": "06f92de9f8c05d473a449a653db52672",
+    "mtime": 1794926153.5846386,
+    "seen": 1794926216.7251,
+    "ast_hash": "9d8928ed2db66abdfc7136b466a1d9b5",
     "semantic_hash": ""
   },
   "docs/IDEAS.md": {
@@ -540,9 +540,9 @@
     "semantic_hash": ""
   },
   "templates/coffee/dispatch_edit.html": {
-    "mtime": 1794907442.537241,
-    "seen": 1794908575.985923,
-    "ast_hash": "37f5a35fec7d570a284c425dcfbe597d",
+    "mtime": 1794925864.18967,
+    "seen": 1794926216.7381513,
+    "ast_hash": "2157228930574427bfec1b363b4c009d",
     "semantic_hash": ""
   },
   "templates/coffee/dispatch_new.html": {
@@ -552,8 +552,8 @@
     "semantic_hash": ""
   },
   "templates/coffee/dispatch_print.html": {
-    "mtime": 1794923358.7543283,
-    "seen": 1794923696.9979641,
+    "mtime": 1794924347.758906,
+    "seen": 1794926216.7381513,
     "ast_hash": "c822fe3e21ab01b2baddc6a60a015652",
     "semantic_hash": ""
   },
@@ -564,9 +564,9 @@
     "semantic_hash": ""
   },
   "templates/coffee/green_issue_edit.html": {
-    "mtime": 1794490384.0774965,
-    "seen": 1794732973.5134268,
-    "ast_hash": "0806458d15a176de5aecab4b6c923057",
+    "mtime": 1794925729.556839,
+    "seen": 1794926216.7391732,
+    "ast_hash": "025ae98fabf9d1b95a3b94232d1ccd22",
     "semantic_hash": ""
   },
   "templates/coffee/green_issue_new.html": {
@@ -576,8 +576,8 @@
     "semantic_hash": ""
   },
   "templates/coffee/green_issue_print.html": {
-    "mtime": 1794923367.0522506,
-    "seen": 1794923697.001976,
+    "mtime": 1794924348.2355697,
+    "seen": 1794926216.74022,
     "ast_hash": "169b9b0ec8a2c203ee4ca5593304ddf7",
     "semantic_hash": ""
   },
@@ -654,8 +654,8 @@
     "semantic_hash": ""
   },
   "templates/coffee/roasting_print.html": {
-    "mtime": 1794923373.680376,
-    "seen": 1794923697.0135117,
+    "mtime": 1794924349.7784536,
+    "seen": 1794926216.7508798,
     "ast_hash": "1ba1b22e1dca04d0cad6d6e592e850ff",
     "semantic_hash": ""
   },
