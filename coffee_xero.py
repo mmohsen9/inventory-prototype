@@ -7,6 +7,7 @@ coffee_xero.py — تكامل Xero API لأوامر التحميص
 import os
 import re
 import json
+import shutil
 import base64
 import logging
 import tempfile
@@ -418,7 +419,15 @@ def _post_credit_note_resilient(payload: dict, timeout: int = 30) -> requests.Re
         for li in payload.get("LineItems", []):
             clean_li = dict(li)
             clean_li.pop("ItemCode", None)
-            clean_li.pop("LineAmount", None)
+            try:
+                q = float(clean_li.get("Quantity") or 0.0)
+                u = float(clean_li.get("UnitAmount") or 0.0)
+                if q > 0 and u > 0:
+                    clean_li["LineAmount"] = round(q * u, 2)
+                else:
+                    clean_li.pop("LineAmount", None)
+            except Exception:
+                clean_li.pop("LineAmount", None)
             fallback_lines.append(clean_li)
         fallback_payload["LineItems"] = fallback_lines
 

@@ -1162,6 +1162,17 @@ def inject_globals():
             return obj.get_movement_type_label(lang)
         return str(obj)
 
+    def has_perm(perm_code):
+        if not u:
+            return False
+        if u.role == "admin":
+            return True
+        try:
+            from models_coffee import has_coffee_permission
+            return has_coffee_permission(u, perm_code)
+        except Exception:
+            return u.has_permission(perm_code) if hasattr(u, "has_permission") else False
+
     branch_incoming_count = 0
     if u and u.role == "branch_staff":
         auth_ids = list(u.authorized_location_ids)
@@ -1200,6 +1211,7 @@ def inject_globals():
         "item_name": item_name,
         "role_name": role_name,
         "status_name": status_name,
+        "has_perm": has_perm,
         "currency": "SAR" if lang == "en" else "ر.س",
         "app_env": os.environ.get("FLASK_ENV") or os.environ.get("APP_ENV") or ("development" if app.debug else "production"),
         "is_ephemeral_db": IS_PRODUCTION and ("sqlite" in str(db.engine.url)),

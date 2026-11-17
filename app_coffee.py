@@ -1576,6 +1576,58 @@ def roasting_change_number(order_id):
     return redirect(url_for("coffee.roasting_edit", order_id=order_id))
 
 
+@coffee_bp.route("/roasted/dispatches/<int:dispatch_id>/change-number", methods=["POST"])
+def roasted_dispatch_change_number(dispatch_id):
+    """تعديل رقم سند صرف البن المحمص في حال تعارضه مع رقم مستند مسجل مسبقاً في زيرو."""
+    r = _require_login()
+    if r: return r
+    denied = _require_perm("coffee.create_dispatch")
+    if denied: return denied
+
+    dispatch = RoastedCoffeeDispatch.query.get_or_404(dispatch_id)
+    if dispatch.xero_status == "posted":
+        flash("لا يمكن تعديل رقم السند بعد ترحيله بنجاح إلى Xero", "error")
+        return redirect(url_for("coffee.roasted_dispatch_edit", dispatch_id=dispatch_id))
+
+    new_num = (request.form.get("new_doc_number") or "").strip()
+    if not new_num:
+        flash("يرجى إدخال رقم سند صالح", "error")
+        return redirect(url_for("coffee.roasted_dispatch_edit", dispatch_id=dispatch_id))
+
+    existing = RoastedCoffeeDispatch.query.filter(
+        RoastedCoffeeDispatch.doc_number == new_num,
+        RoastedCoffeeDispatch.id != dispatch.id
+    ).first()
+    if existing:
+        flash(f"رقم السند {new_num} مسجل مسبقاً لسند آخر (#{existing.id})", "error")
+        return redirect(url_for("coffee.roasted_dispatch_edit", dispatch_id=dispatch_id))
+
+    old_num = dispatch.doc_number
+    dispatch.doc_number = new_num
+    dispatch.xero_error = None
+    dispatch.xero_status = "pending"
+    dispatch.xero_invoice_id = None
+    dispatch.xero_invoice_number = None
+    db.session.commit()
+
+    try:
+        from models_coffee import log_coffee_audit
+        log_coffee_audit(
+            event_type="change_doc_number",
+            entity_type="dispatch",
+            entity_id=dispatch.id,
+            old_value={"doc_number": old_num},
+            new_value={"doc_number": new_num},
+            notes=f"تعديل رقم سند صرف المحمص من {old_num} إلى {new_num} لتفادي التعارض في زيرو"
+        )
+        db.session.commit()
+    except Exception:
+        pass
+
+    flash(f"✅ تم تحديث رقم السند بنجاح إلى {new_num}. يمكنك الآن ترحيله لـ Xero.", "success")
+    return redirect(url_for("coffee.roasted_dispatch_edit", dispatch_id=dispatch_id))
+
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 10. إلغاء أمر التحميص (بحركة عكسية)
@@ -4232,12 +4284,24 @@ def settings():
                 flash(f"❌ فشل الاتصال: {res.get('error', '—')}", "error")
 
         elif action == "save_general":
-            general_keys = ["roasting_order_seq", "roasted_branch_issue_seq", "roasted_issue_seq"]
-            for k in general_keys:
-                v = request.form.get(k, "").strip()
+            mappings = [
+                ("roasting_order_seq_OP", ["roasting_order_seq_OP", "roasting_order_seq"], "تسلسل أوامر التحميص"),
+                ("dispatch_seq_MP", ["dispatch_seq_MP", "roasted_branch_issue_seq"], "تسلسل سندات صرف الفروع"),
+                ("dispatch_seq_RB", ["dispatch_seq_RB", "roasted_issue_seq"], "تسلسل سندات مبيعات المحمص"),
+                ("green_issue_seq_GB", ["green_issue_seq_GB"], "تسلسل صرف البن الأخضر"),
+                ("dispatch_seq_SL", ["dispatch_seq_SL"], "تسلسل مبيعات سلة"),
+                ("inventory_count_seq", ["inventory_count_seq"], "تسلسل محاضر الجرد"),
+            ]
+            for form_key, target_keys, desc in mappings:
+                v = (request.form.get(form_key) or "").strip()
+                if not v:
+                    for alt in target_keys:
+                        v = (request.form.get(alt) or "").strip()
+                        if v: break
                 if v:
-                    CoffeeSetting.set(k, v)
-            flash("✅ تم حفظ الإعدادات العامة وتسلسل الأرقام", "success")
+                    for tk in target_keys:
+                        CoffeeSetting.set(tk, v, desc)
+            flash("✅ تم حفظ الإعدادات العامة وتسلسل الأرقام بنجاح", "success")
 
         return redirect(url_for("coffee.settings"))
 

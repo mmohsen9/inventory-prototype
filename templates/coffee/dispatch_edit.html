@@ -267,6 +267,19 @@
                 </form>
                 {% endif %}
             </div>
+
+            {% if dispatch.xero_status != 'posted' and (session.get('role') == 'admin' or has_perm('coffee.create_dispatch')) %}
+            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #cbd5e1; width: 100%; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                <form method="POST" action="{{ url_for('coffee.roasted_dispatch_change_number', dispatch_id=dispatch.id) }}" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <span style="font-size: 12px; font-weight: 700; color: #475569;">💡 في حال تعارض رقم السند مع زيرو:</span>
+                    <input type="text" name="new_doc_number" value="{{ dispatch.doc_number }}" style="padding: 6px 12px; border: 1px solid var(--gray-300); border-radius: 4px; font-size: 13px; font-weight: 700; width: 140px;" required>
+                    <button type="submit" class="btn-sm" style="background: #475569; color: #fff; border: none; padding: 7px 14px; border-radius: 4px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                        تحديث رقم السند
+                    </button>
+                </form>
+            </div>
+            {% endif %}
         </div>
         {% endif %}
 

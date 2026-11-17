@@ -968,8 +968,10 @@ def test_roasted_branch_dispatch_mp_numbering_and_xero(db_session):
     from coffee_xero import build_roasted_dispatch_branch_credit_note_payload
 
     # ضبط بداية التسلسل في الإعدادات
-    CoffeeSetting.set("roasted_branch_issue_seq", "3580")
-    CoffeeSetting.set("roasted_issue_seq", "5")
+    CoffeeSetting.set("roasted_branch_issue_seq", "1000")
+    CoffeeSetting.set("dispatch_seq_MP", "1000")
+    CoffeeSetting.set("roasted_issue_seq", "1000")
+    CoffeeSetting.set("dispatch_seq_RB", "1000")
 
     # 1. توليد رقم لسند فرع (يبدأ بسلسلة MP 1001 أوتوماتيكياً)
     mp_num1 = RoastedCoffeeDispatch.generate_next_doc_number(dispatch_type="branch")

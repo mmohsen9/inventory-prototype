@@ -432,25 +432,46 @@
 
             <div class="form-grid-2">
                 <div class="form-group">
-                    <label>آخر رقم تسلسلي لأوامر التحميص (سلسلة RB-XXXX)</label>
-                    <input type="number" name="roasting_order_seq" class="form-control" value="{{ all_settings.get('roasting_order_seq', '7000') }}">
+                    <label>آخر رقم تسلسلي لأوامر التحميص (سلسلة OP - السند القادم سيكون +1)</label>
+                    <input type="number" name="roasting_order_seq_OP" class="form-control" value="{{ all_settings.get('roasting_order_seq_OP') or all_settings.get('roasting_order_seq', '1000') }}" placeholder="1000">
+                    <small style="color: var(--gray-500); font-size: 11px;">مثال: 1000 يعني أن أمر التحميص القادم سيكون OP-1001</small>
                 </div>
                 <div class="form-group">
                     <label>آخر رقم تسلسلي لسندات صرف المحمص للفروع (سلسلة MP - السند القادم سيكون +1)</label>
-                    <input type="number" name="roasted_branch_issue_seq" class="form-control" value="{{ all_settings.get('roasted_branch_issue_seq', '3592') }}" placeholder="3592">
+                    <input type="number" name="dispatch_seq_MP" class="form-control" value="{{ all_settings.get('dispatch_seq_MP') or all_settings.get('roasted_branch_issue_seq', '1000') }}" placeholder="1000">
+                    <small style="color: var(--gray-500); font-size: 11px;">مثال: 3592 يعني أن السند القادم سيكون MP-3593</small>
                 </div>
             </div>
 
             <div class="form-grid-2">
                 <div class="form-group">
                     <label>آخر رقم تسلسلي لسندات صرف المحمص للمبيعات (سلسلة RB - السند القادم سيكون +1)</label>
-                    <input type="number" name="roasted_issue_seq" class="form-control" value="{{ all_settings.get('roasted_issue_seq', '0') }}" placeholder="0">
+                    <input type="number" name="dispatch_seq_RB" class="form-control" value="{{ all_settings.get('dispatch_seq_RB') or all_settings.get('roasted_issue_seq', '1000') }}" placeholder="1000">
+                    <small style="color: var(--gray-500); font-size: 11px;">مثال: 1000 يعني أن السند القادم سيكون RB-1001</small>
+                </div>
+                <div class="form-group">
+                    <label>آخر رقم تسلسلي لسندات صرف البن الأخضر (سلسلة GB - السند القادم سيكون +1)</label>
+                    <input type="number" name="green_issue_seq_GB" class="form-control" value="{{ all_settings.get('green_issue_seq_GB', '1000') }}" placeholder="1000">
+                    <small style="color: var(--gray-500); font-size: 11px;">مثال: 1000 يعني أن السند القادم سيكون GB-1001</small>
+                </div>
+            </div>
+
+            <div class="form-grid-2">
+                <div class="form-group">
+                    <label>آخر رقم تسلسلي لسندات مبيعات سلة (سلسلة SL - السند القادم سيكون +1)</label>
+                    <input type="number" name="dispatch_seq_SL" class="form-control" value="{{ all_settings.get('dispatch_seq_SL', '1000') }}" placeholder="1000">
+                    <small style="color: var(--gray-500); font-size: 11px;">مثال: 1000 يعني أن السند القادم سيكون SL-1001</small>
+                </div>
+                <div class="form-group">
+                    <label>آخر رقم تسلسلي لمحاضر جرد القهوة (سلسلة IC - المحضر القادم سيكون +1)</label>
+                    <input type="number" name="inventory_count_seq" class="form-control" value="{{ all_settings.get('inventory_count_seq', '1000') }}" placeholder="1000">
+                    <small style="color: var(--gray-500); font-size: 11px;">مثال: 1000 يعني أن المحضر القادم سيكون IC-1001</small>
                 </div>
             </div>
 
             <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
                 <button type="submit" class="btn-primary" style="background: #b45309; border: none; padding: 10px 24px; font-weight: 700; border-radius: var(--radius-sm); color: #fff; cursor: pointer;">
-                    💾 حفظ الإعدادات العامة
+                    💾 حفظ الإعدادات العامة وتسلسل الأرقام
                 </button>
             </div>
         </form>

@@ -677,19 +677,30 @@ class RoastedCoffeeDispatch(db.Model):
         dt = str(dispatch_type or "").strip().lower()
         if dt == "branch":
             prefix = "MP"
+            val1 = CoffeeSetting.get("dispatch_seq_MP", "1000")
+            val2 = CoffeeSetting.get("roasted_branch_issue_seq", "1000")
+            try: seq1 = int(val1)
+            except (ValueError, TypeError): seq1 = 1000
+            try: seq2 = int(val2)
+            except (ValueError, TypeError): seq2 = 1000
+            seq = max(seq1, seq2, 1000)
+            setting_key = "dispatch_seq_MP"
         elif dt in ("salla", "sl"):
             prefix = "SL"
+            val = CoffeeSetting.get("dispatch_seq_SL", "1000")
+            try: seq = max(int(val), 1000)
+            except (ValueError, TypeError): seq = 1000
+            setting_key = "dispatch_seq_SL"
         else:
             prefix = "RB"
-        setting_key = f"dispatch_seq_{prefix}"
-
-        seq_str = CoffeeSetting.get(setting_key, "1000")
-        try:
-            seq = int(seq_str)
-        except (ValueError, TypeError):
-            seq = 1000
-        if seq < 1000:
-            seq = 1000
+            val1 = CoffeeSetting.get("dispatch_seq_RB", "1000")
+            val2 = CoffeeSetting.get("roasted_issue_seq", "1000")
+            try: seq1 = int(val1)
+            except (ValueError, TypeError): seq1 = 1000
+            try: seq2 = int(val2)
+            except (ValueError, TypeError): seq2 = 1000
+            seq = max(seq1, seq2, 1000)
+            setting_key = "dispatch_seq_RB"
 
         candidate_seq = seq + 1
         # التأكد التام من عدم تكرار الرقم في قاعدة البيانات
@@ -703,6 +714,10 @@ class RoastedCoffeeDispatch(db.Model):
 
         if not preview_only:
             CoffeeSetting.set(setting_key, str(candidate_seq), f"تسلسل سندات صرف البن المحمص ({prefix}-1001 وما بعده)")
+            if prefix == "MP":
+                CoffeeSetting.set("roasted_branch_issue_seq", str(candidate_seq))
+            elif prefix == "RB":
+                CoffeeSetting.set("roasted_issue_seq", str(candidate_seq))
 
         return f"{prefix}-{candidate_seq}"
 
@@ -1149,14 +1164,13 @@ def log_coffee_audit(event_type, entity_type, entity_id,
 
 def next_roasting_order_number(preview_only: bool = False) -> str:
     """يولّد رقم أمر تشغيل تحميص فريد يبدأ من بعد 1000 بتنسيق جديد (OP-1001 ويتسلسل أوتوماتيكياً)."""
-    setting_key = "roasting_order_seq_OP"
-    last_seq = CoffeeSetting.get(setting_key, "1000")
-    try:
-        seq = int(last_seq)
-    except (ValueError, TypeError):
-        seq = 1000
-    if seq < 1000:
-        seq = 1000
+    val1 = CoffeeSetting.get("roasting_order_seq_OP", "1000")
+    val2 = CoffeeSetting.get("roasting_order_seq", "1000")
+    try: seq1 = int(val1)
+    except (ValueError, TypeError): seq1 = 1000
+    try: seq2 = int(val2)
+    except (ValueError, TypeError): seq2 = 1000
+    seq = max(seq1, seq2, 1000)
 
     candidate_seq = seq + 1
     while RoastingOrder.query.filter(
@@ -1168,8 +1182,9 @@ def next_roasting_order_number(preview_only: bool = False) -> str:
         candidate_seq += 1
 
     if not preview_only:
-        CoffeeSetting.set(setting_key, str(candidate_seq),
+        CoffeeSetting.set("roasting_order_seq_OP", str(candidate_seq),
                           description="آخر رقم تسلسلي لأوامر تشغيل التحميص (OP-1001 وما بعده)")
+        CoffeeSetting.set("roasting_order_seq", str(candidate_seq))
 
     return f"OP-{candidate_seq}"
 
@@ -1381,7 +1396,7 @@ def ensure_serial_numbers_above_1000():
     وترقية أمر التحميص العالق OP-00001 ليصبح OP-1001 حتى يتم ترحيله بنجاح لزيرو.
     """
     try:
-        from models_coffee import CoffeeSetting, RoastingOrder
+        from models_coffee import CoffeeSetting, RoastingOrder, RoastedCoffeeDispatch
         seq_configs = [
             ("roasting_order_seq_OP", "تسلسل أوامر التحميص (OP-1001 وما بعده)"),
             ("green_issue_seq_GB", "تسلسل سندات صرف الأخضر (GB-1001 وما بعده)"),
@@ -1402,7 +1417,20 @@ def ensure_serial_numbers_above_1000():
                 except (ValueError, TypeError):
                     CoffeeSetting.set(key, "1000", desc)
 
-        # ترقية أي أمر تحميص غير مرحل كان يحمل رقماً قديماً مثل OP-00001
+        # مزامنة المفاتيح البديلة القديمة
+        v_op = max(int(CoffeeSetting.get("roasting_order_seq_OP", "1000")), int(CoffeeSetting.get("roasting_order_seq", "1000") if CoffeeSetting.get("roasting_order_seq", "").isdigit() else 1000))
+        CoffeeSetting.set("roasting_order_seq_OP", str(v_op))
+        CoffeeSetting.set("roasting_order_seq", str(v_op))
+
+        v_mp = max(int(CoffeeSetting.get("dispatch_seq_MP", "1000")), int(CoffeeSetting.get("roasted_branch_issue_seq", "1000") if CoffeeSetting.get("roasted_branch_issue_seq", "").isdigit() else 1000))
+        CoffeeSetting.set("dispatch_seq_MP", str(v_mp))
+        CoffeeSetting.set("roasted_branch_issue_seq", str(v_mp))
+
+        v_rb = max(int(CoffeeSetting.get("dispatch_seq_RB", "1000")), int(CoffeeSetting.get("roasted_issue_seq", "1000") if CoffeeSetting.get("roasted_issue_seq", "").isdigit() else 1000))
+        CoffeeSetting.set("dispatch_seq_RB", str(v_rb))
+        CoffeeSetting.set("roasted_issue_seq", str(v_rb))
+
+        # 1. ترقية أي أمر تحميص غير مرحل كان يحمل رقماً قديماً مثل OP-00001
         stuck_orders = RoastingOrder.query.filter(
             RoastingOrder.xero_status != "posted"
         ).all()
@@ -1410,7 +1438,30 @@ def ensure_serial_numbers_above_1000():
             if ord_obj.order_number in ("OP-00001", "OP-1", "OP-01"):
                 ord_obj.order_number = "OP-1001"
                 ord_obj.xero_error_message = None
-                db.session.commit()
+        db.session.commit()
+
+        # 2. ترقية ومعالجة أي سندات صرف فروع عالقة أو متعثرة بأرقام تصادم قديمة (مثل MP-00001, MP-00002, MP-00003)
+        stuck_dispatches = RoastedCoffeeDispatch.query.filter(
+            RoastedCoffeeDispatch.xero_status != "posted"
+        ).order_by(RoastedCoffeeDispatch.id.asc()).all()
+
+        current_mp = v_mp
+        for disp in stuck_dispatches:
+            if disp.dispatch_type == "branch" and re.match(r"^MP-0000[1-9]$", disp.doc_number or ""):
+                current_mp += 1
+                new_num = f"MP-{current_mp}"
+                while RoastedCoffeeDispatch.query.filter(RoastedCoffeeDispatch.doc_number == new_num, RoastedCoffeeDispatch.id != disp.id).first() is not None:
+                    current_mp += 1
+                    new_num = f"MP-{current_mp}"
+                disp.doc_number = new_num
+                disp.xero_error = None
+                disp.xero_status = "pending"
+                disp.xero_invoice_id = None
+                disp.xero_invoice_number = None
+
+        CoffeeSetting.set("dispatch_seq_MP", str(current_mp))
+        CoffeeSetting.set("roasted_branch_issue_seq", str(current_mp))
+        db.session.commit()
     except Exception:
         db.session.rollback()
 
