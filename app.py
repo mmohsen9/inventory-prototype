@@ -5297,7 +5297,7 @@ with app.app_context():
 @csrf.exempt
 def api_parse_invoice():
     if "invoice_file" not in request.files:
-        return jsonify({"status": "error", "message": "لم يتم إرفاق صورة الفاتورة"}), 400
+        return jsonify({"status": "error", "message": "لم يتم إرفاق ملف الفاتورة"}), 400
     
     file = request.files["invoice_file"]
     if not file or file.filename == "":
@@ -5306,32 +5306,60 @@ def api_parse_invoice():
     try:
         from ai_service import extract_invoice_from_image
         file_bytes = file.read()
-        mime_type = file.mimetype or "image/jpeg"
+        fname = file.filename.lower()
+        if fname.endswith(".pdf"):
+            mime_type = "application/pdf"
+        elif fname.endswith(".png"):
+            mime_type = "image/png"
+        elif fname.endswith(".webp"):
+            mime_type = "image/webp"
+        else:
+            mime_type = file.mimetype or "image/jpeg"
         
         invoice_data = extract_invoice_from_image(file_bytes, mime_type)
-        
-        # مطابقة تلقائية مع الموردين (Supplier) في قاعدة البيانات
-        raw_supp = (invoice_data.get("supplier_name") or "").strip()
-        matched_supplier = None
-        if raw_supp:
-            all_suppliers = Supplier.query.all()
-            matched_supplier = next(
-                (s for s in all_suppliers if s.name in raw_supp or raw_supp in s.name),
-                None
-            )
-        invoice_data["matched_supplier_id"] = matched_supplier.id if matched_supplier else None
-        invoice_data["matched_supplier_name"] = matched_supplier.name if matched_supplier else None
 
-        # مطابقة تلقائية مع الأصناف النشطة (Item) في قاعدة البيانات
-        all_items = Item.query.filter_by(is_active=True).all()
+        # 1. مطابقة ذكية لاسم المورد باستخدام دالة النظام find_supplier_by_name
+        raw_supp = (invoice_data.get("supplier_name") or "").strip()
+        matched_supplier = find_supplier_by_name(raw_supp) if raw_supp else None
+        invoice_data["matched_supplier_id"] = matched_supplier.id if matched_supplier else None
+        invoice_data["matched_supplier_name"] = matched_supplier.name if matched_supplier else raw_supp
+
+        # 2. مطابقة ذكية للفرع المستلم (Location)
+        raw_branch = normalize_arabic(invoice_data.get("branch_name") or "")
+        matched_location = None
+        if raw_branch:
+            for loc in Location.query.all():
+                loc_ar = normalize_arabic(loc.name_ar or "")
+                loc_en = (loc.name_en or "").strip().lower()
+                if (loc_ar and (loc_ar in raw_branch or raw_branch in loc_ar)) or (loc_en and loc_en in raw_branch):
+                    matched_location = loc
+                    break
+        invoice_data["matched_location_id"] = matched_location.id if matched_location else None
+        invoice_data["matched_location_name"] = matched_location.name_ar if matched_location else None
+
+        # 3. مطابقة ذكية للأصناف مع حقول جدول Item الفعلية (sku, barcode, name_ar, name_en)
+        all_items = Item.query.all()
         for line in invoice_data.get("items", []):
-            raw_item = (line.get("item_name") or "").strip()
-            matched_item = next(
-                (i for i in all_items if i.name in raw_item or raw_item in i.name),
-                None
-            )
+            raw_name = normalize_arabic(line.get("item_name") or "")
+            raw_code = (line.get("item_code") or line.get("barcode") or "").strip().lower()
+            matched_item = None
+
+            for db_item in all_items:
+                db_sku = (db_item.sku or "").strip().lower()
+                db_bar = (db_item.barcode or "").strip().lower()
+                db_ar = normalize_arabic(db_item.name_ar or "")
+                db_en = (db_item.name_en or "").strip().lower()
+
+                if raw_code and (raw_code == db_sku or raw_code == db_bar):
+                    matched_item = db_item
+                    break
+                if raw_name and ((db_ar and (db_ar in raw_name or raw_name in db_ar)) or (db_en and db_en in raw_name)):
+                    matched_item = db_item
+                    break
+
             line["matched_item_id"] = matched_item.id if matched_item else None
-            line["matched_item_name"] = matched_item.name if matched_item else None
+            line["matched_item_sku"] = matched_item.sku if matched_item else None
+            line["matched_item_name"] = matched_item.name_ar if matched_item else line.get("item_name")
 
         return jsonify({"status": "success", "data": invoice_data})
     except Exception as e:
