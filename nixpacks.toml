@@ -1,2 +1,2 @@
 [phases.setup]
-nixPkgs = ["...", "chromium", "fontconfig", "noto-fonts", "kacst"]
+nixPkgs = ["...", "chromium", "fontconfig", "noto-fonts"]
