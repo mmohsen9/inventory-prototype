@@ -5293,7 +5293,50 @@ with app.app_context():
         except Exception as _seed_err:
             app.logger.warning(f"تحذير أثناء تهيئة قاعدة البيانات: {_seed_err}")
 
+@app.route("/api/ai/parse-invoice", methods=["POST"])
+@csrf.exempt
+def api_parse_invoice():
+    if "invoice_file" not in request.files:
+        return jsonify({"status": "error", "message": "لم يتم إرفاق صورة الفاتورة"}), 400
+    
+    file = request.files["invoice_file"]
+    if not file or file.filename == "":
+        return jsonify({"status": "error", "message": "الملف غير صالح"}), 400
 
+    try:
+        from ai_service import extract_invoice_from_image
+        file_bytes = file.read()
+        mime_type = file.mimetype or "image/jpeg"
+        
+        invoice_data = extract_invoice_from_image(file_bytes, mime_type)
+        
+        # مطابقة تلقائية مع الموردين (Supplier) في قاعدة البيانات
+        raw_supp = (invoice_data.get("supplier_name") or "").strip()
+        matched_supplier = None
+        if raw_supp:
+            all_suppliers = Supplier.query.all()
+            matched_supplier = next(
+                (s for s in all_suppliers if s.name in raw_supp or raw_supp in s.name),
+                None
+            )
+        invoice_data["matched_supplier_id"] = matched_supplier.id if matched_supplier else None
+        invoice_data["matched_supplier_name"] = matched_supplier.name if matched_supplier else None
+
+        # مطابقة تلقائية مع الأصناف النشطة (Item) في قاعدة البيانات
+        all_items = Item.query.filter_by(is_active=True).all()
+        for line in invoice_data.get("items", []):
+            raw_item = (line.get("item_name") or "").strip()
+            matched_item = next(
+                (i for i in all_items if i.name in raw_item or raw_item in i.name),
+                None
+            )
+            line["matched_item_id"] = matched_item.id if matched_item else None
+            line["matched_item_name"] = matched_item.name if matched_item else None
+
+        return jsonify({"status": "success", "data": invoice_data})
+    except Exception as e:
+        app.logger.error(f"AI Invoice Parse Error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = not IS_PRODUCTION and (os.environ.get("FLASK_DEBUG", "1") == "1")
