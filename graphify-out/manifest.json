@@ -42,9 +42,9 @@
     "semantic_hash": ""
   },
   "app_coffee.py": {
-    "mtime": 1794992063.6451633,
-    "seen": 1794992830.270986,
-    "ast_hash": "a63aab52f905d7315221791993f6ab42",
+    "mtime": 1795010882.313749,
+    "seen": 1795011174.6779513,
+    "ast_hash": "ed4289b0fc5e9eb0f66947399c2c906d",
     "semantic_hash": ""
   },
   "backup_restore.py": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "docs/CHANGELOG.md": {
-    "mtime": 1795004413.896258,
-    "seen": 1795004535.7853942,
-    "ast_hash": "104f4e5869f948e2ccb271e62a18f914",
+    "mtime": 1795011087.3857512,
+    "seen": 1795011174.8587954,
+    "ast_hash": "f376a865cf8bc8e31a4f62789a1d02bf",
     "semantic_hash": ""
   },
   "docs/DECISIONS.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": ""
   },
   "docs/HANDOFF.md": {
-    "mtime": 1795004424.0740993,
-    "seen": 1795004535.7853942,
-    "ast_hash": "f0dc0929c98b5db26ddffd082ef6a8a6",
+    "mtime": 1795011099.56336,
+    "seen": 1795011174.8587954,
+    "ast_hash": "83c9f28daaba93db4bbea0aeb2e15003",
     "semantic_hash": ""
   },
   "docs/IDEAS.md": {
@@ -972,9 +972,9 @@
     "semantic_hash": ""
   },
   "app_findash.py": {
-    "mtime": 1794146647.2920008,
-    "seen": 1794148102.946919,
-    "ast_hash": "d07256daa62828001057a2367b5382af",
+    "mtime": 1795010999.9497213,
+    "seen": 1795011174.6779513,
+    "ast_hash": "bc9a628985f98df26b9c182427ba382e",
     "semantic_hash": ""
   },
   "models_findash.py": {
@@ -984,9 +984,9 @@
     "semantic_hash": ""
   },
   "services/findash_service.py": {
-    "mtime": 1795005124.2051332,
-    "seen": 1795005225.3213198,
-    "ast_hash": "6756841f2b90103c80e1e5f46fdbe546",
+    "mtime": 1795010890.3522284,
+    "seen": 1795011174.7033565,
+    "ast_hash": "8d4759071d61e66dfa62fc58984af5f9",
     "semantic_hash": ""
   },
   "tests/test_findash.py": {
@@ -996,9 +996,9 @@
     "semantic_hash": ""
   },
   "templates/findash/balance_sheet.html": {
-    "mtime": 1794407929.7089982,
-    "seen": 1794410438.8983757,
-    "ast_hash": "34bc2de8ff9af84eed45d7b3eb05a679",
+    "mtime": 1795009118.911647,
+    "seen": 1795009919.8302667,
+    "ast_hash": "ef639d38c6220123828eff20c30aadb9",
     "semantic_hash": ""
   },
   "templates/findash/base.html": {
@@ -1740,9 +1740,9 @@
     "semantic_hash": ""
   },
   "GATES.md": {
-    "mtime": 1794843046.362525,
-    "seen": 1794908575.9694743,
-    "ast_hash": "6b41b26ac6654a321f112e1ff2fe9275",
+    "mtime": 1795009794.7872078,
+    "seen": 1795009919.7723904,
+    "ast_hash": "3abcfd306d2c40440c882822a56a89b1",
     "semantic_hash": ""
   },
   "tests/test_reports_suppliers.py": {

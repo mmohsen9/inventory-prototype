@@ -767,94 +767,15 @@ def sync_operational_movements_to_findash() -> Dict[str, int]:
             existing_refs.add(ref_key)
             mov_synced += 1
 
-        # 2. مزامنة مبيعات العملاء والفروع RoastedCoffeeDispatch / GreenCoffeeIssue -> FinInvoiceSale
-        existing_invoices = set(
-            r[0] for r in db.session.query(FinInvoiceSale.invoice).filter(
-                FinInvoiceSale.source_file == "operational_dispatches"
-            ).all() if r[0]
-        )
+        # تنظيف أي حركات صرف داخلية كانت مسجلة بالخطأ كمبيعات عملاء
+        deleted_dispatches = db.session.query(FinInvoiceSale).filter(
+            FinInvoiceSale.source_file == "operational_dispatches"
+        ).delete(synchronize_session=False)
 
-        sales_synced = 0
-        start_d = dt_date(2026, 9, 1)
-
-        # Roasted Coffee Dispatches
-        for d in RoastedCoffeeDispatch.query.filter(RoastedCoffeeDispatch.dispatch_date >= start_d).all():
-            inv_no = (d.doc_number or f"RD-{d.id}")[:95]
-            if inv_no in existing_invoices:
-                continue
-
-            if isinstance(d.dispatch_date, (dt_date, datetime)):
-                d_dt = d.dispatch_date
-            elif isinstance(d.dispatch_date, str):
-                try:
-                    d_dt = datetime.strptime(d.dispatch_date, "%Y-%m-%d").date()
-                except Exception:
-                    d_dt = (d.created_at or datetime.utcnow()).date()
-            else:
-                d_dt = (d.created_at or datetime.utcnow()).date()
-
-            mdate_str = d_dt.strftime("%Y-%m-%d")
-            br_name = (locations_map.get(d.branch_location_id, "غير محدد"))[:145]
-            amt = float(d.total_sale_amount or 0.0)
-
-            inv_rec = FinInvoiceSale(
-                year=d_dt.year,
-                month=d_dt.month,
-                mdate=mdate_str,
-                invoice=inv_no,
-                contact=(d.customer_name or "عميل نقدي")[:250],
-                reference=(d.xero_invoice_number or inv_no)[:145],
-                amount=amt,
-                status=(d.status or "معتمد")[:50],
-                source="إدارة صرف المحمص",
-                branch=br_name,
-                source_file="operational_dispatches",
-            )
-            db.session.add(inv_rec)
-            existing_invoices.add(inv_no)
-            sales_synced += 1
-
-        # Green Coffee Issues
-        for g in GreenCoffeeIssue.query.filter(GreenCoffeeIssue.issue_date >= start_d).all():
-            inv_no = (g.doc_number or f"GI-{g.id}")[:95]
-            if inv_no in existing_invoices:
-                continue
-
-            if isinstance(g.issue_date, (dt_date, datetime)):
-                g_dt = g.issue_date
-            elif isinstance(g.issue_date, str):
-                try:
-                    g_dt = datetime.strptime(g.issue_date, "%Y-%m-%d").date()
-                except Exception:
-                    g_dt = (g.created_at or datetime.utcnow()).date()
-            else:
-                g_dt = (g.created_at or datetime.utcnow()).date()
-
-            mdate_str = g_dt.strftime("%Y-%m-%d")
-            br_name = (locations_map.get(g.warehouse_id, "المستودع الرئيسي"))[:145]
-            amt = float(g.total_sale_amount or 0.0)
-
-            inv_rec = FinInvoiceSale(
-                year=g_dt.year,
-                month=g_dt.month,
-                mdate=mdate_str,
-                invoice=inv_no,
-                contact=(g.customer_name or "عميل نقدي")[:250],
-                reference=(g.xero_invoice_number or inv_no)[:145],
-                amount=amt,
-                status=(g.status or "معتمد")[:50],
-                source="إدارة صرف الأخضر",
-                branch=br_name,
-                source_file="operational_dispatches",
-            )
-            db.session.add(inv_rec)
-            existing_invoices.add(inv_no)
-            sales_synced += 1
-
-        if mov_synced > 0 or sales_synced > 0:
+        if mov_synced > 0 or deleted_dispatches:
             db.session.commit()
             clear_findash_cache()
-        return {"movements_synced": mov_synced, "sales_synced": sales_synced}
+        return {"movements_synced": mov_synced, "sales_synced": 0}
     except Exception as exc:
         db.session.rollback()
         logger.error("خطأ أثناء مزامنة الحركات التشغيلية لـ findash: %s", exc, exc_info=True)
@@ -2614,12 +2535,6 @@ def get_inventory_periodic_balance(year: int = 2026, month: Optional[int] = None
 
 def get_aggregated_item_statement(year: int = 2026, month: Optional[int] = None, search: Optional[str] = None) -> Dict[str, Any]:
     """بيان الصنف المجمّع — من سجل الحركات مبوبة ومقسمة بالتفصيل."""
-    if year == 2026 and (month is None or month >= 9):
-        target_m = month if (month and month > 0) else 10
-        has_movs = FinItemMovement.query.filter(FinItemMovement.year == 2026, FinItemMovement.month == target_m).first()
-        if not has_movs:
-            sync_operational_movements_to_findash()
-
     q = FinItemMovement.query.filter(FinItemMovement.year == year)
     if month and month > 0:
         q = q.filter(FinItemMovement.month == month)
@@ -2723,12 +2638,6 @@ def get_inventory_movements_log(
     limit: int = 500
 ) -> Dict[str, Any]:
     """سجل الحركات التفصيلي — التبويب الخامس المطابق لـ Streamlit."""
-    if (year is None or year == 2026) and (month is None or month >= 9):
-        target_m = month if (month and month > 0) else 10
-        has_movs = FinItemMovement.query.filter(FinItemMovement.year == 2026, FinItemMovement.month == target_m).first()
-        if not has_movs:
-            sync_operational_movements_to_findash()
-
     q = FinItemMovement.query
     if year and year > 0:
         q = q.filter(FinItemMovement.year == year)
@@ -2893,11 +2802,12 @@ def get_budget_forecast_data(base_year: int = 2025, budget_year: int = 2026, gro
             "var_pct": var_pct,
         })
 
-        if cat == "Trading Income":
+        cat_lower = str(cat or "").strip().lower()
+        if any(w in cat_lower for w in ["trading income", "income", "revenue", "إيراد", "مبيعات"]):
             total_base_rev += b_amt
             total_budget_rev += proposed
             total_actual_rev += a_amt
-        else:
+        elif any(w in cat_lower for w in ["cost of sales", "cogs", "تكلفة", "operating expenses", "expenses", "مصروف"]):
             total_base_exp += b_amt
             total_budget_exp += proposed
             total_actual_exp += a_amt
@@ -2913,6 +2823,7 @@ def get_budget_forecast_data(base_year: int = 2025, budget_year: int = 2026, gro
             "total_budget_rev": round(total_budget_rev, 2),
             "total_actual_rev": round(total_actual_rev, 2),
             "completion_rate": completion_rate,
+            "total_base_exp": round(total_base_exp, 2),
             "total_budget_exp": round(total_budget_exp, 2),
             "total_actual_exp": round(total_actual_exp, 2),
         },
@@ -3266,14 +3177,6 @@ def get_financial_analysis_data(selected_year: int = 2026, year_a: int = 2024, y
                 elif r.category in ["Cost of Sales", "Operating Expenses"]:
                     exp[m] += r.amount
 
-        # إضافة مبيعات قنوات التوصيل
-        cq = db.session.query(FinChannelSale.month, db.func.sum(FinChannelSale.amount)).filter(
-            FinChannelSale.year == y
-        ).group_by(FinChannelSale.month).all()
-        for m_val, amt in cq:
-            if m_val and 1 <= m_val <= 12:
-                rev[m_val - 1] += float(amt or 0.0)
-
         return rev, exp
 
     rev_a, exp_a = get_monthly_series(year_a)
@@ -3594,6 +3497,27 @@ def import_channel_sales_excel(file_bytes_or_path, filename: str = "channel_sale
     }
 
 
+def normalize_findash_branch_name(b_name: Optional[str]) -> str:
+    """توحيد مسميات الفروع بين جداول المبيعات وفوديكس وقائمة الدخل."""
+    if not b_name:
+        return "غير محدد"
+    s = b_name.strip()
+    s_low = s.lower().replace("-", " ").replace("_", " ")
+    if "hittin" in s_low or "hitten" in s_low or "حطين" in s:
+        return "فرع حطين (Hittin branch)"
+    if "sahafa" in s_low or "الصحافة" in s:
+        return "فرع الصحافة (Alsahafa branch)"
+    if "takhassus" in s_low or "تخصصي" in s:
+        return "فرع التخصصي (Takhassussi- HMG)"
+    if "waw" in s_low or "واو" in s:
+        return "فرع فندق واو (WAW-Brunch)"
+    if "yasamin" in s_low or "yasmeen" in s_low or "الياسمين" in s:
+        return "فرع الياسمين (Alyasamin -Brunch)"
+    if "rafa" in s_low or "رافا" in s:
+        return "فرع رافا (RAFA)"
+    return s
+
+
 def get_channel_sales_data(year: int = 2026, month: int = 0, branch: str = "all", search: Optional[str] = None) -> Dict[str, Any]:
     """
     بيانات مبيعات التطبيقات والمواقع:
@@ -3606,7 +3530,15 @@ def get_channel_sales_data(year: int = 2026, month: int = 0, branch: str = "all"
     if month and month > 0:
         q = q.filter_by(month=month)
     if branch and branch != "all":
-        q = q.filter_by(branch=branch)
+        # مطابقة الفرع المختار إما بالاسم الأصلي أو بالاسم المطبع
+        norm_filter = normalize_findash_branch_name(branch)
+        q = q.filter(
+            db.or_(
+                FinChannelSale.branch == branch,
+                FinChannelSale.branch.ilike(f"%{branch.strip()}%"),
+                FinChannelSale.branch.ilike(f"%{norm_filter.split('(')[0].replace('فرع', '').strip()}%")
+            )
+        )
     if search and search.strip():
         term = f"%{search.strip()}%"
         q = q.filter(db.or_(FinChannelSale.channel.ilike(term), FinChannelSale.branch.ilike(term), FinChannelSale.note.ilike(term)))
@@ -3653,26 +3585,35 @@ def get_channel_sales_data(year: int = 2026, month: int = 0, branch: str = "all"
             "total": round(month_totals[m], 2),
         })
 
-    # تفصيل مبيعات الفروع ومقارنتها بفوديكس بعد الخصم
+    # تفصيل مبيعات الفروع ومقارنتها بفوديكس بعد الخصم مع تطبيع مسميات الفروع
     branch_dict = {}
     for r in records:
-        b = r.branch or "كل الفروع"
-        if b not in branch_dict:
-            branch_dict[b] = {"branch": b, "apps_amount": 0.0, "orders": 0, "foodics_gross": 0.0, "foodics_net": 0.0}
-        branch_dict[b]["apps_amount"] += r.amount
-        branch_dict[b]["orders"] += r.orders_count
+        b_raw = r.branch or "كل الفروع"
+        b_norm = normalize_findash_branch_name(b_raw) if b_raw != "كل الفروع" else "كل الفروع"
+        if b_norm not in branch_dict:
+            branch_dict[b_norm] = {"branch": b_norm, "apps_amount": 0.0, "orders": 0, "foodics_gross": 0.0, "foodics_net": 0.0}
+        branch_dict[b_norm]["apps_amount"] += r.amount
+        branch_dict[b_norm]["orders"] += r.orders_count
 
-    # جلب مبيعات فوديكس لكل فرع
-    pnl_branches = FinMonthlyPnl.query.filter(
+    # جلب مبيعات فوديكس لكل فرع مع التصفية بالشهر والفرع
+    pnl_q = FinMonthlyPnl.query.filter(
         FinMonthlyPnl.year == year,
         FinMonthlyPnl.branch != "Total",
         FinMonthlyPnl.category == "Trading Income",
-    ).all()
+    )
+    if month and month > 0:
+        pnl_q = pnl_q.filter(FinMonthlyPnl.month == month)
+    pnl_branches = pnl_q.all()
+
     for bp in pnl_branches:
-        b = bp.branch
-        if b not in branch_dict:
-            branch_dict[b] = {"branch": b, "apps_amount": 0.0, "orders": 0, "foodics_gross": 0.0, "foodics_net": 0.0}
-        branch_dict[b]["foodics_gross"] += bp.amount
+        b_norm = normalize_findash_branch_name(bp.branch)
+        if branch and branch != "all":
+            selected_norm = normalize_findash_branch_name(branch)
+            if b_norm != selected_norm and bp.branch != branch:
+                continue
+        if b_norm not in branch_dict:
+            branch_dict[b_norm] = {"branch": b_norm, "apps_amount": 0.0, "orders": 0, "foodics_gross": 0.0, "foodics_net": 0.0}
+        branch_dict[b_norm]["foodics_gross"] += bp.amount
 
     branch_breakdown = []
     for b_item in branch_dict.values():
@@ -3727,10 +3668,6 @@ def get_customer_branch_sales(basis: str = "yearly", year: Optional[int] = 2026,
     تدعم الأساس السنوي والشهري والإجمالي العام (All-Time).
     """
     from models_findash import FinInvoiceSale
-
-    # التأكد من استيراد الملفات إن كان الجدول فارغاً
-    if not FinInvoiceSale.query.first():
-        import_all_historical_data()
 
     q = db.session.query(FinInvoiceSale.contact, FinInvoiceSale.branch, FinInvoiceSale.amount)
 

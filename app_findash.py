@@ -140,10 +140,6 @@ def index():
     year = request.args.get("year", default=2026, type=int)
     month = request.args.get("month", default=0, type=int)
 
-    # إذا كانت قاعدة البيانات فارغة تماماً، نقوم بمحاولة استيراد تلقائي أولية
-    if not FinMonthlyPnl.query.first():
-        import_all_historical_data()
-
     data = get_dashboard_summary(year=year, month=month)
     return render_template(
         "findash/dashboard.html",
@@ -269,10 +265,42 @@ def balance_sheet():
     latest = figures[0] if figures else None
     available_years = AVAILABLE_FIN_YEARS
 
+    # حساب نسب السيولة ديناميكياً لجميع الأعوام المتاحة لتغذية الرسم البياني
+    years_labels = [str(y) for y in sorted(available_years)]
+    chart_current_ratios = []
+    chart_quick_ratios = []
+    for y_val in sorted(available_years):
+        fig_y = FinBalanceFigure.query.filter_by(year=y_val).order_by(FinBalanceFigure.month.desc()).first()
+        if fig_y and (fig_y.current_liabilities or 0.0) > 0:
+            c_r = round((fig_y.current_assets or 0.0) / fig_y.current_liabilities, 2)
+            q_r = round(((fig_y.current_assets or 0.0) - (fig_y.inventory or 0.0)) / fig_y.current_liabilities, 2)
+        elif fig_y and (fig_y.current_liabilities or 0.0) < 0:
+            c_r = round((fig_y.current_assets or 0.0) / fig_y.current_liabilities, 2)
+            q_r = round(((fig_y.current_assets or 0.0) - (fig_y.inventory or 0.0)) / fig_y.current_liabilities, 2)
+        else:
+            c_r = 0.0
+            q_r = 0.0
+        chart_current_ratios.append(c_r)
+        chart_quick_ratios.append(q_r)
+
+    # حساب رصيد الإقفال المعتمد (Snapshot وليس جمعاً عشوائياً للشهور)
+    summary_figures = {
+        "current_assets": latest.current_assets if latest else 0.0,
+        "inventory": latest.inventory if latest else 0.0,
+        "current_liabilities": latest.current_liabilities if latest else 0.0,
+        "working_capital": latest.working_capital if latest else 0.0,
+        "total_assets": latest.total_assets if latest else 0.0,
+        "total_equity": latest.total_equity if latest else 0.0,
+    }
+
     return render_template(
         "findash/balance_sheet.html",
         figures=figures,
         latest=latest,
+        summary=summary_figures,
+        chart_years=years_labels,
+        chart_current_ratios=chart_current_ratios,
+        chart_quick_ratios=chart_quick_ratios,
         selected_year=year,
         selected_month=month,
         available_years=available_years,

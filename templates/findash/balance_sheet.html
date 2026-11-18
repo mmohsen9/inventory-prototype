@@ -16,19 +16,19 @@
 <div class="fin-kpi-grid">
     <div class="fin-kpi-card" style="--card-accent: #3b82f6;">
         <div class="kpi-label"><span>🏦 إجمالي الأصول (Assets)</span><span>SAR</span></div>
-        <div class="kpi-val">{{ "{:,.2f}".format(latest.total_assets) }}</div>
-        <div class="kpi-sub">المتداولة: {{ "{:,.2f}".format(latest.current_assets) }}</div>
+        <div class="kpi-val">{{ "{:,.2f}".format(latest.total_assets or 0.0) }}</div>
+        <div class="kpi-sub">المتداولة: {{ "{:,.2f}".format(latest.current_assets or 0.0) }}</div>
     </div>
 
     <div class="fin-kpi-card" style="--card-accent: #ef4444;">
         <div class="kpi-label"><span>💳 إجمالي الخصوم (Liabilities)</span><span>SAR</span></div>
-        <div class="kpi-val" style="color: #dc2626;">{{ "{:,.2f}".format(latest.total_liabilities) }}</div>
-        <div class="kpi-sub">المتداولة: {{ "{:,.2f}".format(latest.current_liabilities) }}</div>
+        <div class="kpi-val" style="color: #dc2626;">{{ "{:,.2f}".format(latest.total_liabilities or 0.0) }}</div>
+        <div class="kpi-sub">المتداولة: {{ "{:,.2f}".format(latest.current_liabilities or 0.0) }}</div>
     </div>
 
     <div class="fin-kpi-card" style="--card-accent: #10b981;">
         <div class="kpi-label"><span>💼 حقوق الملكية (Total Equity)</span><span>SAR</span></div>
-        <div class="kpi-val" style="color: #059669;">{{ "{:,.2f}".format(latest.total_equity) }}</div>
+        <div class="kpi-val" style="color: #059669;">{{ "{:,.2f}".format(latest.total_equity or 0.0) }}</div>
         <div class="kpi-sub">صافي الأصول وحقوق الشركاء</div>
     </div>
 
@@ -46,7 +46,7 @@
 
     <div class="fin-kpi-card" style="--card-accent: #f59e0b;">
         <div class="kpi-label"><span>📦 قيمة المخزون الدفتري</span><span>المستودعات</span></div>
-        <div class="kpi-val">{{ "{:,.2f}".format(latest.inventory) }}</div>
+        <div class="kpi-val">{{ "{:,.2f}".format(latest.inventory or 0.0) }}</div>
         <div class="kpi-sub">رصيد المخزون المسجل بقائمة المركز المالي</div>
     </div>
 </div>
@@ -88,14 +88,14 @@
             {% for f in figures %}
             <tr>
                 <td style="font-weight: 700;">📅 {{ f.year }} - شهر {{ f.month }}</td>
-                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(f.current_assets) }}</td>
-                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(f.inventory) }}</td>
-                <td style="text-align: left; font-family: monospace; color: #dc2626;">{{ "{:,.2f}".format(f.current_liabilities) }}</td>
-                <td style="text-align: left; font-family: monospace; font-weight: 700;">{{ "{:,.2f}".format(f.working_capital) }}</td>
+                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(f.current_assets or 0.0) }}</td>
+                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(f.inventory or 0.0) }}</td>
+                <td style="text-align: left; font-family: monospace; color: #dc2626;">{{ "{:,.2f}".format(f.current_liabilities or 0.0) }}</td>
+                <td style="text-align: left; font-family: monospace; font-weight: 700;">{{ "{:,.2f}".format(f.working_capital or 0.0) }}</td>
                 <td style="text-align: center;"><span class="badge-reconciled">{{ f.current_ratio }}x</span></td>
                 <td style="text-align: center;"><span class="badge-reconciled">{{ f.quick_ratio }}x</span></td>
-                <td style="text-align: left; font-family: monospace; font-weight: 800;">{{ "{:,.2f}".format(f.total_assets) }}</td>
-                <td style="text-align: left; font-family: monospace; font-weight: 800; color: #059669;">{{ "{:,.2f}".format(f.total_equity) }}</td>
+                <td style="text-align: left; font-family: monospace; font-weight: 800;">{{ "{:,.2f}".format(f.total_assets or 0.0) }}</td>
+                <td style="text-align: left; font-family: monospace; font-weight: 800; color: #059669;">{{ "{:,.2f}".format(f.total_equity or 0.0) }}</td>
             </tr>
             {% else %}
             <tr>
@@ -107,15 +107,15 @@
         </tbody>
         <tfoot class="tfoot-totals">
             <tr>
-                <td style="font-weight: 800;">المتوسط / المجموع:</td>
-                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(figures|sum(attribute='current_assets')) }}</td>
-                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(figures|sum(attribute='inventory')) }}</td>
-                <td style="text-align: left; font-family: monospace; color: #dc2626;">{{ "{:,.2f}".format(figures|sum(attribute='current_liabilities')) }}</td>
-                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(figures|sum(attribute='working_capital')) }}</td>
+                <td style="font-weight: 800;">رصيد الإقفال المعتمد:</td>
+                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(summary.current_assets or 0.0) if summary else "—" }}</td>
+                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(summary.inventory or 0.0) if summary else "—" }}</td>
+                <td style="text-align: left; font-family: monospace; color: #dc2626;">{{ "{:,.2f}".format(summary.current_liabilities or 0.0) if summary else "—" }}</td>
+                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(summary.working_capital or 0.0) if summary else "—" }}</td>
                 <td style="text-align: center;">-</td>
                 <td style="text-align: center;">-</td>
-                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(figures|sum(attribute='total_assets')) }}</td>
-                <td style="text-align: left; font-family: monospace; color: #059669;">{{ "{:,.2f}".format(figures|sum(attribute='total_equity')) }}</td>
+                <td style="text-align: left; font-family: monospace;">{{ "{:,.2f}".format(summary.total_assets or 0.0) if summary else "—" }}</td>
+                <td style="text-align: left; font-family: monospace; color: #059669;">{{ "{:,.2f}".format(summary.total_equity or 0.0) if summary else "—" }}</td>
             </tr>
         </tfoot>
     </table>
@@ -125,10 +125,10 @@
 document.addEventListener("DOMContentLoaded", function() {
     const ctx = document.getElementById('liquidityChart').getContext('2d');
     
-    // جلب النسب لجميع السنوات
-    const yearsLabels = ['2024', '2025', '2026'];
-    const currentRatios = [0.56, 0.43, 0.25];
-    const quickRatios = [0.12, 0.14, 0.05];
+    // جلب النسب ديناميكياً لجميع السنوات
+    const yearsLabels = {{ chart_years|tojson if chart_years else ['2024', '2025', '2026']|tojson }};
+    const currentRatios = {{ chart_current_ratios|tojson if chart_current_ratios else [0.0, 0.0, 0.0]|tojson }};
+    const quickRatios = {{ chart_quick_ratios|tojson if chart_quick_ratios else [0.0, 0.0, 0.0]|tojson }};
 
     new Chart(ctx, {
         type: 'bar',

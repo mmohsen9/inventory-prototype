@@ -109,11 +109,17 @@ _cached_warehouses = {}
 
 def _current_user():
     from flask import g
-    uid = session.get("user_id")
-    if hasattr(g, "_coffee_current_user") and g._coffee_current_user and getattr(g._coffee_current_user, "id", None) == uid:
-        return g._coffee_current_user
     from models import User
-    u = db.session.get(User, uid) if uid else None
+    uid = session.get("user_id")
+    if not uid:
+        return None
+    try:
+        cached = getattr(g, "_coffee_current_user", None)
+        if cached is not None and cached in db.session and getattr(cached, "id", None) == uid:
+            return cached
+    except Exception:
+        pass
+    u = db.session.get(User, uid)
     g._coffee_current_user = u
     return u
 
