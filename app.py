@@ -1288,6 +1288,12 @@ def save_attachment(file_storage, subfolder):
         flash("فشل التحقق من أمان الملف (المحتوى لا يطابق الامتداد المسموح به).", "error")
         return None
 
+    try:
+        from s3_storage import upload_to_s3_or_local
+        return upload_to_s3_or_local(file_storage, subfolder, UPLOAD_DIR)
+    except Exception as _s3_err:
+        app.logger.warning(f"S3 helper error, saving locally: {_s3_err}")
+
     subfolder_parts = [secure_filename(p) for p in subfolder.replace("\\", "/").split("/") if p]
     folder = os.path.join(UPLOAD_DIR, *subfolder_parts)
     os.makedirs(folder, exist_ok=True)
@@ -5265,9 +5271,24 @@ def serve_upload(filepath):
                 full_path = alt_path
 
     if not os.path.exists(full_path):
+        try:
+            from s3_storage import is_s3_configured, S3_CDN_URL
+            if is_s3_configured() and S3_CDN_URL:
+                return redirect(f"{S3_CDN_URL}/{clean_path}")
+        except Exception:
+            pass
         abort(404)
 
     return send_from_directory(os.path.dirname(full_path), os.path.basename(full_path))
+
+
+@app.route("/uploads/")
+@app.route("/uploads/purchases/")
+@app.route("/uploads/purchases")
+@login_required
+def uploads_purchases_redirect():
+    flash("يرجى فتح المرفق مباشرة من داخل سند الاستلام الخاص به", "info")
+    return redirect(url_for("purchases_list"))
 
 
 # ---------------------------------------------------------------
