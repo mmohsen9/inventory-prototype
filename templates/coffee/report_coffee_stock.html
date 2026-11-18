@@ -276,7 +276,7 @@
                 <tbody>
                     {% for row in items_data %}
                     <tr class="stock-item-row"
-                        data-code="{{ row.ci.xero_item_code|lower }}"
+                        data-code="{{ (row.ci.clean_code ~ ' ' ~ (row.ci.xero_item_code or ''))|lower }}"
                         data-name-ar="{{ (row.ci.name_ar or '')|lower }}"
                         data-name-en="{{ (row.ci.name_en or '')|lower }}"
                         data-type="{{ row.ci.coffee_type }}"
@@ -285,7 +285,7 @@
                         data-idle="{{ row.days_idle }}">
                         <td>{{ loop.index }}</td>
                         <td>
-                            <strong style="color: var(--gray-900);">{{ row.ci.xero_item_code }}</strong>
+                            <strong dir="ltr" style="color: var(--gray-900); display: inline-block; unicode-bidi: isolate;">{{ row.ci.clean_code }}</strong>
                         </td>
                         <td>
                             <div style="font-weight: 700; color: var(--gray-800);">{{ row.ci.name_ar or '—' }}</div>

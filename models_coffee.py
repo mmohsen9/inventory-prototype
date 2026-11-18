@@ -54,6 +54,22 @@ class CoffeeItem(db.Model):
     item                  = db.relationship("Item", backref=db.backref("coffee_profile", uselist=False))
 
     @property
+    def clean_code(self) -> str:
+        """يعيد كود الصنف النظيف الموحد (مثل RB12026 أو GB0617) بدون الشوائب العربية أو الشرطات المعكوسة."""
+        p = (self.prefix or "").strip().strip("-").upper()
+        b = (self.base_code or "").strip().strip("-")
+        if p and b:
+            if b.upper().startswith(p):
+                return b.upper()
+            return f"{p}{b}"
+        raw = (self.xero_item_code or "").strip().strip("-").strip()
+        m = re.match(r"^([A-Za-z]+[\-_]?[A-Za-z0-9]+)", raw)
+        if m:
+            return m.group(1).replace("-", "").replace("_", "")
+        parts = re.split(r"[\s\-]+", raw)
+        return parts[0] if parts else raw
+
+    @property
     def cost_price(self) -> float:
         """يعيد سعر تكلفة الصنف المعتمد على Xero أو تكلفة Item الأساسي."""
         if self.xero_cost_price and self.xero_cost_price > 0:
@@ -64,12 +80,14 @@ class CoffeeItem(db.Model):
 
     @property
     def search_text(self):
-        return f"{self.xero_item_code or ''} {self.name_ar or ''} {self.name_en or ''} {self.base_code or ''}".strip()
+        return f"{self.clean_code} {self.xero_item_code or ''} {self.name_ar or ''} {self.name_en or ''} {self.base_code or ''}".strip()
 
     def to_dict(self):
         return {
             "id": self.id,
-            "code": self.xero_item_code,
+            "code": self.clean_code,
+            "clean_code": self.clean_code,
+            "xero_item_code": self.xero_item_code,
             "prefix": self.prefix,
             "base_code": self.base_code,
             "coffee_type": self.coffee_type,
@@ -81,7 +99,7 @@ class CoffeeItem(db.Model):
             "xero_cost_price": float(self.cost_price),
             "sale_price": float(self.sale_price_per_kg or 0.0),
             "ref_loss_pct": float(self.reference_loss_pct or 0.0),
-            "search_label": f"{self.xero_item_code} | {self.name_en or ''}",
+            "search_label": f"[{self.clean_code}] {self.name_ar or ''} | {self.name_en or ''}",
             "packages": [
                 {
                     "type": rp.package_type,

@@ -36,8 +36,8 @@
     "semantic_hash": ""
   },
   "app.py": {
-    "mtime": 1794992583.2982795,
-    "seen": 1794992830.270986,
+    "mtime": 1794992861.6159744,
+    "seen": 1794994409.9500117,
     "ast_hash": "496ce87123f5d4c0f94764485a5e92f2",
     "semantic_hash": ""
   },
@@ -126,9 +126,9 @@
     "semantic_hash": ""
   },
   "models_coffee.py": {
-    "mtime": 1794909138.4103189,
-    "seen": 1794912021.7866557,
-    "ast_hash": "bfafcd246cba225da900007cb2fc0c36",
+    "mtime": 1794994127.2771783,
+    "seen": 1794994409.9674268,
+    "ast_hash": "2064736047e8964916b884deeee85454",
     "semantic_hash": ""
   },
   "seed_data.py": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "docs/CHANGELOG.md": {
-    "mtime": 1794992746.0674193,
-    "seen": 1794992830.4472497,
-    "ast_hash": "75afacf1332b424c8b0b54438f04541f",
+    "mtime": 1794994345.052386,
+    "seen": 1794994410.136581,
+    "ast_hash": "5dc2e47c542e7484ba09ee81eecd75a9",
     "semantic_hash": ""
   },
   "docs/DECISIONS.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": ""
   },
   "docs/HANDOFF.md": {
-    "mtime": 1794992767.8178315,
-    "seen": 1794992830.4483154,
-    "ast_hash": "20560fc5920029397bbd1b27b14879d8",
+    "mtime": 1794994350.9624512,
+    "seen": 1794994410.1376204,
+    "ast_hash": "b39a91ba8bb20ba64bfdd9cbc27049cf",
     "semantic_hash": ""
   },
   "docs/IDEAS.md": {
@@ -588,9 +588,9 @@
     "semantic_hash": ""
   },
   "templates/coffee/green_stock.html": {
-    "mtime": 1793193027.8987908,
-    "seen": 1793193223.183986,
-    "ast_hash": "86e6a45a22d2c4f2ea0ff7a993d362f2",
+    "mtime": 1794994153.2873545,
+    "seen": 1794994410.152792,
+    "ast_hash": "d54b60066b9d914c37edf11325b5c2bf",
     "semantic_hash": ""
   },
   "templates/coffee/inventory_count_record.html": {
@@ -600,9 +600,9 @@
     "semantic_hash": ""
   },
   "templates/coffee/report_coffee_stock.html": {
-    "mtime": 1793190787.344479,
-    "seen": 1793191068.6745403,
-    "ast_hash": "62c2a8bdd0fc1631cb37d20556035bfd",
+    "mtime": 1794994169.6690862,
+    "seen": 1794994410.152792,
+    "ast_hash": "cde49c55c139229e16dbc7e57047f687",
     "semantic_hash": ""
   },
   "templates/coffee/report_inventory_count.html": {
@@ -612,9 +612,9 @@
     "semantic_hash": ""
   },
   "templates/coffee/report_item_movements.html": {
-    "mtime": 1793190827.3002017,
-    "seen": 1793191068.6745403,
-    "ast_hash": "8d501efe2fef0114edb255ece63e9366",
+    "mtime": 1794994249.876359,
+    "seen": 1794994410.152792,
+    "ast_hash": "ee2bfe74f36032c27c0d0132acb51441",
     "semantic_hash": ""
   },
   "templates/coffee/report_roasting_summary.html": {
@@ -630,9 +630,9 @@
     "semantic_hash": ""
   },
   "templates/coffee/roasted_stock.html": {
-    "mtime": 1793193028.7918737,
-    "seen": 1793193223.183986,
-    "ast_hash": "8403358cd41c0a4c0531c170d103affc",
+    "mtime": 1794994143.5028431,
+    "seen": 1794994410.152792,
+    "ast_hash": "35210ae78e4a9bc7f6982e4790252c04",
     "semantic_hash": ""
   },
   "templates/coffee/roasting_edit.html": {
@@ -726,8 +726,8 @@
     "semantic_hash": ""
   },
   "templates/purchase_new.html": {
-    "mtime": 1794992417.0713902,
-    "seen": 1794992830.51953,
+    "mtime": 1794992872.5780158,
+    "seen": 1794994410.1901636,
     "ast_hash": "27d59cdbbb60b00cc00833b91e89cd55",
     "semantic_hash": ""
   },
@@ -1842,8 +1842,8 @@
     "semantic_hash": ""
   },
   "ai_service.py": {
-    "mtime": 1794992229.1761658,
-    "seen": 1794992830.270986,
+    "mtime": 1794992861.169904,
+    "seen": 1794994409.9500117,
     "ast_hash": "47895e75f043b1234ad5122c90dbdc7b",
     "semantic_hash": ""
   },

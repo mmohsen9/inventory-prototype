@@ -52,7 +52,7 @@
             <td>
               <a href="javascript:void(0)" onclick="openCoffeeItemMovements({{ row.ci.id }})" 
                  class="kf-item-interactive-code" title="اضغط لعرض كشف حركات هذا الصنف">
-                <code style="font-weight: 700; color: var(--kf-iris);">{{ row.ci.xero_item_code }}</code>
+                <code dir="ltr" style="font-weight: 700; color: var(--kf-iris); display: inline-block; unicode-bidi: isolate;">{{ row.ci.clean_code }}</code>
               </a>
             </td>
             <td>

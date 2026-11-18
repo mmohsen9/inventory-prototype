@@ -400,7 +400,10 @@
                         </td>
                         <td>
                             <div style="display: flex; align-items: center; gap: 6px;">
-                                <strong style="color: var(--gray-900);">{{ r.ci.xero_item_code }}</strong>
+                                <strong dir="ltr" style="color: var(--gray-900); display: inline-block; unicode-bidi: isolate;">{{ r.ci.clean_code }}</strong>
+                                {% if r.ci.xero_item_code and r.ci.xero_item_code != r.ci.clean_code %}
+                                <span style="display:none;">{{ r.ci.xero_item_code }}</span>
+                                {% endif %}
                                 {% if r.ci.coffee_type == 'green' %}
                                 <span class="badge-coffee-type type-green">أخضر</span>
                                 {% else %}
