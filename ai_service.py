@@ -31,13 +31,15 @@ class UniversalInvoiceData(BaseModel):
     items: list[InvoiceItem] = Field(description="جميع سطور الأصناف الفعلية في الفاتورة")
 
 
-def get_gemini_client():
+def get_gemini_client(force_vertex: bool = False):
     api_key = (os.environ.get("GEMINI_API_KEY") or "").strip()
     if not api_key:
         raise ValueError("مفتاح GEMINI_API_KEY غير مضاف في إعدادات Environment في CranL")
     
-    # يدعم تلقائياً مفاتيح Vertex (التي تبدأ بـ AQ.) ومفاتيح AI Studio (التي تبدأ بـ AIza)
-    if api_key.startswith("AQ."):
+    # استخدام Gemini Developer API (generativelanguage.googleapis.com) تلقائياً
+    # بدون إجبار vertexai لتفادي اشتراطات الفوترة و Agent Platform API
+    use_vertex = force_vertex or (os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in ("true", "1"))
+    if use_vertex:
         return genai.Client(vertexai=True, api_key=api_key)
     return genai.Client(api_key=api_key)
 
@@ -56,8 +58,6 @@ def normalize_date(date_str: str) -> str:
 
 
 def extract_invoice_from_image(file_bytes: bytes, mime_type: str) -> dict:
-    client = get_gemini_client()
-
     universal_prompt = """
     أنت نظام قراءة بصري ومحاسبي خبير (Universal OCR & Accounting Parser) قادر على قراءة كافة أشكال الفواتير (صور، مسح ضوئي، PDF متعدد الصفحات، عربي أو إنجليزي).
 
@@ -78,26 +78,43 @@ def extract_invoice_from_image(file_bytes: bytes, mime_type: str) -> dict:
     """
 
     last_error = None
-    for model_name in ("gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"):
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=[
-                    types.Part.from_bytes(data=file_bytes, mime_type=mime_type),
-                    universal_prompt
-                ],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=UniversalInvoiceData,
-                    temperature=0.1,
-                ),
-            )
-            if response.text:
-                data = json.loads(response.text)
-                data["invoice_date"] = normalize_date(data.get("invoice_date", ""))
-                return data
-        except Exception as e:
-            last_error = e
-            continue
+    # نجرب أولاً عبر Gemini Developer API (generativelanguage.googleapis.com)
+    # ثم عبر Vertex AI كبديل تلقائي لتغطية كافة أشكال المفاتيح
+    clients_to_try = [get_gemini_client(force_vertex=False)]
+    api_key = (os.environ.get("GEMINI_API_KEY") or "").strip()
+    if api_key.startswith("AQ."):
+        clients_to_try.append(get_gemini_client(force_vertex=True))
+
+    for cl in clients_to_try:
+        for model_name in ("gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"):
+            try:
+                response = cl.models.generate_content(
+                    model=model_name,
+                    contents=[
+                        types.Part.from_bytes(data=file_bytes, mime_type=mime_type),
+                        universal_prompt
+                    ],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=UniversalInvoiceData,
+                        temperature=0.1,
+                    ),
+                )
+                if response.text:
+                    data = json.loads(response.text)
+                    data["invoice_date"] = normalize_date(data.get("invoice_date", ""))
+                    return data
+            except Exception as e:
+                last_error = e
+                continue
+
+    err_str = str(last_error)
+    if "aiplatform.googleapis.com" in err_str or "SERVICE_DISABLED" in err_str:
+        m = re.search(r"https://console\.developers\.google\.com/[^\s\'\"]+", err_str)
+        act_url = m.group(0) if m else "https://console.developers.google.com/apis/api/aiplatform.googleapis.com/overview"
+        raise RuntimeError(
+            f"خدمة الذكاء الاصطناعي (Agent Platform API) غير مفعلة في مشروع Google Cloud الخاص بمفتاحك. "
+            f"يرجى تفعيلها (Enable) بالضغط على الرابط التالي: {act_url} ثم الانتظار دقيقة وإعادة التجربة."
+        )
 
     raise RuntimeError(f"تعذر استخراج بيانات الفاتورة عبر نماذج الذكاء الاصطناعي: {last_error}")

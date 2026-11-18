@@ -3,6 +3,13 @@
 - **آخر تحديث:** 2026-11-18
 
 - **نقطة التوقف الحالية:**
+  0. إصلاح تقارير الداشبورد بعد الربط ومعالجة توافقية استعلامات PostgreSQL وحدود السلاسل النصية (done+tested):
+     - تشخيص خطأ تعطل تقارير الداشبورد المالي بعد ربط فوديكس أو زيرو من خلال سجلات الخطأ الفعلية على بيئة CranL الحية.
+     - حل خطأ `operator does not exist: timestamp without time zone >= character varying` باستبدال السلاسل النصية بكائنات `datetime` و `date` الصريحة في استعلامات حركات المخزون وصرف المحمص والأخضر في `sync_operational_movements_to_findash`.
+     - حل خطأ `StringDataRightTruncation: value too long for type character varying(50)` بتوسيع حقل `account_code` في `FinMonthlyPnl` و `FinBudget` إلى 255 حرفاً، وإضافة كود ترحيل آلي في `ensure_findash_schema()` يطبق التوسيع على جدول PostgreSQL تلقائياً، مع تقليم آمن للبيانات المدخلة.
+     - إضافة `db.session.rollback()` داخل كتل معالجة الاستثناءات في `sync_month_from_xero` لمنع تعليق الجلسة عند أي خطأ عابر.
+     - اجتياز كامل اختبارات النظام 100% (272/272 passed) والتحقق من عمل كافة مسارات التقارير الـ 23 بنجاح (Status 200).
+
   0. تكامل التخزين السحابي الدائم للمرفقات عبر CranL S3/R2 ومعالجة مسار المرفقات (done+tested):
      - حل مشكلة مكان تخزين المرفقات على CranL وحل خطأ 404 عند فتح `/uploads/purchases/` بتحويله بمرونة إلى `/purchases`.
      - توليد مفاتيح S3 برمجياً عبر CranL API وتثبيتها بالمتغيرات البيئية للتطبيق تجاوزاً لخطأ واجهة المستخدم في لوحة تحكم CranL.

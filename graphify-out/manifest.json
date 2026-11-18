@@ -36,9 +36,9 @@
     "semantic_hash": ""
   },
   "app.py": {
-    "mtime": 1794992861.6159744,
-    "seen": 1794994409.9500117,
-    "ast_hash": "496ce87123f5d4c0f94764485a5e92f2",
+    "mtime": 1795004068.4689162,
+    "seen": 1795004535.549511,
+    "ast_hash": "5ded5220049f1413759ae99f36b7b498",
     "semantic_hash": ""
   },
   "app_coffee.py": {
@@ -126,8 +126,8 @@
     "semantic_hash": ""
   },
   "models_coffee.py": {
-    "mtime": 1794994127.2771783,
-    "seen": 1794994409.9674268,
+    "mtime": 1794994448.9698257,
+    "seen": 1794999316.9923193,
     "ast_hash": "2064736047e8964916b884deeee85454",
     "semantic_hash": ""
   },
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "docs/CHANGELOG.md": {
-    "mtime": 1794994345.052386,
-    "seen": 1794994410.136581,
-    "ast_hash": "5dc2e47c542e7484ba09ee81eecd75a9",
+    "mtime": 1795004413.896258,
+    "seen": 1795004535.7853942,
+    "ast_hash": "104f4e5869f948e2ccb271e62a18f914",
     "semantic_hash": ""
   },
   "docs/DECISIONS.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": ""
   },
   "docs/HANDOFF.md": {
-    "mtime": 1794994350.9624512,
-    "seen": 1794994410.1376204,
-    "ast_hash": "b39a91ba8bb20ba64bfdd9cbc27049cf",
+    "mtime": 1795004424.0740993,
+    "seen": 1795004535.7853942,
+    "ast_hash": "f0dc0929c98b5db26ddffd082ef6a8a6",
     "semantic_hash": ""
   },
   "docs/IDEAS.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "requirements.txt": {
-    "mtime": 1794992054.042746,
-    "seen": 1794992830.4520664,
-    "ast_hash": "6dae61689cc1bd9e8e20d7162c320910",
+    "mtime": 1794997628.7525027,
+    "seen": 1794999317.1172032,
+    "ast_hash": "072c004a121a65125d128c63ad7055b4",
     "semantic_hash": ""
   },
   "templates/accountant_review.html": {
@@ -588,8 +588,8 @@
     "semantic_hash": ""
   },
   "templates/coffee/green_stock.html": {
-    "mtime": 1794994153.2873545,
-    "seen": 1794994410.152792,
+    "mtime": 1794994450.7684565,
+    "seen": 1794999317.133865,
     "ast_hash": "d54b60066b9d914c37edf11325b5c2bf",
     "semantic_hash": ""
   },
@@ -600,8 +600,8 @@
     "semantic_hash": ""
   },
   "templates/coffee/report_coffee_stock.html": {
-    "mtime": 1794994169.6690862,
-    "seen": 1794994410.152792,
+    "mtime": 1794994454.8195446,
+    "seen": 1794999317.135332,
     "ast_hash": "cde49c55c139229e16dbc7e57047f687",
     "semantic_hash": ""
   },
@@ -612,8 +612,8 @@
     "semantic_hash": ""
   },
   "templates/coffee/report_item_movements.html": {
-    "mtime": 1794994249.876359,
-    "seen": 1794994410.152792,
+    "mtime": 1794994459.3013144,
+    "seen": 1794999317.1378388,
     "ast_hash": "ee2bfe74f36032c27c0d0132acb51441",
     "semantic_hash": ""
   },
@@ -630,8 +630,8 @@
     "semantic_hash": ""
   },
   "templates/coffee/roasted_stock.html": {
-    "mtime": 1794994143.5028431,
-    "seen": 1794994410.152792,
+    "mtime": 1794994461.1900535,
+    "seen": 1794999317.1400998,
     "ast_hash": "35210ae78e4a9bc7f6982e4790252c04",
     "semantic_hash": ""
   },
@@ -978,15 +978,15 @@
     "semantic_hash": ""
   },
   "models_findash.py": {
-    "mtime": 1794133844.387768,
-    "seen": 1794134657.7525995,
-    "ast_hash": "3f931871385f619a047b275ccdefd3c5",
+    "mtime": 1795004001.5432773,
+    "seen": 1795004535.5850198,
+    "ast_hash": "8b75f2b246d3b9798de7b6a299662d22",
     "semantic_hash": ""
   },
   "services/findash_service.py": {
-    "mtime": 1794324467.4831796,
-    "seen": 1794387570.7571638,
-    "ast_hash": "965c3e7b7594e122485a93f1513f71ba",
+    "mtime": 1795005124.2051332,
+    "seen": 1795005225.3213198,
+    "ast_hash": "6756841f2b90103c80e1e5f46fdbe546",
     "semantic_hash": ""
   },
   "tests/test_findash.py": {
@@ -1842,15 +1842,27 @@
     "semantic_hash": ""
   },
   "ai_service.py": {
-    "mtime": 1794992861.169904,
-    "seen": 1794994409.9500117,
-    "ast_hash": "47895e75f043b1234ad5122c90dbdc7b",
+    "mtime": 1795005205.2831457,
+    "seen": 1795005225.2981849,
+    "ast_hash": "2320214981a22aae7f081e1a50eb3a0d",
     "semantic_hash": ""
   },
   "tests/test_ai_invoice_scanning.py": {
     "mtime": 1794992694.8964322,
     "seen": 1794992830.2925134,
     "ast_hash": "035a6bcea55db4e532c06599dee5f945",
+    "semantic_hash": ""
+  },
+  "s3_storage.py": {
+    "mtime": 1794997638.9608371,
+    "seen": 1794999316.9953887,
+    "ast_hash": "7d3e2368cad29a1154ecaca898e2455d",
+    "semantic_hash": ""
+  },
+  "tests/test_s3_storage.py": {
+    "mtime": 1794997777.8625364,
+    "seen": 1794999317.0357132,
+    "ast_hash": "8315e697775819c61b08300127e194e0",
     "semantic_hash": ""
   }
 }

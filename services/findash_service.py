@@ -310,9 +310,9 @@ def import_pnl_monthly_csv(csv_path: Path, default_year: int = 2026) -> int:
                         pnl_entry = FinMonthlyPnl(
                             year=yr,
                             month=mon,
-                            account_code=account_code or account_name,
-                            account_name=account_name,
-                            category=current_category,
+                            account_code=(account_code or account_name).strip()[:100],
+                            account_name=account_name.strip()[:250],
+                            category=current_category[:100],
                             branch="Total",
                             amount=amount,
                             source="excel",
@@ -380,10 +380,10 @@ def import_branch_compare_csv(csv_path: Path, year: int = 2026) -> int:
                         pnl_entry = FinMonthlyPnl(
                             year=year,
                             month=0,
-                            account_code=account_code or account_name,
-                            account_name=account_name,
-                            category=current_category,
-                            branch=b_name,
+                            account_code=(account_code or account_name).strip()[:100],
+                            account_name=account_name.strip()[:250],
+                            category=current_category[:100],
+                            branch=b_name[:120],
                             amount=amount,
                             source="excel",
                         )
@@ -662,180 +662,203 @@ def sync_operational_movements_to_findash() -> Dict[str, int]:
     (FinItemMovement و FinInvoiceSale) لضمان ظهور كافة حركات شهور 2026 الحية
     (رصيد شهري، رصيد سنوي، بيان الصنف المجمع، سجل الحركات، ومبيعات العملاء والفروع).
     """
+    from datetime import date as dt_date
     from models import StockMovement, Item, Location
     from models_coffee import RoastedCoffeeDispatch, GreenCoffeeIssue
 
-    # 1. مزامنة حركات المخزون StockMovement -> FinItemMovement
-    movs = StockMovement.query.filter(StockMovement.created_at >= "2026-09-01").order_by(StockMovement.created_at.asc()).all()
-    items_map = {it.id: it for it in Item.query.all()}
-    locations_map = {loc.id: (loc.name_ar or loc.name_en) for loc in Location.query.all()} if Location.query.first() else {}
+    try:
+        # 1. مزامنة حركات المخزون StockMovement -> FinItemMovement
+        start_dt = datetime(2026, 9, 1, 0, 0, 0)
+        movs = StockMovement.query.filter(StockMovement.created_at >= start_dt).order_by(StockMovement.created_at.asc()).all()
+        items_map = {it.id: it for it in Item.query.all()}
+        locations_map = {loc.id: (loc.name_ar or loc.name_en) for loc in Location.query.all()} if Location.query.first() else {}
 
-    type_mapping = {
-        "pos_consumption": "بيع",
-        "roasting_green_out": "خروج أخضر للتحميص",
-        "roasting_roasted_in": "دخول محمص من التحميص",
-        "roasted_dispatch_out": "صرف محمص للفروع",
-        "roasted_dispatch": "صرف محمص للفروع",
-        "green_issue_out": "صرف بن أخضر",
-        "purchase": "شراء وارد",
-        "purchase_in": "شراء وارد",
-        "transfer_in": "تحويل وارد",
-        "transfer_out": "تحويل صادر",
-        "adjustment": "تسوية أو إعادة تقييم",
-        "initial": "رصيد افتتاحي",
-    }
+        type_mapping = {
+            "pos_consumption": "بيع",
+            "roasting_green_out": "خروج أخضر للتحميص",
+            "roasting_roasted_in": "دخول محمص من التحميص",
+            "roasted_dispatch_out": "صرف محمص للفروع",
+            "roasted_dispatch": "صرف محمص للفروع",
+            "green_issue_out": "صرف بن أخضر",
+            "purchase": "شراء وارد",
+            "purchase_in": "شراء وارد",
+            "transfer_in": "تحويل وارد",
+            "transfer_out": "تحويل صادر",
+            "adjustment": "تسوية أو إعادة تقييم",
+            "initial": "رصيد افتتاحي",
+        }
 
-    existing_refs = set(
-        r[0] for r in db.session.query(FinItemMovement.reference).filter(
-            FinItemMovement.source_file == "stock_movements_db"
-        ).all() if r[0]
-    )
-
-    mov_synced = 0
-    for m in movs:
-        ref_key = f"SM-{m.id}"
-        if ref_key in existing_refs:
-            continue
-
-        it = items_map.get(m.item_id)
-        if not it:
-            continue
-
-        sku = (it.sku or "").strip()
-        name = (it.name_ar or it.name_en or sku).strip()
-        sku_upper = sku.upper()
-        name_low = name.lower()
-
-        # استبعاد صارم لكافة أدوات الترشيح والفلاتر والمستهلكات ومواد التغليف
-        non_coffee_words = [
-            "filter", "فلتر", "dripper", "قمع", "range", "سيرفر", "chemex", "كميكس",
-            "cup", "كوب", "mug", "grinder", "طاحونة", "مطحنة", "scale", "ميزان",
-            "kettle", "غلاية", "box", "كرتون", "bag", "أكياس", "كاسات", "أكواب",
-            "مستهلكات", "مناديل", "منظف", "cleaner", "purgive"
-        ]
-        if any(w in name_low or w in sku.lower() for w in non_coffee_words):
-            continue
-
-        cat_ref = (it.category_reference or "").strip().lower()
-        if cat_ref in ["om", "pm", "con", "tools", "packaging"]:
-            continue
-
-        if sku_upper.startswith("GB"):
-            c_type = "بن أخضر"
-            m_c = re.match(r"^(GB[-_]?\w+)", sku, re.IGNORECASE)
-            code = m_c.group(1).upper().replace("-", "") if m_c else (sku.split("-")[0].strip() if "-" in sku else sku)
-        elif sku_upper.startswith("RB"):
-            c_type = "بن محمص"
-            m_c = re.match(r"^(RB[-_]?\w+)", sku, re.IGNORECASE)
-            code = m_c.group(1).upper().replace("-", "") if m_c else (sku.split("-")[0].strip() if "-" in sku else sku)
-        else:
-            # حصر تقارير المخزون والحركات حصرياً على أصناف البن المعتمدة (أخضر ومحمص)
-            continue
-
-        mtype = type_mapping.get(m.movement_type, "أخرى")
-        unit_cost = float(it.cost or 0.0)
-        q_change = float(m.quantity_change or 0.0)
-        val = round(q_change * unit_cost, 2)
-        rtype = m.reference_type or ""
-        ref_str = f"SM-{m.id} ({rtype})".strip() if rtype else f"SM-{m.id}"
-
-        contact = "المستودع الرئيسي"
-        if m.location_id and m.location_id in locations_map:
-            contact = locations_map[m.location_id]
-
-        fin_m = FinItemMovement(
-            year=m.created_at.year,
-            month=m.created_at.month,
-            mdate=m.created_at.strftime("%Y-%m-%d"),
-            item_code=code,
-            item_name=name,
-            coffee_type=c_type,
-            movement_type=mtype,
-            qty=q_change,
-            value=val,
-            source="نظام إدارة المخزون",
-            reference=ref_str,
-            contact=contact,
-            description=m.notes or "",
-            source_file="stock_movements_db",
+        existing_refs = set(
+            r[0] for r in db.session.query(FinItemMovement.reference).filter(
+                FinItemMovement.source_file == "stock_movements_db"
+            ).all() if r[0]
         )
-        db.session.add(fin_m)
-        existing_refs.add(ref_key)
-        mov_synced += 1
 
-    # 2. مزامنة مبيعات العملاء والفروع RoastedCoffeeDispatch / GreenCoffeeIssue -> FinInvoiceSale
-    existing_invoices = set(
-        r[0] for r in db.session.query(FinInvoiceSale.invoice).filter(
-            FinInvoiceSale.source_file == "operational_dispatches"
-        ).all() if r[0]
-    )
+        mov_synced = 0
+        for m in movs:
+            ref_key = f"SM-{m.id}"
+            if ref_key in existing_refs:
+                continue
 
-    sales_synced = 0
-    # Roasted Coffee Dispatches
-    for d in RoastedCoffeeDispatch.query.filter(RoastedCoffeeDispatch.dispatch_date >= "2026-09-01").all():
-        inv_no = d.doc_number or f"RD-{d.id}"
-        if inv_no in existing_invoices:
-            continue
-        try:
-            d_dt = datetime.strptime(d.dispatch_date, "%Y-%m-%d")
-        except Exception:
-            d_dt = d.created_at or datetime.utcnow()
+            it = items_map.get(m.item_id)
+            if not it:
+                continue
 
-        br_name = locations_map.get(d.branch_location_id, "غير محدد")
-        amt = float(d.total_sale_amount or 0.0)
+            sku = (it.sku or "").strip()
+            name = (it.name_ar or it.name_en or sku).strip()
+            sku_upper = sku.upper()
+            name_low = name.lower()
 
-        inv_rec = FinInvoiceSale(
-            year=d_dt.year,
-            month=d_dt.month,
-            mdate=d.dispatch_date or d_dt.strftime("%Y-%m-%d"),
-            invoice=inv_no,
-            contact=d.customer_name or "عميل نقدي",
-            reference=d.xero_invoice_number or inv_no,
-            amount=amt,
-            status=d.status or "معتمد",
-            source="إدارة صرف المحمص",
-            branch=br_name,
-            source_file="operational_dispatches",
+            # استبعاد صارم لكافة أدوات الترشيح والفلاتر والمستهلكات ومواد التغليف
+            non_coffee_words = [
+                "filter", "فلتر", "dripper", "قمع", "range", "سيرفر", "chemex", "كميكس",
+                "cup", "كوب", "mug", "grinder", "طاحونة", "مطحنة", "scale", "ميزان",
+                "kettle", "غلاية", "box", "كرتون", "bag", "أكياس", "كاسات", "أكواب",
+                "مستهلكات", "مناديل", "منظف", "cleaner", "purgive"
+            ]
+            if any(w in name_low or w in sku.lower() for w in non_coffee_words):
+                continue
+
+            cat_ref = (it.category_reference or "").strip().lower()
+            if cat_ref in ["om", "pm", "con", "tools", "packaging"]:
+                continue
+
+            if sku_upper.startswith("GB"):
+                c_type = "بن أخضر"
+                m_c = re.match(r"^(GB[-_]?\w+)", sku, re.IGNORECASE)
+                code = m_c.group(1).upper().replace("-", "") if m_c else (sku.split("-")[0].strip() if "-" in sku else sku)
+            elif sku_upper.startswith("RB"):
+                c_type = "بن محمص"
+                m_c = re.match(r"^(RB[-_]?\w+)", sku, re.IGNORECASE)
+                code = m_c.group(1).upper().replace("-", "") if m_c else (sku.split("-")[0].strip() if "-" in sku else sku)
+            else:
+                # حصر تقارير المخزون والحركات حصرياً على أصناف البن المعتمدة (أخضر ومحمص)
+                continue
+
+            mtype = type_mapping.get(m.movement_type, "أخرى")
+            unit_cost = float(it.cost or 0.0)
+            q_change = float(m.quantity_change or 0.0)
+            val = round(q_change * unit_cost, 2)
+            rtype = m.reference_type or ""
+            ref_str = f"SM-{m.id} ({rtype})".strip()[:95] if rtype else f"SM-{m.id}"
+
+            contact = "المستودع الرئيسي"
+            if m.location_id and m.location_id in locations_map:
+                contact = locations_map[m.location_id]
+
+            m_created = m.created_at or datetime.utcnow()
+            fin_m = FinItemMovement(
+                year=m_created.year,
+                month=m_created.month,
+                mdate=m_created.strftime("%Y-%m-%d"),
+                item_code=code[:50],
+                item_name=name[:250],
+                coffee_type=c_type[:50],
+                movement_type=mtype[:100],
+                qty=q_change,
+                value=val,
+                source="نظام إدارة المخزون",
+                reference=ref_str,
+                contact=contact[:250],
+                description=(m.notes or "")[:500],
+                source_file="stock_movements_db",
+            )
+            db.session.add(fin_m)
+            existing_refs.add(ref_key)
+            mov_synced += 1
+
+        # 2. مزامنة مبيعات العملاء والفروع RoastedCoffeeDispatch / GreenCoffeeIssue -> FinInvoiceSale
+        existing_invoices = set(
+            r[0] for r in db.session.query(FinInvoiceSale.invoice).filter(
+                FinInvoiceSale.source_file == "operational_dispatches"
+            ).all() if r[0]
         )
-        db.session.add(inv_rec)
-        existing_invoices.add(inv_no)
-        sales_synced += 1
 
-    # Green Coffee Issues
-    for g in GreenCoffeeIssue.query.filter(GreenCoffeeIssue.issue_date >= "2026-09-01").all():
-        inv_no = g.doc_number or f"GI-{g.id}"
-        if inv_no in existing_invoices:
-            continue
-        try:
-            g_dt = datetime.strptime(g.issue_date, "%Y-%m-%d")
-        except Exception:
-            g_dt = g.created_at or datetime.utcnow()
+        sales_synced = 0
+        start_d = dt_date(2026, 9, 1)
 
-        br_name = locations_map.get(g.warehouse_id, "المستودع الرئيسي")
-        amt = float(g.total_sale_amount or 0.0)
+        # Roasted Coffee Dispatches
+        for d in RoastedCoffeeDispatch.query.filter(RoastedCoffeeDispatch.dispatch_date >= start_d).all():
+            inv_no = (d.doc_number or f"RD-{d.id}")[:95]
+            if inv_no in existing_invoices:
+                continue
 
-        inv_rec = FinInvoiceSale(
-            year=g_dt.year,
-            month=g_dt.month,
-            mdate=g.issue_date or g_dt.strftime("%Y-%m-%d"),
-            invoice=inv_no,
-            contact=g.customer_name or "عميل نقدي",
-            reference=g.xero_invoice_number or inv_no,
-            amount=amt,
-            status=g.status or "معتمد",
-            source="إدارة صرف الأخضر",
-            branch=br_name,
-            source_file="operational_dispatches",
-        )
-        db.session.add(inv_rec)
-        existing_invoices.add(inv_no)
-        sales_synced += 1
+            if isinstance(d.dispatch_date, (dt_date, datetime)):
+                d_dt = d.dispatch_date
+            elif isinstance(d.dispatch_date, str):
+                try:
+                    d_dt = datetime.strptime(d.dispatch_date, "%Y-%m-%d").date()
+                except Exception:
+                    d_dt = (d.created_at or datetime.utcnow()).date()
+            else:
+                d_dt = (d.created_at or datetime.utcnow()).date()
 
-    if mov_synced > 0 or sales_synced > 0:
-        db.session.commit()
-        clear_findash_cache()
+            mdate_str = d_dt.strftime("%Y-%m-%d")
+            br_name = (locations_map.get(d.branch_location_id, "غير محدد"))[:145]
+            amt = float(d.total_sale_amount or 0.0)
 
-    return {"movements_synced": mov_synced, "sales_synced": sales_synced}
+            inv_rec = FinInvoiceSale(
+                year=d_dt.year,
+                month=d_dt.month,
+                mdate=mdate_str,
+                invoice=inv_no,
+                contact=(d.customer_name or "عميل نقدي")[:250],
+                reference=(d.xero_invoice_number or inv_no)[:145],
+                amount=amt,
+                status=(d.status or "معتمد")[:50],
+                source="إدارة صرف المحمص",
+                branch=br_name,
+                source_file="operational_dispatches",
+            )
+            db.session.add(inv_rec)
+            existing_invoices.add(inv_no)
+            sales_synced += 1
+
+        # Green Coffee Issues
+        for g in GreenCoffeeIssue.query.filter(GreenCoffeeIssue.issue_date >= start_d).all():
+            inv_no = (g.doc_number or f"GI-{g.id}")[:95]
+            if inv_no in existing_invoices:
+                continue
+
+            if isinstance(g.issue_date, (dt_date, datetime)):
+                g_dt = g.issue_date
+            elif isinstance(g.issue_date, str):
+                try:
+                    g_dt = datetime.strptime(g.issue_date, "%Y-%m-%d").date()
+                except Exception:
+                    g_dt = (g.created_at or datetime.utcnow()).date()
+            else:
+                g_dt = (g.created_at or datetime.utcnow()).date()
+
+            mdate_str = g_dt.strftime("%Y-%m-%d")
+            br_name = (locations_map.get(g.warehouse_id, "المستودع الرئيسي"))[:145]
+            amt = float(g.total_sale_amount or 0.0)
+
+            inv_rec = FinInvoiceSale(
+                year=g_dt.year,
+                month=g_dt.month,
+                mdate=mdate_str,
+                invoice=inv_no,
+                contact=(g.customer_name or "عميل نقدي")[:250],
+                reference=(g.xero_invoice_number or inv_no)[:145],
+                amount=amt,
+                status=(g.status or "معتمد")[:50],
+                source="إدارة صرف الأخضر",
+                branch=br_name,
+                source_file="operational_dispatches",
+            )
+            db.session.add(inv_rec)
+            existing_invoices.add(inv_no)
+            sales_synced += 1
+
+        if mov_synced > 0 or sales_synced > 0:
+            db.session.commit()
+            clear_findash_cache()
+        return {"movements_synced": mov_synced, "sales_synced": sales_synced}
+    except Exception as exc:
+        db.session.rollback()
+        logger.error("خطأ أثناء مزامنة الحركات التشغيلية لـ findash: %s", exc, exc_info=True)
+        return {"movements_synced": 0, "sales_synced": 0}
 
 
 
@@ -1509,10 +1532,13 @@ def sync_month_from_xero(year: int, month: int) -> Dict[str, Any]:
                                 acc_code = m_acc.group(1).strip()
                                 acc_name = m_acc.group(2).strip()
 
+                            clean_code = (acc_code or acc_name).strip()[:100]
+                            clean_name = acc_name.strip()[:250]
+
                             extracted_accounts.append({
-                                "code": acc_code or acc_name,
-                                "name": acc_name,
-                                "category": current_cat,
+                                "code": clean_code,
+                                "name": clean_name,
+                                "category": current_cat[:100],
                                 "amount": amt_val,
                             })
 
@@ -1577,9 +1603,9 @@ def sync_month_from_xero(year: int, month: int) -> Dict[str, Any]:
                 new_entry = FinMonthlyPnl(
                     year=year,
                     month=month,
-                    account_code=code,
-                    account_name=item["name"],
-                    category=item["category"],
+                    account_code=code[:100],
+                    account_name=item["name"][:250],
+                    category=item["category"][:100],
                     branch="Total",
                     amount=item["amount"],
                     source="xero_api",
@@ -1615,6 +1641,7 @@ def sync_month_from_xero(year: int, month: int) -> Dict[str, Any]:
         result["diff_summary"] = diffs
 
     except Exception as exc:
+        db.session.rollback()
         local_res = _reconcile_from_local_pnl(year, month)
         if local_res:
             return local_res

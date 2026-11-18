@@ -2078,8 +2078,8 @@ def reports_stock():
     ).all()
     inflow_map = {(r[0], r[1]): round(float(r[2] or 0.0), 3) for r in inflow_data}
 
-    total_qty = sum(r[0].quantity for r in rows)
-    total_val = sum(r[0].quantity * (r[1].cost or 0.0) for r in rows)
+    total_qty = sum((r[0].quantity or 0.0) for r in rows)
+    total_val = sum((r[0].quantity or 0.0) * (r[1].cost or 0.0) for r in rows)
     total_consumed_qty = sum(consumption_map.get((r[1].id, r[2].id), 0.0) for r in rows)
 
     last_consumption_sync = SystemSetting.get_val("foodics_last_consumption_sync", "")

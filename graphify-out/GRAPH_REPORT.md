@@ -1,35 +1,35 @@
 # Graph Report - inventory-prototype  (2026-11-18)
 
 ## Corpus Check
-- 229 files · ~651,638 words
+- 231 files · ~653,075 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 26 file(s) not represented in the graph (top: (none) 9, .toml 5, .xls 4)
 
 ## Summary
-- 5345 nodes · 13519 edges · 230 communities (216 shown, 14 thin omitted)
-- Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 1581 edges (avg confidence: 0.93)
+- 5360 nodes · 13569 edges · 219 communities (208 shown, 11 thin omitted)
+- Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 1593 edges (avg confidence: 0.93)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `36d15ef2`
+- Built from commit: `29473efb`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - gate-check.mjs
 - live-browser.js
-- sync_operational_movements_to_findash
+- app_findash.py
 - sync_queue.py
 - app_coffee.py
 - import_from_folders
-- purchase_edit
+- CoffeeSetting
 - GreenCoffeeIssue
-- .getProps
+- User
 - وثيقة تصميم نظام إدخال حركات المخزون (Mobile / iPad Web App)
 - The Toolkit
 - test_findash.py
 - skill_generator.py
-- io
+- os
 - connectSSE
 - CountSession
 - chart.umd.min.js
@@ -43,13 +43,13 @@
 - findash_service.py
 - el
 - ns
-- FinFoodicsProductSale
+- SyncQueue
 - CLI-Anything Builder Skill
 - What This Command Validates
-- sync_queue.py
+- ai_service.py
 - cli-anything:list Command
 - cli-anything:refine Command
-- PurchaseTransaction
+- json
 - InventorySystemTestCase
 - Preview Methodology for Harnesses
 - validation_gate.py
@@ -60,9 +60,9 @@
 - Agent Harness: GUI-to-CLI for Open Source Software
 - HARNESS.md
 - SKILL.md Generation (Phase 6.5)
-- de
-- CoffeeItem
-- User
+- FinBalanceFigure
+- Item
+- سجل القرارات (DECISIONS)
 - preview_bundle.py
 - .items
 - ملحق تقني: بوابة التحقق، تسريع الإدخال، وموثوقية الربط مع Foodics
@@ -73,7 +73,7 @@
 - showToast
 - railpack.json
 - L
-- jn
+- s
 - query_df
 - live.md
 - دليل النسخ الاحتياطي والاسترجاع والتحقق (BACKUP-RESTORE)
@@ -95,17 +95,17 @@
 - dispatch-check.mjs
 - Responsive Design
 - current_stock
-- ._c
+- coffee_importer.py
 - 🧭 وثيقة السياق الهندسي الموحدة للمشروع (AI Context Blueprint)
 - Auto-Save + --dry-run for One-Shot Commands
 - app-translator.js
-- خارطة الطريق (ROADMAP)
+- FinBranchSales
 - adapt.md
 - normalizeManualContextText
 - قاعدة حظر التعديل على بيانات فوديكس (Foodics Read-Only Rule)
 - Production Deployment and Continuous Evolution Rules
-- test_findash_schema_and_models
-- RoastedCoffeeDispatch
+- .getProps
+- Region map
 - Production Deployment, Security, and Continuous Evolution Plan
 - onboard.md
 - install.sh
@@ -114,16 +114,16 @@
 - AGENTS.md
 - IDEAS.md
 - docs/CHANGELOG.md
-- خارطة المشروع: inventory-prototype
+- ._c
 - onAnnotDown
 - reconcile_stock_cmd
 - 4. هيكل قاعدة البيانات (الجداول الرئيسية)
 - Impeccable Documenter
 - نظام إدخال حركات المخزون  نوفمبر كفي (نموذج أولي Prototype)
-- os
+- test_all_vouchers_draft_lock_and_resume.py
 - tn
 - hardening-tests.mjs
-- 4. مخطط نماذج وقواعد البيانات (Data Models & Schema)
+- General SOP: Turning Any GUI App into an Agent-Usable CLI
 - app.py
 - createLiveBrowserDomHelpers
 - FinMonthlyPnl
@@ -140,7 +140,7 @@
 - Timecode Precision
 - Visualize: Direction Comps & Asset Production
 - parse_foodics_branch
-- .error
+- ensure_coffee_retail_packages_seed
 - animate.md
 - Handle `generate`
 - buildCyclingRow
@@ -155,8 +155,8 @@
 - critique.md
 - Simplify the Design
 - Hardening Dimensions
-- qt
-- bt
+- Persuade and Experience
+- test_xero_nav_under_accountant_review.py
 - Extract Flow
 - clarify.md
 - Nielsen's 10 Heuristics
@@ -165,24 +165,23 @@
 - polish.md
 - quieter.md
 - Generate Report
-- FinInvoiceSale
+- .error
 - lint-tests.mjs
 - document.md
 - Init flow
 - Common Cognitive Load Violations
 - iOS platform
-- foodics_oauth.py
+- Three-layer model: bundle, session, trajectory
 - Shape
 - Android platform
 - Persona-Based Design Testing
-- test_xero_nav_under_accountant_review.py
+- 3. موثوقية الربط مع Foodics (API Resilience)
 - rs
 - stop-hook.mjs
 - Cognitive Load Assessment
 - Impeccable Finish Reviewer
 - Impeccable Manual Edit Applier
 - live-browser-ignores.js
-- Operate
 - ReplSkin
 - add_performance_headers
 - dispatch.mjs
@@ -201,8 +200,6 @@
 - The Sonner Principles (Building Loved Components)
 - Spring Animations
 - impeccable/SKILL.md
-- Read
-- 3. موثوقية الربط مع Foodics (API Resilience)
 - Core Philosophy
 - Debugging Animations
 - stress-tests.mjs
@@ -210,8 +207,6 @@
 - eo
 - unlazy
 - unlazy/README.md
-- k
-- ai_service.py
 - gate-lint.mjs
 - Unreleased, target 2.1.0
 - package.json
@@ -227,26 +222,20 @@
 - إرشادات كارباثي البرمجية (Karpathy Coding Guidelines)
 - 1. بوابة تصفية البيانات والتحقق المسبق (Data Validation Gate)
 - Karpathy Guidelines
-- _get_xero_auth_headers
-- s
+- o
 - قاعدة الانضباط والتحقق الشامل (Unlazy Completion Discipline)
-- Item
+- PurchaseTransaction
 - 4. هيكل قاعدة البيانات (الجداول الرئيسية)
 - gates-node.md
-- General SOP: Turning Any GUI App into an Agent-Usable CLI
-- Diagnostic Scan
-- tr
-- The Depth Tree
 - 5. دورة حالات كل عملية (State Machine)
-- app_findash.py
+- route
 - 6. تدفق العمل التفصيلي
 - 5. دورة حالات كل عملية (State Machine)
 - 6. تدفق العمل التفصيلي
-- Three-layer model: bundle, session, trajectory
-- Notification
+- inject_globals
 
 ## God Nodes (most connected - your core abstractions)
-1. `تسليم الجلسة (HANDOFF)` - 195 edges
+1. `تسليم الجلسة (HANDOFF)` - 198 edges
 2. `Item` - 189 edges
 3. `Location` - 172 edges
 4. `CoffeeItem` - 142 edges
@@ -272,7 +261,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (230 total, 14 thin omitted)
+## Communities (219 total, 11 thin omitted)
 
 ### Community 0 - "gate-check.mjs"
 Cohesion: 0.05
@@ -282,33 +271,33 @@ Nodes (55): abandonedIds, acquireRegexWorker(), actionNames, aggregateDispatch, 
 Cohesion: 0.03
 Nodes (152): absolutizeUrls(), applyGlobalBarLabelState(), applyLiveBarPreference(), applyOriginalAttrsToSvelteAnchor(), applyParamDefaults(), applyParamValue(), applyPlaceholderSizingStyles(), applySavedParamValues() (+144 more)
 
-### Community 2 - "sync_operational_movements_to_findash"
-Cohesion: 0.11
-Nodes (17): inventory(), [2026-11-08] - تسريع أداء البرنامج الشامل (Fullstack & UI Performance Acceleration), [2026-11-08] - مزامنة حركات المخزون التشغيلية (1751 حركة) لتبويبات الرصيد الشهري وسجل الحركات لعام 2026, [2026-11-09] - تصحيح فلترة المخزون وحصر حركات البن على الأخضر والمحمص فقط (Fix Roastery Coffee Inventory Scope), إصلاحات وتحسينات (done+tested), إضافات وتحسينات (done+tested), إضافات وتحسينات (done+tested), FinItemMovement (+9 more)
+### Community 2 - "app_findash.py"
+Cohesion: 0.06
+Nodes (33): api_sync_live_2026(), api_sync_month(), api_sync_reconciliation_detail(), findash_permission_required(), decorator(), _get_current_user(), inject_common_findash_context(), inventory() (+25 more)
 
 ### Community 3 - "sync_queue.py"
 Cohesion: 0.05
-Nodes (51): foodics_settings(), foodics_sync_entity(), 6. `Supplier` (جدول `suppliers`), إصلاحات وتحسينات (done+tested), إصلاحات وتحسينات (done+tested), إضافات وتحسينات (done+tested), ADR-20261007-04 — معالجات الربط الفعلي مع Foodics API v5 (إجمالي تكلفة البنود، تصفية المحذوف، تعدد الموردين، صلاحيات المدير الكاملة), run_import() (+43 more)
+Nodes (52): foodics_settings(), foodics_sync_entity(), 6. `Supplier` (جدول `suppliers`), 7. `ItemSupplier` (جدول `item_suppliers`), [2026-11-09] - حل مشكلة مطابقة ومزامنة الأصناف وإيضاح الحالات المستثناة (Fix Foodics Items Sync & Mapping Breakdown), إصلاحات وتحسينات (done+tested), إضافات وتحسينات (done+tested), ADR-20261007-04 — معالجات الربط الفعلي مع Foodics API v5 (إجمالي تكلفة البنود، تصفية المحذوف، تعدد الموردين، صلاحيات المدير الكاملة) (+44 more)
 
 ### Community 4 - "app_coffee.py"
 Cohesion: 0.03
-Nodes (100): api_customers_delete(), api_customers_edit(), api_customers_new(), api_customers_search(), api_customers_update_phone(), api_grant_permission(), api_green_items(), api_item_balance() (+92 more)
+Nodes (96): api_customers_delete(), api_customers_edit(), api_customers_new(), api_customers_search(), api_customers_update_phone(), api_grant_permission(), api_green_items(), api_item_balance() (+88 more)
 
 ### Community 5 - "import_from_folders"
 Cohesion: 0.06
 Nodes (36): attach_accounts(), clean_code(), detect_file_period(), _excel_serial_to_date(), extract_year_month(), find_column(), import_balance_sheet_figures(), import_daily_sales() (+28 more)
 
-### Community 6 - "purchase_edit"
-Cohesion: 0.08
-Nodes (16): count_new(), purchase_edit(), purchase_new(), save_attachment(), حصر مستودعات الكافيهات واستبعاد مستودعات البن ومنع كاش كائنات SQLAlchemy المنفصلة (done+tested), ADR-20261018-02 — حصر الفروع والمواقع في جميع السندات على فوديكس ومستودعي البن واستبعاد التجريبية, CoffeeRetailPackage, ensure_coffee_retail_packages_seed() (+8 more)
+### Community 6 - "CoffeeSetting"
+Cohesion: 0.07
+Nodes (18): api_next_doc_number(), xero_callback(), [2026-11-17] - مزامنة تسلسل أرقام السندات، ترقية السيريالات فوق 1000، حل خطأ 500 وقفل استيراد shutil لـ Xero, معالجة تعثر ترحيل السندات لـ Xero وتوحيد تسلسل أرقام المستندات (done+tested), CoffeeSetting, ensure_serial_numbers_above_1000(), next_inventory_count_number(), test_coffee_settings_xero_disconnect() (+10 more)
 
 ### Community 7 - "GreenCoffeeIssue"
-Cohesion: 0.04
-Nodes (24): إضافات وتحسينات (done+tested), ADR-20261112-02 — تعميم قفل واستئناف المسودات المفتوحة لكافة سندات وعمليات النظام (System-Wide Draft Lock & Smart Resume), GreenCoffeeIssue, GreenCoffeeIssueLine, _setup_test_environment(), test_count_session_draft_lock_and_resume(), test_delete_draft_green_issue(), test_green_issue_draft_lock_and_resume() (+16 more)
+Cohesion: 0.13
+Nodes (4): إضافات وتحسينات (done+tested), GreenCoffeeIssue, test_bulk_approve_and_delete_green_issues(), test_green_coffee_issue_multi_lines_and_xero_payload()
 
-### Community 8 - ".getProps"
-Cohesion: 0.11
-Nodes (24): ao(), average(), dataset(), getCenterPoint(), ho(), Hs, _i(), index() (+16 more)
+### Community 8 - "User"
+Cohesion: 0.07
+Nodes (19): ensure_seed_data(), [2026-11-10] - الاعتماد الجماعي للسندات، إشعارات المحاسب، وضبط صلاحيات موظف المستودع وموظفي الفروع (Bulk Voucher Approval, Accountant Notifications & RBAC Polish), إضافات وتحسينات (done+tested), ADR-20261007-01 — تشفير كلمات المرور باستخدام Werkzeug مع دعم الترقية التلقائية الشفافة, ADR-20261108-02 — دعم الموظف المتنقل بين الفروع ومحدد الفروع المتعددة بحساب واحد (Roving & Multi-Branch Staff), Role, User, run_tests() (+11 more)
 
 ### Community 9 - "وثيقة تصميم نظام إدخال حركات المخزون (Mobile / iPad Web App)"
 Cohesion: 0.14
@@ -320,27 +309,27 @@ Nodes (20): Animate complex properties, Assess What "Extraordinary" Means Here, 
 
 ### Community 11 - "test_findash.py"
 Cohesion: 0.06
-Nodes (22): [2026-11-05] - حل مشكلة تكرار استيراد مبيعات التطبيقات وتطبيع القنوات وإخفاء القنوات الصفرية, إضافات وتحسينات (done+tested), FinChannelSale, get_channel_sales_data(), get_dashboard_summary(), get_financial_analysis_data(), import_channel_sales_excel(), normalize_channel_name() (+14 more)
+Nodes (26): channels(), [2026-11-05] - تطوير مركز المزامنة والتسويات بالأرقام وتفكيك الفروقات وقيد التسوية المقترح, [2026-11-05] - حل مشكلة تكرار استيراد مبيعات التطبيقات وتطبيع القنوات وإخفاء القنوات الصفرية, [2026-11-08] - مزامنة حركات المخزون التشغيلية (1751 حركة) لتبويبات الرصيد الشهري وسجل الحركات لعام 2026, إضافات وتحسينات (done+tested), إضافات وتحسينات (done+tested), إضافات وتحسينات (done+tested), FinChannelSale (+18 more)
 
 ### Community 12 - "skill_generator.py"
 Cohesion: 0.06
 Nodes (24): _canonical_skill_name(), _click_decorator_info(), CommandGroup, CommandInfo, Example, extract_cli_metadata(), extract_commands_from_cli(), extract_intro_from_readme() (+16 more)
 
-### Community 13 - "io"
-Cohesion: 0.08
-Nodes (10): test_custom_error_pages(), test_login_failure_wrong_password(), test_login_inactive_user_rejected(), test_login_legacy_plaintext_transparent_upgrade(), test_login_success_hashed_password(), test_logout_clears_session(), test_reset_admin_cli(), test_safe_attachment_validation() (+2 more)
+### Community 13 - "os"
+Cohesion: 0.06
+Nodes (21): handle_403(), handle_404(), handle_500(), save_attachment(), تكامل التخزين السحابي الدائم للمرفقات عبر CranL S3/R2 ومعالجة مسار المرفقات (done+tested), get_s3_client(), is_s3_configured(), upload_to_s3_or_local() (+13 more)
 
 ### Community 14 - "connectSSE"
 Cohesion: 0.08
 Nodes (84): abortSvelteComponentInjection(), applySavedSessionMeta(), captureAndEmit(), cleanup(), cleanupAcceptedSession(), clearHandled(), clearMountErrorCard(), clearScrollY() (+76 more)
 
 ### Community 15 - "CountSession"
-Cohesion: 0.11
-Nodes (7): ADR-20261022-01 — أتمتة ترقيم جلسات الجرد والحذف الآمن المحلي وجلب أصناف الفروع والتسجيل السريع, CountLine, CountSession, TestCountSyncToFoodics, run_tests(), test_full_inventory_count_lifecycle(), test_branch_staff_isolated_from_other_branches_counts()
+Cohesion: 0.08
+Nodes (13): count_new(), ADR-20261022-01 — أتمتة ترقيم جلسات الجرد والحذف الآمن المحلي وجلب أصناف الفروع والتسجيل السريع, run_migration(), CountLine, CountSession, TestCountSyncToFoodics, test_count_session_auto_numbering_and_display(), test_count_session_deletion() (+5 more)
 
 ### Community 16 - "chart.umd.min.js"
 Cohesion: 0.03
-Nodes (62): ai(), at(), be(), beforeDatasetDraw(), beforeDatasetsDraw(), beforeDraw(), beforeLayout(), cn() (+54 more)
+Nodes (52): Ae(), ai(), be(), beforeDatasetDraw(), beforeDatasetsDraw(), beforeDraw(), cn(), d() (+44 more)
 
 ### Community 17 - "handleKeyDown"
 Cohesion: 0.08
@@ -364,27 +353,27 @@ Nodes (27): Bundle ID, Caching Rules, Core Model, Decision Summary, Default Bund
 
 ### Community 22 - "an"
 Cohesion: 0.05
-Nodes (24): addBox(), afterDatasetsUpdate(), an(), ct(), f(), fs(), ge(), generateLabels() (+16 more)
+Nodes (28): addBox(), an(), ct(), dataset(), fs(), ge(), generateLabels(), gs() (+20 more)
 
 ### Community 23 - "zt"
-Cohesion: 0.12
-Nodes (8): The frontmatter: token schema, color(), Ft(), It(), te(), wt(), Xt(), zt()
+Cohesion: 0.10
+Nodes (12): The frontmatter: token schema, color(), Ft(), It(), kt(), mt(), qt(), _t() (+4 more)
 
 ### Community 24 - "findash_service.py"
-Cohesion: 0.10
-Nodes (19): api_upload_archive_file(), إضافات وتحسينات (done+tested), FinItemBalance, _clean_num(), clear_findash_cache(), import_all_historical_data(), import_balance_sheet_csv(), import_branch_compare_csv() (+11 more)
+Cohesion: 0.08
+Nodes (20): api_upload_archive_file(), parse_xlsx_rows(), إضافات وتحسينات (done+tested), _clean_num(), clear_findash_cache(), _get_foodics_token(), import_all_historical_data(), import_balance_sheet_csv() (+12 more)
 
 ### Community 25 - "el"
 Cohesion: 0.08
 Nodes (49): actionLabel(), applyConfigureBarChrome(), bindConfigureCountPillTooltip(), bindConfigureInlineControlHover(), bindConfigureModifierPillHover(), buildConfigureActionControl(), buildConfigureCountControl(), buildConfigureRow() (+41 more)
 
 ### Community 26 - "ns"
-Cohesion: 0.07
-Nodes (9): As(), getBasePixel(), labelColor(), labelPointStyle(), ns(), rt(), update(), updateElements() (+1 more)
+Cohesion: 0.06
+Nodes (20): As(), ca(), _calculateBarIndexPixels(), _calculateBarValuePixels(), getBasePixel(), getLabelAndValue(), getLabelForValue(), getPixelForTick() (+12 more)
 
-### Community 27 - "FinFoodicsProductSale"
-Cohesion: 0.24
-Nodes (7): [2026-11-08] - إصلاح خطأ TypeError وتحويل بحث الفروع إلى قائمة منسدلة في مبيعات Foodics, [2026-11-08] - استبدال أداء الفروع بـ «مبيعات Foodics» وتقسيماتها (حسب الفرع، أفضل المنتجات، أضعف المنتجات), إضافات وتحسينات (done+tested), إضافات وتحسينات (done+tested), FinFoodicsProductSale, get_foodics_product_ranked(), test_foodics_branch_and_product_sales()
+### Community 27 - "SyncQueue"
+Cohesion: 0.09
+Nodes (25): foodics_hub(), sync_resolve_duplicate(), 11. `TransferLine` (جدول `transfer_lines`), 13. `CountLine` (جدول `count_lines`), 14. `SyncQueue` و `SyncLog` (جداول المزامنة), 15. `SystemSetting` و `Notification`, 1. نظرة عامة على التقنية والبيئة, 2. مصفوفة الأدوار والصلاحيات (Role-Based Access Control) (+17 more)
 
 ### Community 28 - "CLI-Anything Builder Skill"
 Cohesion: 0.12
@@ -394,9 +383,9 @@ Nodes (16): Build, CLI-Anything Builder Skill, Condensed Fallback Rules, Harness
 Cohesion: 0.12
 Nodes (15): 1. Directory Structure, 2. Required Files, 3. CLI Implementation Standards, 4. Core Module Standards, 5. Test Standards, 6. Documentation Standards, 7. PyPI Packaging Standards, 8. Code Quality (+7 more)
 
-### Community 30 - "sync_queue.py"
-Cohesion: 0.08
-Nodes (17): enqueue_foodics_all_queued_async(), _worker(), _worker(), enqueue_xero_green_issue_async(), _worker(), enqueue_xero_roasted_dispatch_async(), _worker(), enqueue_xero_roasting_order_async() (+9 more)
+### Community 30 - "ai_service.py"
+Cohesion: 0.06
+Nodes (20): extract_invoice_from_image(), get_gemini_client(), InvoiceItem, normalize_date(), UniversalInvoiceData, enqueue_xero_green_issue_async(), _worker(), enqueue_xero_roasted_dispatch_async() (+12 more)
 
 ### Community 31 - "cli-anything:list Command"
 Cohesion: 0.13
@@ -406,9 +395,9 @@ Nodes (14): 1. Installed CLIs, 2. Generated CLIs, 3. Merge Results, cli-anything
 Cohesion: 0.13
 Nodes (14): Arguments, cli-anything:refine Command, CRITICAL: Read HARNESS.md First, Example, Notes, Step 1: Inventory Current Coverage, Step 2: Analyze Software Capabilities, Step 3: Gap Analysis (+6 more)
 
-### Community 33 - "PurchaseTransaction"
-Cohesion: 0.03
-Nodes (51): api_purchase_ai_import_lines(), migrate(), PurchaseLine, PurchaseTransaction, TestVoucherEditDelete, accountant_client(), admin_client(), app() (+43 more)
+### Community 33 - "json"
+Cohesion: 0.05
+Nodes (35): Notification, UserLocation, accountant_client(), admin_client(), app(), branch1_client(), branch2_client(), client() (+27 more)
 
 ### Community 35 - "Preview Methodology for Harnesses"
 Cohesion: 0.14
@@ -416,7 +405,7 @@ Nodes (14): Baseline surface, Implementation checklist, Optional diff surface, O
 
 ### Community 36 - "validation_gate.py"
 Cohesion: 0.13
-Nodes (11): are_units_compatible(), check_item_active_in_branch(), check_item_exists(), check_sync_freshness(), is_roasted_coffee_internal_supplier(), normalize_unit_str(), validate_attachment(), validate_line() (+3 more)
+Nodes (10): are_units_compatible(), check_item_active_in_branch(), check_item_exists(), check_sync_freshness(), is_roasted_coffee_internal_supplier(), normalize_unit_str(), validate_attachment(), validate_purchase_before_posting() (+2 more)
 
 ### Community 37 - "initGlobalBar"
 Cohesion: 0.07
@@ -446,21 +435,21 @@ Nodes (7): Backend Wrapper (`utils/<service>_backend.py`), Daemon Mode (Optional
 Cohesion: 0.12
 Nodes (16): 1. Extract CLI metadata using `skill_generator.py`:, 1. YAML Frontmatter — Triggering metadata for skill discovery:, 2. Markdown Body — Usage instructions including:, 2. The generator automatically extracts:, 3. Customize the template (optional):, Generation Process, Integration with CLI Build, Key Principles (+8 more)
 
-### Community 44 - "de"
-Cohesion: 0.18
-Nodes (6): Step 2: Act by severity, ce(), de, dt(), he(), qs()
+### Community 44 - "FinBalanceFigure"
+Cohesion: 0.13
+Nodes (6): analysis(), FinBalanceFigure, get_financial_analysis_data(), _verdict(), test_financial_ratios_exact_values_and_verdicts(), test_findash_schema_and_models()
 
-### Community 45 - "CoffeeItem"
-Cohesion: 0.04
-Nodes (27): _build_auto_links(), _extract_xero_code_parts(), ensure_2026_coffee_items_and_balances(), import_coffee_items_from_rows(), ImportResult, parse_xlsx_rows(), _generate_voucher_pdf(), [2026-11-16] - تحديث أصناف وأرصدة البن النظيفة (21 صنفاً) وإصلاح مرفق السندات الرسمية في Xero (+19 more)
+### Community 45 - "Item"
+Cohesion: 0.03
+Nodes (77): 2. `Location` (جدول `locations`), 5. تكامل المخزون والعمليات الأساسية, ensure_default_coffee_items(), تصحيح وتوحيد عرض كود صنف البن في جداول المحمص (done+tested), البيانات والعلاقات الرئيسية, run_migration(), CoffeeItem, RoastedCoffeeDispatch (+69 more)
 
-### Community 46 - "User"
-Cohesion: 0.05
-Nodes (33): ensure_seed_data(), إضافات وتحسينات (done+tested), ADR-20261007-01 — تشفير كلمات المرور باستخدام Werkzeug مع دعم الترقية التلقائية الشفافة, ADR-20261007-02 — تحصين بيئة الإنتاج ضد هجمات القوة الغاشمة وCSRF وIDOR واختراق المرفقات, ADR-20261007-03 — معمارية حزمة الاختبارات الآلية الشاملة (Pytest Test Suite), ADR-20261008-01 — حظر التعديل على بيانات فوديكس واقتصار الربط على القراءة والاطلاع والمطابقة (Foodics Read-Only), ADR-20261018-03 — محرك الترجمة الفورية ثنائي اللغة للواجهة (Client-Side Bilingual Translation Engine) وتنسيق LTR, ADR-20261020-01 — توحيد توجيه تتبع الفروع في Xero لسندات المحمص إلى Roasted Coffee وسندات الأخضر إلى Green Coffee (+25 more)
+### Community 46 - "سجل القرارات (DECISIONS)"
+Cohesion: 0.08
+Nodes (20): ADR-20261007-02 — تحصين بيئة الإنتاج ضد هجمات القوة الغاشمة وCSRF وIDOR واختراق المرفقات, ADR-20261007-03 — معمارية حزمة الاختبارات الآلية الشاملة (Pytest Test Suite), ADR-20261008-01 — حظر التعديل على بيانات فوديكس واقتصار الربط على القراءة والاطلاع والمطابقة (Foodics Read-Only), ADR-20261018-03 — محرك الترجمة الفورية ثنائي اللغة للواجهة (Client-Side Bilingual Translation Engine) وتنسيق LTR, ADR-20261020-01 — توحيد توجيه تتبع الفروع في Xero لسندات المحمص إلى Roasted Coffee وسندات الأخضر إلى Green Coffee, ADR-20261028-01 — نظام التمييز اللوني البصري المتقدم للأقسام في الواجهات, ADR-20261028-02 — اعتماد الترويسة الثلاثية المتوازنة والشعار المتوسط لكافة السندات والتقارير المطبوعة, ADR-20261101-01 — معمارية تكامل مبيعات متجر سلة مع المحمصة والمستودع الرئيسي وزيرو (Daily Consolidated Dispatch & Xero Sync) (+12 more)
 
 ### Community 47 - "preview_bundle.py"
 Cohesion: 0.09
-Nodes (29): append_live_trajectory(), artifact_record(), build_cache_key(), build_live_history_item(), bundle_root(), _clean_none_fields(), finalize_bundle(), find_cached_manifest() (+21 more)
+Nodes (28): append_live_trajectory(), artifact_record(), build_cache_key(), build_live_history_item(), bundle_root(), _clean_none_fields(), finalize_bundle(), find_cached_manifest() (+20 more)
 
 ### Community 48 - ".items"
 Cohesion: 0.13
@@ -472,7 +461,7 @@ Nodes (10): 2.1 المسح المتتابع (Continuous Barcode Scanning), 2.2 �
 
 ### Community 50 - "new-work.md"
 Cohesion: 0.07
-Nodes (27): Recommended Actions, Craft (deprecated alias), Monorepo notes, Opting out of the boot check, Step 3: Deprecated fields are binding, Step 4: Do not overclaim on truth drift, What this owns, and what it does not, Apply (+19 more)
+Nodes (26): Recommended Actions, Craft (deprecated alias), Monorepo notes, Opting out of the boot check, Step 3: Deprecated fields are binding, Step 4: Do not overclaim on truth drift, What this owns, and what it does not, Apply (+18 more)
 
 ### Community 51 - "cli-anything:test Command"
 Cohesion: 0.20
@@ -495,8 +484,12 @@ Cohesion: 0.40
 Nodes (4): buildAptPackages, deploy, aptPackages, $schema
 
 ### Community 56 - "L"
-Cohesion: 0.18
-Nodes (15): bt(), Ce(), s(), _e(), Ee(), Gt(), J(), L() (+7 more)
+Cohesion: 0.15
+Nodes (17): bt(), Ce(), s(), Ee(), ht(), L(), l(), me() (+9 more)
+
+### Community 57 - "s"
+Cohesion: 0.10
+Nodes (16): buildTicks(), Fn(), Gn(), go(), ii(), jn, l(), parse() (+8 more)
 
 ### Community 58 - "query_df"
 Cohesion: 0.06
@@ -515,16 +508,16 @@ Cohesion: 0.11
 Nodes (17): 1. ملخص تصنيف المخاطر, 2. سجل المخاطر التفصيلي, [CRIT-01] تخزين كلمات المرور بنص صريح (Plaintext Passwords), [CRIT-03] المفتاح السري الافتراضي للجلسات (`SECRET_KEY`), [HIGH-01] غياب الحماية ضد تزوير الطلبات عبر المواقع (CSRF), [HIGH-02] مخاطر الوصول المباشر غير المصرح به للكائنات (IDOR), [HIGH-03] حماية مسار التصدير `/reports/export`, [LOW-01] تزامن الكتابة في SQLite تحت ضغط العمليات (+9 more)
 
 ### Community 62 - "modern-screenshot.umd.js"
-Cohesion: 0.19
-Nodes (18): be(), Ct(), dt(), Et(), ft(), ht(), It(), me() (+10 more)
+Cohesion: 0.12
+Nodes (39): ae(), be(), Ct(), de(), dt(), _e(), er(), Et() (+31 more)
 
 ### Community 63 - "Preview & Live Preview Norms"
 Cohesion: 0.29
 Nodes (7): Agent-facing JSON contract, Documentation requirements for preview-capable harnesses, Preview & Live Preview Norms, Producer vs consumer roles, Recommended CLI surface, Three-layer persistence model, Truthfulness principle
 
 ### Community 64 - "Cs"
-Cohesion: 0.22
-Nodes (4): Agent-facing design for `preview live status --json`, 1. `User` (جدول `users`), Cs, os()
+Cohesion: 0.12
+Nodes (5): Agent-facing design for `preview live status --json`, 1. `User` (جدول `users`), bt, Cs, os()
 
 ### Community 65 - "test_install.sh"
 Cohesion: 0.62
@@ -539,16 +532,16 @@ Cohesion: 0.11
 Nodes (27): acceptedDomAlreadyClean(), clearHandledWrapperReloadStamp(), commitAcceptedSvelteComponentToDom(), componentModuleCandidates(), deferredRecoverySuperseded(), describeMountFailure(), detectDevServerBase(), ensureAcceptedDomClean() (+19 more)
 
 ### Community 68 - "RoastingOrder"
-Cohesion: 0.06
-Nodes (22): build_green_credit_note_payload(), _build_line_items(), build_roasted_bill_payload(), ADR-20261015-01 — معمارية قسم القهوة الخضراء والمحمصة ونطاق الفاقد والخصم المباشر للمخزون, البيانات والعلاقات الرئيسية, CoffeeAuditLog, RoastingOrder, RoastingOrderLine (+14 more)
+Cohesion: 0.08
+Nodes (14): ADR-20261015-01 — معمارية قسم القهوة الخضراء والمحمصة ونطاق الفاقد والخصم المباشر للمخزون, CoffeeAuditLog, next_roasting_order_number(), RoastingOrder, RoastingOrderLine, test_bulk_approve_and_delete_roasting_orders(), test_roasting_loss_reference_range_17_to_20(), test_roasting_order_draft_line_edit() (+6 more)
 
 ### Community 69 - "va"
-Cohesion: 0.09
-Nodes (13): afterDraw(), afterEvent(), afterUpdate(), gs(), ki(), oa(), Oi(), Si() (+5 more)
+Cohesion: 0.08
+Nodes (20): afterDraw(), afterEvent(), afterUpdate(), beforeLayout(), configure(), Ee(), f(), is() (+12 more)
 
 ### Community 70 - "bn"
-Cohesion: 0.07
-Nodes (24): Constraints, Failure modes, Flow, $impeccable hooks, Routing, Triage findings, beforeUpdate(), bn (+16 more)
+Cohesion: 0.09
+Nodes (15): Constraints, Failure modes, Flow, $impeccable hooks, Routing, Triage findings, beforeUpdate(), bn (+7 more)
 
 ### Community 71 - "cli-anything Command"
 Cohesion: 0.25
@@ -559,8 +552,8 @@ Cohesion: 0.17
 Nodes (12): default_year_value(), extract_years_from_excel(), get_settings(), _is_valid_year(), list_years(), page_settings(), s_int(), set_setting() (+4 more)
 
 ### Community 73 - "no"
-Cohesion: 0.06
-Nodes (13): buildLookupTable(), configure(), En, _generate(), _getTimestampsForTable(), ia(), init(), initOffsets() (+5 more)
+Cohesion: 0.07
+Nodes (12): buildLookupTable(), Fo(), _generate(), _getTimestampsForTable(), getValueForPixel(), initOffsets(), lt(), no (+4 more)
 
 ### Community 74 - "Inventory Prototype Operational Runbook"
 Cohesion: 0.33
@@ -582,9 +575,9 @@ Nodes (10): Breakpoints: Content-Driven, Detect Input Method, Not Just Screen Si
 Cohesion: 0.22
 Nodes (3): current_stock(), refresh_stock_alerts(), stagnant_items_df()
 
-### Community 79 - "._c"
-Cohesion: 0.11
-Nodes (5): _display_home_path(), _box_line(), _meta_lines(), _strip_ansi(), _visible_len()
+### Community 79 - "coffee_importer.py"
+Cohesion: 0.08
+Nodes (16): _build_auto_links(), _extract_xero_code_parts(), xero_items_sync(), ensure_2026_coffee_items_and_balances(), ensure_2026_roasted_coffee_items(), import_coffee_items_from_rows(), ImportResult, import_xero_items() (+8 more)
 
 ### Community 80 - "🧭 وثيقة السياق الهندسي الموحدة للمشروع (AI Context Blueprint)"
 Cohesion: 0.18
@@ -598,9 +591,9 @@ Nodes (8): 1. Add `--dry-run` to the main CLI group, 2. Add `@cli.result_callbac
 Cohesion: 0.70
 Nodes (4): initTranslator(), translateAttributes(), translateTextNode(), walkAndTranslate()
 
-### Community 83 - "خارطة الطريق (ROADMAP)"
-Cohesion: 0.33
-Nodes (5): Blocked, Later, Next, Now, خارطة الطريق (ROADMAP)
+### Community 83 - "FinBranchSales"
+Cohesion: 0.11
+Nodes (14): branches(), [2026-11-08] - إصلاح خطأ TypeError وتحويل بحث الفروع إلى قائمة منسدلة في مبيعات Foodics, [2026-11-08] - استبدال أداء الفروع بـ «مبيعات Foodics» وتقسيماتها (حسب الفرع، أفضل المنتجات، أضعف المنتجات), إضافات وتحسينات (done+tested), إضافات وتحسينات (done+tested), FinBranchSales, FinFoodicsProductSale, get_foodics_branch_sales() (+6 more)
 
 ### Community 84 - "adapt.md"
 Cohesion: 0.08
@@ -618,13 +611,13 @@ Nodes (3): الغرض, قاعدة حظر التعديل على بيانات فو
 Cohesion: 0.50
 Nodes (3): Deployment Architecture & Rules:, Production Deployment and Continuous Evolution Rules, Status: IN PROGRESS — PRODUCTION EXECUTION ACTIVE
 
-### Community 88 - "test_findash_schema_and_models"
-Cohesion: 0.17
-Nodes (3): _on_findash_init(), ensure_findash_schema(), test_findash_schema_and_models()
+### Community 88 - ".getProps"
+Cohesion: 0.13
+Nodes (18): ao(), average(), getCenterPoint(), ho(), Hs, _i(), inRange(), inXRange() (+10 more)
 
-### Community 89 - "RoastedCoffeeDispatch"
-Cohesion: 0.04
-Nodes (34): api_next_doc_number(), xero_callback(), معالجة تعثر ترحيل السندات لـ Xero وتوحيد تسلسل أرقام المستندات (done+tested), CoffeeSetting, ensure_serial_numbers_above_1000(), next_inventory_count_number(), next_roasting_order_number(), RoastedCoffeeDispatch (+26 more)
+### Community 89 - "Region map"
+Cohesion: 0.40
+Nodes (4): Containment, Painted material, Region map, What varies independently
 
 ### Community 90 - "Production Deployment, Security, and Continuous Evolution Plan"
 Cohesion: 0.50
@@ -644,11 +637,11 @@ Nodes (19): closeItemUnitsModal(), getExistingItemSkus(), initAlertsAutoDismiss(
 
 ### Community 98 - "docs/CHANGELOG.md"
 Cohesion: 0.02
-Nodes (96): [2026-11-05] - أرشفة الأعوام المنتهية ورفع الملفات الختامية المعتمدة وهجرة Workflows, [2026-11-05] - تدقيق وكشف فروقات ملفات الإكسيل المرفوعة مع Xero بدون معالجة تلقائية للمراجعة اليدوية, [2026-11-05] - تسريع الاستجابة الفائق وتثبيت القائمة الطولية ومطابقة حسابات المخزون ومصفوفة المزامنة, [2026-11-05] - تصحيح نطاقات تقارير Xero إلى النطاقات الدقيقة Granular Scopes, [2026-11-05] - ربط مباشر لزر تفعيل صلاحية تقارير زيرو ومعالجة تدفق المزامنة الحية, [2026-11-05] - محرك المزامنة الحية لعام 2026 مع Xero (المخزون والمالية), [2026-11-08] - اعتماد حصر تقارير المخزون على أصناف القهوة المعتمدة (GB و RB) وتوضيح شهر 9, [2026-11-08] - المراجعة الشاملة لكافة التقارير المالية والربط الحي مع Xero بدون أي بطء (+88 more)
+Nodes (98): [2026-11-05] - أرشفة الأعوام المنتهية ورفع الملفات الختامية المعتمدة وهجرة Workflows, [2026-11-05] - تدقيق وكشف فروقات ملفات الإكسيل المرفوعة مع Xero بدون معالجة تلقائية للمراجعة اليدوية, [2026-11-05] - تسريع الاستجابة الفائق وتثبيت القائمة الطولية ومطابقة حسابات المخزون ومصفوفة المزامنة, [2026-11-05] - تصحيح مفاتيح توكن Xero وإضافة صلاحية تقارير الأرباح والخسائر accounting.reports.read, [2026-11-05] - تصحيح نطاقات تقارير Xero إلى النطاقات الدقيقة Granular Scopes, [2026-11-05] - ربط مباشر لزر تفعيل صلاحية تقارير زيرو ومعالجة تدفق المزامنة الحية, [2026-11-05] - محرك المزامنة الحية لعام 2026 مع Xero (المخزون والمالية), [2026-11-08] - اعتماد حصر تقارير المخزون على أصناف القهوة المعتمدة (GB و RB) وتوضيح شهر 9 (+90 more)
 
-### Community 99 - "خارطة المشروع: inventory-prototype"
-Cohesion: 0.33
-Nodes (5): الأدوار والصلاحيات (Foodics RBAC), التقنية والتشغيل, التكاملات الخارجية, الغرض, خارطة المشروع: inventory-prototype
+### Community 99 - "._c"
+Cohesion: 0.11
+Nodes (5): _display_home_path(), _box_line(), _meta_lines(), _strip_ansi(), _visible_len()
 
 ### Community 100 - "onAnnotDown"
 Cohesion: 0.15
@@ -670,9 +663,9 @@ Nodes (4): Impeccable Documenter, Input Contract, Output Contract, Workflow
 Cohesion: 0.18
 Nodes (11): 1. متطلبات التشغيل, 2. التثبيت والتشغيل (على جهاز الكمبيوتر/السيرفر الداخلي), 3. تحميل البيانات الأولية (مرة واحدة), 4. المستخدمون التجريبيون بعد التشغيل الأول, 5. ربط Foodics API الفعلي (الخطوة النهائية بعد استلام الصلاحيات), 6. ملاحظة حول المسح على الآيباد (Safari), 7. هيكل المشروع, 8. ربط رفع الصور بـ Google Drive الفعلي (+3 more)
 
-### Community 105 - "os"
-Cohesion: 0.16
-Nodes (5): ensure_suppliers_seed(), seed_items(), seed_locations(), seed_users(), test_suppliers_report_excel_export()
+### Community 105 - "test_all_vouchers_draft_lock_and_resume.py"
+Cohesion: 0.19
+Nodes (7): _setup_test_environment(), test_count_session_draft_lock_and_resume(), test_delete_draft_green_issue(), test_green_issue_draft_lock_and_resume(), test_roasted_sale_dispatch_draft_lock_and_resume(), test_roasting_order_draft_lock_and_resume(), test_transfer_and_purchase_draft_lock_and_resume()
 
 ### Community 106 - "tn"
 Cohesion: 0.11
@@ -682,25 +675,25 @@ Nodes (4): addElements(), nn(), sn, tn
 Cohesion: 0.09
 Nodes (23): [shell, command], classifyGateEvidence(), gateDefinitionDigest(), gateState(), childExited(), syncFailure(), terminateProcessTree(), WINDOWS_TASKKILL_TIMEOUT_MS (+15 more)
 
-### Community 108 - "4. مخطط نماذج وقواعد البيانات (Data Models & Schema)"
-Cohesion: 0.15
-Nodes (12): 11. `TransferLine` (جدول `transfer_lines`), 13. `CountLine` (جدول `count_lines`), 15. `SystemSetting` و `Notification`, 1. نظرة عامة على التقنية والبيئة, 2. `Location` (جدول `locations`), 2. مصفوفة الأدوار والصلاحيات (Role-Based Access Control), 4. `StockBalance` (جدول `stock_balances`), 4. مخطط نماذج وقواعد البيانات (Data Models & Schema) (+4 more)
+### Community 108 - "General SOP: Turning Any GUI App into an Agent-Usable CLI"
+Cohesion: 0.22
+Nodes (9): General SOP: Turning Any GUI App into an Agent-Usable CLI, Phase 1: Codebase Analysis, Phase 2: CLI Architecture Design, Phase 3: Implementation, Phase 4: Test Planning (TEST.md - Part 1), Phase 5: Test Implementation, Phase 6.5: SKILL.md Generation, Phase 6: Test Documentation (TEST.md - Part 2) (+1 more)
 
 ### Community 109 - "app.py"
 Cohesion: 0.04
-Nodes (102): accountant_review(), add_or_get_supplier(), api_add_supplier(), api_foodics_sync_now(), api_get_item_units(), api_item_details(), api_lookup_item(), api_notification_mark_all_read() (+94 more)
+Nodes (100): accountant_review(), add_or_get_supplier(), api_add_supplier(), api_foodics_sync_now(), api_get_item_units(), api_item_details(), api_lookup_item(), api_notification_mark_all_read() (+92 more)
 
 ### Community 110 - "createLiveBrowserDomHelpers"
 Cohesion: 0.16
 Nodes (15): createLiveBrowserDomHelpers(), activeElementDeep(), cloneWithoutChrome(), copyTextViaSelection(), cssId(), liveUiRoot(), makeFrozenAnchor(), raiseHitModal() (+7 more)
 
 ### Community 111 - "FinMonthlyPnl"
-Cohesion: 0.09
-Nodes (18): budget(), [2026-11-08] - استبعاد صفوف الأرباح المحتسبة حسابياً (Gross Profit / Net Profit) من بنود المصروفات, إضافات وتحسينات (done+tested), إضافات وتحسينات (done+tested), FinAccount, FinBudget, FinMonthlyPnl, get_advanced_forecast_projection() (+10 more)
+Cohesion: 0.08
+Nodes (20): budget(), _on_findash_init(), pnl(), [2026-11-08] - استبعاد صفوف الأرباح المحتسبة حسابياً (Gross Profit / Net Profit) من بنود المصروفات, [2026-11-10] - إصلاح وتدقيق الموازنة والتوقعات المالية المتقدمة (Audit & Polish Budget & Advanced Forecasts), [2026-11-18] - إصلاح تقارير الداشبورد بعد الربط ومعالجة توافقية استعلامات PostgreSQL وحدود السلاسل النصية, إضافات وتحسينات (done+tested), إضافات وتحسينات (done+tested) (+12 more)
 
 ### Community 112 - "models_coffee.py"
-Cohesion: 0.03
-Nodes (57): inject_salla_counts(), _on_coffee_bp_init(), execute_salla_daily_consolidation(), _find_item_mapping(), _get_main_warehouse(), _get_roasted_warehouse(), import_salla_orders_csv(), init_salla_routes() (+49 more)
+Cohesion: 0.04
+Nodes (51): inject_salla_counts(), _on_coffee_bp_init(), execute_salla_daily_consolidation(), _find_item_mapping(), _get_main_warehouse(), _get_roasted_warehouse(), import_salla_orders_csv(), init_salla_routes() (+43 more)
 
 ### Community 113 - "auto-save-dry-run.md"
 Cohesion: 0.33
@@ -750,9 +743,9 @@ Nodes (5): After approval: the comp becomes a spec, Generate three compositional
 Cohesion: 0.17
 Nodes (8): _foodics_col(), _foodics_header_row(), _foodics_year_from_path(), parse_foodics_branch(), _parse_foodics_html_branch(), _parse_foodics_html_product(), parse_foodics_product(), _warn_missing_html_engine()
 
-### Community 125 - ".error"
-Cohesion: 0.33
-Nodes (4): Manifest Example, Manifest Schema, Handle `steer`, Poll loop
+### Community 125 - "ensure_coffee_retail_packages_seed"
+Cohesion: 0.29
+Nodes (3): CoffeeRetailPackage, ensure_coffee_retail_packages_seed(), coffee_setup()
 
 ### Community 126 - "animate.md"
 Cohesion: 0.12
@@ -767,8 +760,8 @@ Cohesion: 0.17
 Nodes (16): buildCyclingRow(), closedClipPath(), cycleVariant(), cyclingCounterText(), cyclingShownVariant(), getVisibleVariantEl(), hideParamsPanel(), mountedParameterCount() (+8 more)
 
 ### Community 129 - "تسليم الجلسة (HANDOFF)"
-Cohesion: 0.04
-Nodes (51): _render_excel_movements_spreadsheet(), xero_post_batch(), _bg_batch_post(), _apply_cash_refund(), _apply_payment(), attach_voucher_to_xero(), build_green_issue_credit_note_payload(), build_green_issue_sale_invoice_payload() (+43 more)
+Cohesion: 0.03
+Nodes (67): _render_excel_movements_spreadsheet(), xero_post_batch(), _bg_batch_post(), enqueue_xero_roasting_order_async(), _worker(), restore_backup(), _apply_cash_refund(), _apply_payment() (+59 more)
 
 ### Community 130 - "Animation Standards Reference"
 Cohesion: 0.07
@@ -810,9 +803,13 @@ Nodes (11): Assess Current State, Code Simplification, Content Simplification, D
 Cohesion: 0.17
 Nodes (11): Accessibility Resilience, Assess Hardening Needs, Edge Cases & Boundary Conditions, Error Handling, Hardening Dimensions, Input Validation & Sanitization, Internationalization (i18n), Performance Resilience (+3 more)
 
-### Community 140 - "qt"
-Cohesion: 0.23
-Nodes (12): de(), Ie(), Lt(), Mt(), oe(), Ot(), qt(), Re() (+4 more)
+### Community 140 - "Persuade and Experience"
+Cohesion: 0.50
+Nodes (3): Comps, Directions, Persuade and Experience
+
+### Community 141 - "test_xero_nav_under_accountant_review.py"
+Cohesion: 0.29
+Nodes (3): accountant_client(), test_accountant_can_access_xero_status_page(), test_nav_drawer_xero_status_under_accountant_review()
 
 ### Community 142 - "Extract Flow"
 Cohesion: 0.25
@@ -846,9 +843,9 @@ Nodes (10): Assess Current State, Color Refinement, Composition Refinement, Moti
 Cohesion: 0.29
 Nodes (7): Audit Health Score, Detailed Findings by Severity, Executive Summary, Generate Report, Patterns & Systemic Issues, Platform Conformance Verdict, Positive Findings
 
-### Community 151 - "FinInvoiceSale"
-Cohesion: 0.14
-Nodes (6): [2026-11-05] - تطوير مركز المزامنة والتسويات بالأرقام وتفكيك الفروقات وقيد التسوية المقترح, إضافات وتحسينات (done+tested), FinInvoiceSale, get_customer_branch_sales(), test_customer_branch_sales_and_route(), test_sync_reconciliation_details_and_kpis()
+### Community 151 - ".error"
+Cohesion: 0.33
+Nodes (4): Manifest Example, Manifest Schema, Handle `steer`, Poll loop
 
 ### Community 152 - "lint-tests.mjs"
 Cohesion: 0.09
@@ -870,9 +867,9 @@ Nodes (9): 1. The Wall of Options, 2. The Memory Bridge, 3. The Hidden Navigatio
 Cohesion: 0.22
 Nodes (9): Color & materials, Components & controls, iOS platform, Layout & structure, Motion, The iOS slop test, Touch targets, Typography (+1 more)
 
-### Community 157 - "foodics_oauth.py"
-Cohesion: 0.25
-Nodes (3): exchange_code_for_token(), get_authorization_url(), revoke_current_token()
+### Community 157 - "Three-layer model: bundle, session, trajectory"
+Cohesion: 0.50
+Nodes (4): `bundle_dir`: immutable snapshot, `session.json`: mutable live head, Three-layer model: bundle, session, trajectory, `trajectory.json`: append-only permanent history
 
 ### Community 158 - "Shape"
 Cohesion: 0.22
@@ -886,9 +883,9 @@ Nodes (8): Android platform, Color & theming, Components & motion, Layout & stru
 Cohesion: 0.25
 Nodes (8): 1. Impatient Power User: "Alex", 2. Confused First-Timer: "Jordan", 3. Accessibility-Dependent User: "Sam", 4. Deliberate Stress Tester: "Riley", 5. Distracted Mobile User: "Casey", Persona-Based Design Testing, Project-Specific Personas, Selecting Personas
 
-### Community 161 - "test_xero_nav_under_accountant_review.py"
-Cohesion: 0.29
-Nodes (3): accountant_client(), test_accountant_can_access_xero_status_page(), test_nav_drawer_xero_status_under_accountant_review()
+### Community 161 - "3. موثوقية الربط مع Foodics (API Resilience)"
+Cohesion: 0.50
+Nodes (4): 3.1 طابور الترحيل الخلفي (Background Sync Queue), 3.2 معالجة الأخطاء الشائعة بلغة عربية واضحة, 3.3 منع الازدواجية (Idempotency), 3. موثوقية الربط مع Foodics (API Resilience)
 
 ### Community 163 - "stop-hook.mjs"
 Cohesion: 0.12
@@ -899,8 +896,8 @@ Cohesion: 0.29
 Nodes (7): Cognitive Load Assessment, Cognitive Load Checklist, Extraneous Load: Bad Design, Germane Load: Learning Effort, Intrinsic Load: The Task Itself, The Working Memory Rule, Three Types of Cognitive Load
 
 ### Community 165 - "Impeccable Finish Reviewer"
-Cohesion: 0.29
-Nodes (6): Checks, in order, Disposition, Impeccable Finish Reviewer, Input Contract, Output Contract, Verdict Pass
+Cohesion: 0.14
+Nodes (12): 1. Accessibility (VoiceOver / TalkBack), 2. Performance, 3. Appearance & Theming, 4. Platform Conformance (CRITICAL), 5. Adaptivity, Diagnostic Scan, Checks, in order, Disposition (+4 more)
 
 ### Community 166 - "Impeccable Manual Edit Applier"
 Cohesion: 0.29
@@ -909,10 +906,6 @@ Nodes (6): Checks, Entry Atomicity, Impeccable Manual Edit Applier, Input Contra
 ### Community 167 - "live-browser-ignores.js"
 Cohesion: 0.52
 Nodes (6): globToRegex(), matchesScope(), normalizeIgnoreRule(), normalizeIgnoreValue(), pageCandidates(), resolveDetectIgnores()
-
-### Community 168 - "Operate"
-Cohesion: 0.50
-Nodes (3): Comps, Directions, Operate
 
 ### Community 171 - "dispatch.mjs"
 Cohesion: 0.32
@@ -974,14 +967,6 @@ Nodes (5): Interruptibility advantage, Spring Animations, Spring-based mouse int
 Cohesion: 0.10
 Nodes (15): Before you finish, Scope is sovereign, The amplification, The skeleton test, Why it reads flat, Craft floor, Refuse, Verify (+7 more)
 
-### Community 187 - "Read"
-Cohesion: 0.50
-Nodes (3): Comps, Directions, Read
-
-### Community 188 - "3. موثوقية الربط مع Foodics (API Resilience)"
-Cohesion: 0.50
-Nodes (4): 3.1 طابور الترحيل الخلفي (Background Sync Queue), 3.2 معالجة الأخطاء الشائعة بلغة عربية واضحة, 3.3 منع الازدواجية (Idempotency), 3. موثوقية الربط مع Foodics (API Resilience)
-
 ### Community 190 - "Core Philosophy"
 Cohesion: 0.50
 Nodes (4): Beauty is leverage, Core Philosophy, Taste is trained, not innate, Unseen details compound
@@ -999,20 +984,16 @@ Cohesion: 0.15
 Nodes (12): args, entry, isObject(), isOurHandler(), keptGroups, known, persist(), script (+4 more)
 
 ### Community 197 - "eo"
-Cohesion: 0.09
-Nodes (11): Bi(), buildTicks(), ca(), Ci(), Do(), eo(), Fi(), getLabelAndValue() (+3 more)
+Cohesion: 0.06
+Nodes (18): Artifact Descriptor, Step 2b: Stage the frontmatter, Bi(), bo, Ci(), Do(), eo(), et() (+10 more)
 
 ### Community 198 - "unlazy"
 Cohesion: 0.14
 Nodes (14): Contributing, Install, License, Optional Claude Code Stop hook, Orchestration and parallel work, Quick start, Repository map, Research basis (+6 more)
 
-### Community 201 - "k"
-Cohesion: 0.27
-Nodes (11): ae(), er(), fe(), jt(), k(), Kt(), P(), v() (+3 more)
-
-### Community 203 - "ai_service.py"
-Cohesion: 0.19
-Nodes (7): extract_invoice_from_image(), get_gemini_client(), InvoiceItem, normalize_date(), UniversalInvoiceData, [2026-11-18] - قراءة ومسح فواتير المشتريات بالذكاء الاصطناعي (Google Gemini)، ومطابقة المخزون وتطبيع الوحدات تلقائياً, تكامل نظام الذكاء الاصطناعي لفواتير الموردين ومطابقتها بالمخزون وتطبيع الوحدات (done+tested)
+### Community 200 - "unlazy/README.md"
+Cohesion: 0.18
+Nodes (6): Choose depth, Completion hierarchy, Contract checklist, Rules, The Depth Tree, Gates: <leaf or task name>
 
 ### Community 204 - "gate-lint.mjs"
 Cohesion: 0.20
@@ -1035,8 +1016,8 @@ Cohesion: 0.20
 Nodes (10): 1. Pre-register the comparison, 2. Isolate each run, 3. Define metrics operationally, 4. Blind and duplicate review, 5. Publish calculations, 6. Bound the conclusion, Minimum protocol for a reproducible rerun, Repository-level validation (+2 more)
 
 ### Community 210 - "Unlazy"
-Cohesion: 0.22
-Nodes (8): Audit the final report, Build the Depth Tree, Install the optional Claude Code Stop hook carefully, Pick the smallest fitting mode, Spend attention where it compounds, Unlazy, Work each leaf in four passes, Write gates before real work
+Cohesion: 0.16
+Nodes (13): tr(), Shell and PATH, Shell, PATH, and working directory, tail(), Audit the final report, Author gates that can fail honestly, Build the Depth Tree, Install the optional Claude Code Stop hook carefully (+5 more)
 
 ### Community 211 - "Orchestrated mode"
 Cohesion: 0.25
@@ -1074,49 +1055,29 @@ Nodes (5): 1.1 مبدأ التصميم, 1.2 مطابقة الترميز (SKU / U
 Cohesion: 0.33
 Nodes (5): 1. Think Before Coding, 2. Simplicity First, 3. Surgical Changes, 4. Goal-Driven Execution, Karpathy Guidelines
 
-### Community 220 - "_get_xero_auth_headers"
-Cohesion: 0.50
-Nodes (3): [2026-11-05] - تصحيح مفاتيح توكن Xero وإضافة صلاحية تقارير الأرباح والخسائر accounting.reports.read, إضافات وتحسينات (done+tested), _get_xero_auth_headers()
-
-### Community 222 - "s"
+### Community 222 - "o"
 Cohesion: 0.04
-Nodes (55): Artifact Descriptor, Step 2b: Stage the frontmatter, a(), aa(), Ae(), b(), bo, _calculateBarIndexPixels() (+47 more)
+Nodes (39): Step 2: Act by severity, a(), aa(), afterDatasetsUpdate(), at(), b(), ce(), de (+31 more)
 
 ### Community 223 - "قاعدة الانضباط والتحقق الشامل (Unlazy Completion Discipline)"
 Cohesion: 0.50
 Nodes (3): 1. جوهر المنهجية (Core Principles), 2. بروتوكول الإجابة على الأسئلة والاستفسارات (Questions & Inquiries Protocol), قاعدة الانضباط والتحقق الشامل (Unlazy Completion Discipline)
 
-### Community 225 - "Item"
-Cohesion: 0.04
-Nodes (52): 5. تكامل المخزون والعمليات الأساسية, import_xero_items(), إضافات وتحسينات (done+tested), تحديث كميات البن الأخضر لعام 2026 من زيرو وحل إشعارات سندات الاستلام المعلقة (done+tested), ADR-20261018-01 — مواءمة صرف البن المحمص للفروع مع صنف فوديكس [sk-0535] والتحويل المخزني التلقائي, Item, Location, record_stock_movement() (+44 more)
+### Community 225 - "PurchaseTransaction"
+Cohesion: 0.03
+Nodes (53): إضافات وتحسينات (done+tested), ADR-20261018-01 — مواءمة صرف البن المحمص للفروع مع صنف فوديكس [sk-0535] والتحويل المخزني التلقائي, migrate(), PurchaseLine, PurchaseTransaction, set_sqlite_pragma(), StockMovement, TransferLine (+45 more)
 
 ### Community 226 - "4. هيكل قاعدة البيانات (الجداول الرئيسية)"
 Cohesion: 0.20
 Nodes (10): 4.10 جدول سجل الترحيل `foodics_sync_log`, 4.1 جدول المستخدمين `users`, 4.2 جدول المواقع `locations`, 4.4 جدول طلبات الأصناف الجديدة `new_item_requests`, 4.5 جدول عمليات الشراء `purchase_transactions`, 4.6 جدول بنود الشراء `purchase_lines`, 4.7 جدول التحويلات `transfer_orders`, 4.8 جدول بنود التحويل `transfer_lines` (+2 more)
 
-### Community 229 - "General SOP: Turning Any GUI App into an Agent-Usable CLI"
-Cohesion: 0.22
-Nodes (9): General SOP: Turning Any GUI App into an Agent-Usable CLI, Phase 1: Codebase Analysis, Phase 2: CLI Architecture Design, Phase 3: Implementation, Phase 4: Test Planning (TEST.md - Part 1), Phase 5: Test Implementation, Phase 6.5: SKILL.md Generation, Phase 6: Test Documentation (TEST.md - Part 2) (+1 more)
-
-### Community 230 - "Diagnostic Scan"
-Cohesion: 0.33
-Nodes (6): 1. Accessibility (VoiceOver / TalkBack), 2. Performance, 3. Appearance & Theming, 4. Platform Conformance (CRITICAL), 5. Adaptivity, Diagnostic Scan
-
-### Community 232 - "tr"
-Cohesion: 0.60
-Nodes (5): tr(), Shell and PATH, Shell, PATH, and working directory, tail(), Author gates that can fail honestly
-
-### Community 233 - "The Depth Tree"
-Cohesion: 0.40
-Nodes (5): Choose depth, Completion hierarchy, Contract checklist, Rules, The Depth Tree
-
 ### Community 234 - "5. دورة حالات كل عملية (State Machine)"
 Cohesion: 0.40
 Nodes (5): 5.1 المشتريات, 5.2 التحويل, 5.3 الجرد, 5.4 طلب صنف جديد, 5. دورة حالات كل عملية (State Machine)
 
-### Community 235 - "app_findash.py"
-Cohesion: 0.05
-Nodes (35): analysis(), api_balance_sheet_update(), api_channel_delete(), api_drilldown_month(), api_forecast(), api_import_historical(), api_sync_live_2026(), api_sync_month() (+27 more)
+### Community 235 - "route"
+Cohesion: 0.10
+Nodes (11): api_balance_sheet_update(), api_channel_delete(), api_drilldown_month(), api_forecast(), api_import_historical(), balance_sheet(), findash_login_required(), index() (+3 more)
 
 ### Community 238 - "6. تدفق العمل التفصيلي"
 Cohesion: 0.40
@@ -1130,32 +1091,28 @@ Nodes (5): 5.1 المشتريات, 5.2 التحويل, 5.3 الجرد, 5.4 طل�
 Cohesion: 0.40
 Nodes (5): 6.1 سيناريو المشتريات, 6.2 سيناريو التحويل, 6.3 سيناريو الجرد الدوري, 6.4 سيناريو الصنف الجديد, 6. تدفق العمل التفصيلي
 
-### Community 244 - "Three-layer model: bundle, session, trajectory"
-Cohesion: 0.50
-Nodes (4): `bundle_dir`: immutable snapshot, `session.json`: mutable live head, Three-layer model: bundle, session, trajectory, `trajectory.json`: append-only permanent history
-
-### Community 253 - "Notification"
-Cohesion: 0.06
-Nodes (19): cleanup_supplier_linked_notifications(), _get_cached_foodics_recent(), _get_cached_notifications(), _get_cached_pending_count(), _get_cached_suppliers(), inject_globals(), has_perm(), تحسينات الإشعارات وتجربة المستخدم (done+tested) (+11 more)
+### Community 253 - "inject_globals"
+Cohesion: 0.11
+Nodes (10): api_notifications_unread(), cleanup_supplier_linked_notifications(), _get_cached_foodics_recent(), _get_cached_notifications(), _get_cached_pending_count(), _get_cached_suppliers(), get_unread_notifications_query(), inject_globals() (+2 more)
 
 ## Knowledge Gaps
 - **1 isolated node(s):** `LINT`
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2092 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **14 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **11 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `تسليم الجلسة (HANDOFF)` connect `تسليم الجلسة (HANDOFF)` to `live-browser.js`, `sync_operational_movements_to_findash`, `sync_queue.py`, `app_coffee.py`, `purchase_edit`, `GreenCoffeeIssue`, `test_findash.py`, `CountSession`, `chart.umd.min.js`, `.status`, `page_budget`, `FinInvoiceSale`, `findash_service.py`, `FinFoodicsProductSale`, `PurchaseTransaction`, `CoffeeItem`, `User`, `.items`, `Cs`, `RoastingOrder`, `RoastedCoffeeDispatch`, `_get_xero_auth_headers`, `app.js`, `Item`, `app_findash.py`, `app.py`, `FinMonthlyPnl`, `models_coffee.py`, `Notification`?**
-  _High betweenness centrality (0.569) - this node is a cross-community bridge._
-- **Are the 194 inferred relationships involving `تسليم الجلسة (HANDOFF)` (e.g. with `.status()` and `escapeHtml()`) actually correct?**
-  _`تسليم الجلسة (HANDOFF)` has 194 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `تسليم الجلسة (HANDOFF)` connect `تسليم الجلسة (HANDOFF)` to `live-browser.js`, `app_findash.py`, `sync_queue.py`, `app_coffee.py`, `CoffeeSetting`, `GreenCoffeeIssue`, `User`, `test_findash.py`, `CountSession`, `chart.umd.min.js`, `.status`, `page_budget`, `findash_service.py`, `SyncQueue`, `json`, `FinBalanceFigure`, `Item`, `سجل القرارات (DECISIONS)`, `.items`, `Cs`, `RoastingOrder`, `coffee_importer.py`, `FinBranchSales`, `app.js`, `PurchaseTransaction`, `route`, `app.py`, `FinMonthlyPnl`, `models_coffee.py`, `inject_globals`, `ensure_coffee_retail_packages_seed`?**
+  _High betweenness centrality (0.555) - this node is a cross-community bridge._
+- **Are the 197 inferred relationships involving `تسليم الجلسة (HANDOFF)` (e.g. with `.status()` and `escapeHtml()`) actually correct?**
+  _`تسليم الجلسة (HANDOFF)` has 197 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `LINT` to the rest of the system?**
   _1 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `gate-check.mjs` be split into smaller, more focused modules?**
   _Cohesion score 0.04864311315924219 - nodes in this community are weakly interconnected._
 - **Why does `Title()` connect `chart.umd.min.js` to `تسليم الجلسة (HANDOFF)`?**
-  _High betweenness centrality (0.262) - this node is a cross-community bridge._
+  _High betweenness centrality (0.254) - this node is a cross-community bridge._
 - **Are the 51 inferred relationships involving `Item` (e.g. with `api_get_item_units()` and `api_item_details()`) actually correct?**
   _`Item` has 51 INFERRED edges - model-reasoned connections that need verification._
 - **Should `live-browser.js` be split into smaller, more focused modules?**

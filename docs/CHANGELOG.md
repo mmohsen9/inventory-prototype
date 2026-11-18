@@ -1,3 +1,25 @@
+## [2026-11-18] - إصلاح تقارير الداشبورد بعد الربط ومعالجة توافقية استعلامات PostgreSQL وحدود السلاسل النصية
+### تشخيص وحل خطأ توقف تقارير الداشبورد المالي بعد الربط (done+tested)
+- **جذر المشكلة والتشخيص الدقيق:**
+  1. بعد ربط فوديكس أو زيرو وتشغيل المزامنة، وعند تصفح تقارير الداشبورد (`/finance/` وفروعه، وتقارير المخزون)، كانت التقارير تفشل بخطأ 500 على بيئة الإنتاج السحابية (CranL).
+  2. بمراجعة سجلات الخطأ اللحظية للتطبيق على خادم PostgreSQL، تم كشف خطأين برمججيين:
+     - **الخطأ الأول:** `psycopg.errors.UndefinedFunction: operator does not exist: timestamp without time zone >= character varying` عند تنفيذ الاستعلام في `sync_operational_movements_to_findash` بسبب مقارنة عمود التاريخ والوقت `StockMovement.created_at` مع سلسلة نصية `"2026-09-01"` مباشرة.
+     - **الخطأ الثاني:** `psycopg.errors.StringDataRightTruncation: value too long for type character varying(50)` عند إدراج أسماء الحسابات الطويلة من زيرو في عمود `FinMonthlyPnl.account_code` المحدد بـ 50 حرفاً فقط، مع غياب استدعاء `db.session.rollback()` داخل كتلة الاستثناء `except Exception:` مما أدى إلى تعليق معاملة قاعدة البيانات وانهيار أي استعلامات لاحقة.
+- **الحلول والتحسينات المنجزة:**
+  * **تصحيح استعلامات التاريخ والوقت لتوافقية PostgreSQL الصارمة:**
+    - استبدال السلاسل النصية بكائنات `datetime` و `date` الصريحة في `services/findash_service.py:sync_operational_movements_to_findash` (`StockMovement.created_at >= datetime(2026, 9, 1)`, `dispatch_date >= date(2026, 9, 1)`, `issue_date >= date(2026, 9, 1)`).
+    - تعزيز معالجة حقول التواريخ المدمجة لكافة السندات (`d.dispatch_date`, `g.issue_date`) وحمايتها ضد الأنماط غير المتوقعة.
+  * **توسيع حجم أعمدة الحسابات وتحصين النصوص:**
+    - تعديل نموذج `FinMonthlyPnl` و `FinBudget` في `models_findash.py` لتوسيع `account_code` إلى `String(255)`.
+    - إضافة أمر ترحيل آلي في `ensure_findash_schema()` يطبق `ALTER TABLE fin_monthly_pnl ALTER COLUMN account_code TYPE VARCHAR(255)` تلقائياً على خوادم PostgreSQL.
+    - تقليم وتطهير آمن لكافة النصوص المدخلة (`account_code[:100]`, `account_name[:250]`) لمنع أي تجاوز للحدود مستقبلاً.
+  * **تحصين إدارة الجلسات والتراجع التلقائي (Rollback):**
+    - إضافة `db.session.rollback()` في كتل الاستثناء في `sync_month_from_xero` و `sync_operational_movements_to_findash` لضمان عدم تعليق أي معاملة فاشلة.
+    - تحصين حقول الكميات والتكلفة في `reports_stock` ضد قيم `None` المحتملة.
+- **الفحوصات وضبط الجودة (done+tested):**
+  * اجتياز كامل حزمة الاختبارات الشاملة للمشروع بنسبة 100% (272/272 passed).
+  * فحص كافة مسارات الداشبورد والتقارير المالية والتشغيلية الـ 23 والتأكد من إرجاعها كود الحالة 200 بنجاح.
+
 ## [2026-11-18] - ربط وتكامل خدمة التخزين السحابي الدائم CranL S3 Storage ومعالجة تصفح المرفقات
 ### تكامل التخزين السحابي الدائم للمرفقات عبر CranL S3/R2 ومعالجة مسار المرفقات (done+tested)
 - **جذر المشكلة والمتطلبات:**

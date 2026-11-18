@@ -30,7 +30,7 @@ class FinMonthlyPnl(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     year = db.Column(db.Integer, nullable=False, index=True)
     month = db.Column(db.Integer, nullable=False, index=True)      # 1..12 (أو 0 للإجمالي السنوي)
-    account_code = db.Column(db.String(50), nullable=False, index=True)
+    account_code = db.Column(db.String(255), nullable=False, index=True)
     account_name = db.Column(db.String(255), nullable=False)
     category = db.Column(db.String(100), nullable=False)           # Trading Income / Cost of Sales / Operating Expenses / Other
     branch = db.Column(db.String(120), default="Total", index=True) # Total أو اسم الفرع (Alsahafa, Hittin, ...)
@@ -181,7 +181,7 @@ class FinBudget(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     year = db.Column(db.Integer, nullable=False, index=True)      # سنة الموازنة (2026)
     month = db.Column(db.Integer, default=0, index=True)          # 0 للسنوي أو 1..12 للشهري
-    account_code = db.Column(db.String(50), nullable=False, index=True)
+    account_code = db.Column(db.String(255), nullable=False, index=True)
     account_name = db.Column(db.String(255), nullable=False)
     category = db.Column(db.String(100), nullable=False)
     proposed_amount = db.Column(db.Float, default=0.0)           # المبلغ المخطط
@@ -277,6 +277,21 @@ def ensure_findash_schema():
 
         # التحقق من وجود عمود source_file والأعمدة الجديدة في الجداول وإضافتها إن لزم
         with db.engine.connect() as conn:
+            # توسيع حجم account_code في fin_monthly_pnl و fin_budgets على PostgreSQL
+            if "fin_monthly_pnl" in existing:
+                try:
+                    conn.execute(db.text("ALTER TABLE fin_monthly_pnl ALTER COLUMN account_code TYPE VARCHAR(255)"))
+                    conn.commit()
+                except Exception:
+                    pass
+
+            if "fin_budgets" in existing:
+                try:
+                    conn.execute(db.text("ALTER TABLE fin_budgets ALTER COLUMN account_code TYPE VARCHAR(255)"))
+                    conn.commit()
+                except Exception:
+                    pass
+
             for tbl in ["fin_item_balances", "fin_item_movements", "fin_channel_sales"]:
                 if tbl in existing:
                     cols = [c["name"] for c in insp.get_columns(tbl)]
