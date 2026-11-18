@@ -4622,16 +4622,21 @@ def foodics_hub():
     # إحصائيات أصناف فوديكس المعتمدة (استبعاد الأصناف المحذوفة في فوديكس وبن المحمصة المستقل)
     foodics_items_base = Item.query.filter(
         Item.sync_status != 'deleted_in_foodics',
-        ~Item.sku.startswith('GB'),
-        ~Item.sku.startswith('RB')
+        ~Item.sku.ilike('%GB%'),
+        ~Item.sku.ilike('%RB%')
     )
     items_total = foodics_items_base.count()
     items_mapped = foodics_items_base.filter(Item.foodics_id.isnot(None)).count()
 
     # تفصيل الأصناف للشفافية وتسهيل المراجعة
     deleted_in_foodics_count = Item.query.filter_by(sync_status='deleted_in_foodics').count()
-    coffee_roastery_count = Item.query.filter(db.or_(Item.sku.startswith('GB'), Item.sku.startswith('RB'))).count()
-    unmapped_items_list = Item.query.filter(Item.foodics_id.is_(None)).all()
+    coffee_roastery_count = Item.query.filter(db.or_(Item.sku.ilike('%GB%'), Item.sku.ilike('%RB%'))).count()
+    # استبعاد أصناف قسم المحمصة والبن (GB/RB) نهائياً من قائمة فوديكس لأنها قسم داخلي مستقل لا يتبع فوديكس
+    unmapped_items_list = Item.query.filter(
+        Item.foodics_id.is_(None),
+        ~Item.sku.ilike('%GB%'),
+        ~Item.sku.ilike('%RB%')
+    ).all()
 
     suppliers_total = Supplier.query.count()
     suppliers_mapped = Supplier.query.filter(Supplier.foodics_id.isnot(None)).count()
@@ -4847,7 +4852,18 @@ def foodics_webhook():
         if not payload:
             return jsonify({"status": "error", "message": "No JSON payload provided"}), 400
 
-        # استخراج بيانات الصنف بحسب نوع بنية حدث فوديكس
+        # 1. التحقق إذا كان الحدث يخص مشتريات أو حركات مخزون واردة من فوديكس
+        event_name = str(payload.get("event") or payload.get("type") or payload.get("action") or "").lower()
+        if any(k in event_name for k in ["purchase", "transaction"]):
+            token = SystemSetting.get_val("foodics_token")
+            base_url = SystemSetting.get_val("foodics_base_url")
+            ok, p_msg = sq.sync_purchases_from_foodics(token, base_url)
+            return jsonify({
+                "status": "success" if ok else "error",
+                "message": f"تم استلام إشعار مشتريات فوديكس وتحديث التنبيهات: {p_msg}"
+            }), 200
+
+        # 2. استخراج ومعالجة بيانات الصنف/مادة المخزون وتوليد التنبيه
         item_data = None
         if isinstance(payload, dict):
             if "data" in payload and isinstance(payload["data"], dict):

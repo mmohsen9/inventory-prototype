@@ -892,8 +892,8 @@ def process_foodics_item_payload(item_data, trigger_notification=True):
 
 
 
-        # إذا كان الصنف مربوطاً بمورد بالفعل، يتم تعليمه كمقروء تلقائياً لعدم إزعاجه في الجرس
-        is_read_flag = True if has_supplier else False
+        # إشعار الصنف الجديد يظل غير مقروء دائماً ليظهر في جرس التنبيهات برقم أحمر فور إضافته
+        is_read_flag = False
 
         notif = Notification(
             title=f"تمت إضافة مادة مخزون جديدة من فوديكس ({title_tag}) 📦",
