@@ -1907,11 +1907,23 @@ def get_dashboard_summary(year: int, month: Optional[int] = None) -> Dict[str, A
 
 def get_pnl_statement_table(year: int, month: Optional[int] = None, branch: str = "Total") -> Dict[str, Any]:
     """إعداد جدول قائمة الدخل التفصيلي المبوب بالحسابات والتصنيفات والنسب."""
-    q = FinMonthlyPnl.query.filter_by(year=year, branch=branch)
-    if month and month > 0:
-        q = q.filter_by(month=month)
+    effective_branch = branch if branch and branch not in ("all", "كل الفروع") else "Total"
+    is_branch_annual = False
 
-    records = q.all()
+    if effective_branch != "Total":
+        branch_records = FinMonthlyPnl.query.filter_by(year=year, branch=effective_branch).all()
+        # إذا تم اختيار شهر، نتحقق مما إذا كان للفرع تفصيل شهري أم سنوي فقط
+        if month and month > 0 and any(r.month == month for r in branch_records):
+            records = [r for r in branch_records if r.month == month]
+        else:
+            records = branch_records
+            if month and month > 0 and branch_records:
+                is_branch_annual = True
+    else:
+        q = FinMonthlyPnl.query.filter_by(year=year, branch="Total")
+        if month and month > 0:
+            q = q.filter_by(month=month)
+        records = q.all()
 
     grouped = {
         "Trading Income": {"title": "الإيرادات التشغيلية (Trading Income)", "accounts": {}, "total": 0.0},
@@ -1935,7 +1947,8 @@ def get_pnl_statement_table(year: int, month: Optional[int] = None, branch: str 
     return {
         "year": year,
         "month": month,
-        "branch": branch,
+        "branch": effective_branch,
+        "is_branch_annual": is_branch_annual,
         "sections": grouped,
         "summary": {
             "total_revenue": round(total_revenue, 2),
@@ -3586,34 +3599,59 @@ def get_channel_sales_data(year: int = 2026, month: int = 0, branch: str = "all"
         })
 
     # تفصيل مبيعات الفروع ومقارنتها بفوديكس بعد الخصم مع تطبيع مسميات الفروع
+    EXCLUDED_BRANCHES = {"Green Coffee", "Roasted Coffee", "المحمص", "بن أخضر", "بن محمص", "Total"}
     branch_dict = {}
+
+    # 1. إدراج فروع فوديكس الرسمية من جدول مبيعات الفروع (FinBranchSales) أولاً
+    fb_q = FinBranchSales.query.filter_by(year=year)
+    if month and month > 0:
+        fb_q = fb_q.filter_by(month=month)
+    foodics_rows = fb_q.all()
+
+    for fr in foodics_rows:
+        b_name = fr.branch_name or ""
+        if any(ex.lower() in b_name.lower() for ex in EXCLUDED_BRANCHES):
+            continue
+        b_norm = normalize_findash_branch_name(b_name)
+        if branch and branch != "all":
+            selected_norm = normalize_findash_branch_name(branch)
+            if b_norm != selected_norm and b_name != branch:
+                continue
+        if b_norm not in branch_dict:
+            branch_dict[b_norm] = {"branch": b_norm, "apps_amount": 0.0, "orders": 0, "foodics_gross": 0.0, "foodics_net": 0.0}
+        branch_dict[b_norm]["foodics_gross"] += (fr.net_sales or fr.gross_sales or 0.0)
+
+    # 2. في حال عدم وجود فروع فوديكس بجدول FinBranchSales، جلبها من PnL مع استبعاد المحمص والبن
+    if not foodics_rows:
+        pnl_q = FinMonthlyPnl.query.filter(
+            FinMonthlyPnl.year == year,
+            FinMonthlyPnl.branch != "Total",
+            FinMonthlyPnl.category == "Trading Income",
+        )
+        if month and month > 0:
+            pnl_q = pnl_q.filter(FinMonthlyPnl.month == month)
+        for bp in pnl_q.all():
+            if any(ex.lower() in (bp.branch or "").lower() for ex in EXCLUDED_BRANCHES):
+                continue
+            b_norm = normalize_findash_branch_name(bp.branch)
+            if branch and branch != "all":
+                selected_norm = normalize_findash_branch_name(branch)
+                if b_norm != selected_norm and bp.branch != branch:
+                    continue
+            if b_norm not in branch_dict:
+                branch_dict[b_norm] = {"branch": b_norm, "apps_amount": 0.0, "orders": 0, "foodics_gross": 0.0, "foodics_net": 0.0}
+            branch_dict[b_norm]["foodics_gross"] += bp.amount
+
+    # 3. احتساب مبيعات التطبيقات المخصومة لكل فرع
     for r in records:
         b_raw = r.branch or "كل الفروع"
+        if any(ex.lower() in b_raw.lower() for ex in EXCLUDED_BRANCHES):
+            continue
         b_norm = normalize_findash_branch_name(b_raw) if b_raw != "كل الفروع" else "كل الفروع"
         if b_norm not in branch_dict:
             branch_dict[b_norm] = {"branch": b_norm, "apps_amount": 0.0, "orders": 0, "foodics_gross": 0.0, "foodics_net": 0.0}
         branch_dict[b_norm]["apps_amount"] += r.amount
         branch_dict[b_norm]["orders"] += r.orders_count
-
-    # جلب مبيعات فوديكس لكل فرع مع التصفية بالشهر والفرع
-    pnl_q = FinMonthlyPnl.query.filter(
-        FinMonthlyPnl.year == year,
-        FinMonthlyPnl.branch != "Total",
-        FinMonthlyPnl.category == "Trading Income",
-    )
-    if month and month > 0:
-        pnl_q = pnl_q.filter(FinMonthlyPnl.month == month)
-    pnl_branches = pnl_q.all()
-
-    for bp in pnl_branches:
-        b_norm = normalize_findash_branch_name(bp.branch)
-        if branch and branch != "all":
-            selected_norm = normalize_findash_branch_name(branch)
-            if b_norm != selected_norm and bp.branch != branch:
-                continue
-        if b_norm not in branch_dict:
-            branch_dict[b_norm] = {"branch": b_norm, "apps_amount": 0.0, "orders": 0, "foodics_gross": 0.0, "foodics_net": 0.0}
-        branch_dict[b_norm]["foodics_gross"] += bp.amount
 
     branch_breakdown = []
     for b_item in branch_dict.values():
@@ -3635,7 +3673,10 @@ def get_channel_sales_data(year: int = 2026, month: int = 0, branch: str = "all"
     avail_years = sorted(list(set([y[0] for y in years_avail] + [2026, 2025, 2024])), reverse=True)
 
     branches_avail = db.session.query(FinMonthlyPnl.branch).distinct().all()
-    avail_branches = ["all"] + [b[0] for b in branches_avail if b[0] and b[0] != "Total"]
+    avail_branches = ["all"] + [
+        b[0] for b in branches_avail 
+        if b[0] and b[0] != "Total" and not any(ex.lower() in b[0].lower() for ex in EXCLUDED_BRANCHES)
+    ]
 
     return {
         "year": year,

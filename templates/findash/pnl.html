@@ -46,6 +46,15 @@
     </div>
 </form>
 
+{% if pnl_data.is_branch_annual %}
+<div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+    <span style="font-size: 20px;">🏢</span>
+    <div style="font-size: 13px; font-weight: 700; color: #1e40af;">
+        يتم الآن عرض أرباح وخسائر <strong>{{ pnl_data.branch }}</strong> السنوية المعتمدة لعام {{ pnl_data.year }} (وفق ملف مقارنة الفروع Compare Branches الرسمي).
+    </div>
+</div>
+{% endif %}
+
 {% if pnl_data.summary.total_revenue == 0 and pnl_data.summary.total_cogs == 0 and pnl_data.summary.total_expenses == 0 %}
 <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
     <div style="display: flex; align-items: center; gap: 12px;">

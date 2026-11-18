@@ -262,7 +262,12 @@ def balance_sheet():
     if month and month > 0:
         q = q.filter_by(month=month)
     figures = q.order_by(FinBalanceFigure.month.desc()).all()
-    latest = figures[0] if figures else None
+    if figures:
+        # تفضيل السجل الأكثر اكتمالاً (الذي يحتوي على خصوم متداولة معتمدة)
+        valid_figs = [f for f in figures if (f.current_liabilities or 0.0) != 0]
+        latest = valid_figs[0] if valid_figs else figures[0]
+    else:
+        latest = None
     available_years = AVAILABLE_FIN_YEARS
 
     # حساب نسب السيولة ديناميكياً لجميع الأعوام المتاحة لتغذية الرسم البياني

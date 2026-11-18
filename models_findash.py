@@ -67,21 +67,32 @@ class FinBalanceFigure(db.Model):
     @property
     def current_ratio(self) -> float:
         """نسبة التداول: الأصول المتداولة / الخصوم المتداولة."""
-        if self.current_liabilities and self.current_liabilities > 0:
-            return round(self.current_assets / self.current_liabilities, 2)
+        cl = self.current_liabilities or 0.0
+        ca = self.current_assets or 0.0
+        if cl > 0:
+            return round(ca / cl, 2)
+        elif cl < 0:
+            return round(ca / abs(cl), 2)
         return 0.0
 
     @property
     def quick_ratio(self) -> float:
         """نسبة السيولة السريعة: (الأصول المتداولة - المخزون) / الخصوم المتداولة."""
-        if self.current_liabilities and self.current_liabilities > 0:
-            return round((self.current_assets - self.inventory) / self.current_liabilities, 2)
+        cl = self.current_liabilities or 0.0
+        ca = self.current_assets or 0.0
+        inv = self.inventory or 0.0
+        if cl > 0:
+            return round((ca - inv) / cl, 2)
+        elif cl < 0:
+            return round((ca - inv) / abs(cl), 2)
         return 0.0
 
     @property
     def working_capital(self) -> float:
         """رأس المال العامل: الأصول المتداولة - الخصوم المتداولة."""
-        return round(self.current_assets - self.current_liabilities, 2)
+        ca = self.current_assets or 0.0
+        cl = self.current_liabilities or 0.0
+        return round(ca - cl, 2)
 
 
 class FinBranchSales(db.Model):
