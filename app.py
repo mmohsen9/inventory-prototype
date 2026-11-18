@@ -1023,6 +1023,7 @@ def cleanup_supplier_linked_notifications():
             Notification.query.filter(
                 Notification.type == "new_inventory_item",
                 Notification.is_read == False,
+                Notification.item_sku.isnot(None),
                 Notification.item_sku.notin_(coffee_skus)
             ).update({"is_read": True}, synchronize_session=False)
         else:
@@ -1032,6 +1033,28 @@ def cleanup_supplier_linked_notifications():
                 Notification.is_read == False,
                 Notification.item_sku.like("sk-%")
             ).update({"is_read": True}, synchronize_session=False)
+        # 4. تحديث وحل إشعارات سندات الاستلام المعلقة التي اعتُمدت أو رُحلت أو تم رفضها
+        from models import PurchaseTransaction
+        purchase_notifs = Notification.query.filter(
+            Notification.type == "purchase_pending_review",
+            Notification.related_id.isnot(None)
+        ).all()
+        for pn in purchase_notifs:
+            p = db.session.get(PurchaseTransaction, pn.related_id)
+            if p:
+                pn.has_supplier = True
+                pn.supplier_name = p.supplier_name
+                if not pn.item_sku:
+                    pn.item_sku = p.invoice_number or str(p.id)
+                if p.status in ["approved", "posted"]:
+                    pn.is_read = True
+                    if "بانتظار المراجعة" in (pn.title or ""):
+                        pn.title = f"سند استلام تم اعتماده ({p.invoice_number or p.id}) ✅"
+                elif p.status == "rejected":
+                    pn.is_read = True
+                    if "بانتظار المراجعة" in (pn.title or ""):
+                        pn.title = f"سند استلام مرفوض ({p.invoice_number or p.id}) ❌"
+
         db.session.commit()
     except Exception:
         db.session.rollback()
@@ -1049,12 +1072,12 @@ def get_unread_notifications_query(user=None):
     if coffee_skus:
         item_filter = db.and_(
             Notification.has_supplier == False,
-            Notification.item_sku.in_(coffee_skus)
+            db.or_(Notification.item_sku.in_(coffee_skus), Notification.item_sku.is_(None))
         )
     else:
         item_filter = db.and_(
             Notification.has_supplier == False,
-            Notification.item_sku.not_like("sk-%")
+            db.or_(Notification.item_sku.not_like("sk-%"), Notification.item_sku.is_(None))
         )
 
     q = Notification.query.filter_by(is_read=False).filter(
@@ -2596,6 +2619,11 @@ def purchase_new():
             if path:
                 attachments.append(path)
 
+        # المرفق التلقائي من مسح الذكاء الاصطناعي إن وُجد
+        ai_attached_file = request.form.get("ai_attached_file")
+        if ai_attached_file and ai_attached_file not in attachments:
+            attachments.append(ai_attached_file)
+
         purchase = PurchaseTransaction(
             location_id=location_id,
             supplier_name=supplier,
@@ -2608,6 +2636,39 @@ def purchase_new():
         db.session.add(purchase)
         db.session.commit()
 
+        # إدراج بنود الأصناف المستخرجة بالذكاء الاصطناعي تلقائياً في السند
+        ai_lines_raw = request.form.get("ai_parsed_lines_json")
+        added_ai_lines = 0
+        if ai_lines_raw:
+            try:
+                ai_lines = json.loads(ai_lines_raw)
+                for al in ai_lines:
+                    item_id = al.get("matched_item_id")
+                    if not item_id and al.get("matched_item_sku"):
+                        matched_it = Item.query.filter_by(sku=al["matched_item_sku"]).first()
+                        if matched_it:
+                            item_id = matched_it.id
+
+                    if item_id:
+                        qty = float(al.get("normalized_quantity") or al.get("quantity") or 0.0)
+                        cost = float(al.get("normalized_unit_price") or al.get("unit_price") or 0.0)
+                        tax = float(al.get("tax_amount") or 0.0)
+                        tot = float(al.get("total_price") or (qty * cost))
+                        if qty > 0:
+                            pline = PurchaseLine(
+                                purchase_id=purchase.id,
+                                item_id=int(item_id),
+                                quantity=qty,
+                                unit_cost=cost,
+                                notes="مستخرج تلقائياً بالذكاء الاصطناعي"
+                            )
+                            db.session.add(pline)
+                            added_ai_lines += 1
+                if added_ai_lines > 0:
+                    db.session.commit()
+            except Exception as _ai_line_err:
+                app.logger.warning(f"Error auto-populating AI lines in purchase_new: {_ai_line_err}")
+
         if u.role == "branch_staff":
             loc_txt = purchase.location.name_ar if purchase.location else "الفرع"
             inv_txt = purchase.invoice_number or f"#{purchase.id}"
@@ -2616,12 +2677,18 @@ def purchase_new():
                 message=f"قام موظف الفرع {u.name} بإنشاء سند استلام جديد لمورد '{purchase.supplier_name}' في موقع '{loc_txt}' ويحتاج للمراجعة.",
                 type="purchase_pending_review",
                 related_id=purchase.id,
+                item_sku=purchase.invoice_number or f"#{purchase.id}",
+                has_supplier=True,
+                supplier_name=purchase.supplier_name,
                 is_read=False
             )
             db.session.add(notif)
             db.session.commit()
 
-        flash("تم إنشاء مسودة سند الاستلام بنجاح، يمكنك الآن إضافة الأصناف", "success")
+        if added_ai_lines > 0:
+            flash(f"🎉 تم إنشاء سند الاستلام وإدراج {added_ai_lines} صنف تلقائياً بالذكاء الاصطناعي مع إرفاق الفاتورة بنجاح!", "success")
+        else:
+            flash("تم إنشاء مسودة سند الاستلام بنجاح، يمكنك الآن إضافة الأصناف", "success")
         return redirect(url_for("purchase_edit", purchase_id=purchase.id))
 
     loc_id_arg = request.args.get("location_id")
@@ -2975,6 +3042,9 @@ def purchase_edit(purchase_id):
                     message=f"قام {u.name} بإرسال سند استلام لمورد '{purchase.supplier_name}' لفرع '{loc_txt}' بإجمالي {purchase.total_amount:,.2f} ر.س بانتظار تدقيقكم واعتماده للاستلام.",
                     type="purchase_pending_review",
                     related_id=purchase.id,
+                    item_sku=purchase.invoice_number or f"#{purchase.id}",
+                    has_supplier=True,
+                    supplier_name=purchase.supplier_name,
                     is_read=False
                 )
                 db.session.add(notif)
@@ -3163,6 +3233,16 @@ def purchase_review(purchase_id):
             )
 
         purchase.status = "approved"
+        # تحديث وإغلاق إشعارات المراجعة المعلقة للسند
+        Notification.query.filter_by(
+            type="purchase_pending_review",
+            related_id=purchase.id
+        ).update({
+            "is_read": True,
+            "title": f"سند استلام تم اعتماده ({purchase.invoice_number or purchase.id}) ✅",
+            "has_supplier": True,
+            "supplier_name": purchase.supplier_name
+        }, synchronize_session=False)
         db.session.commit()
         sq.enqueue("purchase", purchase.id)
         flash("تم اعتماد سند الاستلام وتحديث أرصدة المخزن وإدراجه في طابور الترحيل لفوديكس", "success")
@@ -3170,6 +3250,15 @@ def purchase_review(purchase_id):
     elif action == "reject":
         purchase.status = "rejected"
         purchase.reject_reason = request.form.get("reason", "مرفوضة من قبل الإدارة المالية")
+        Notification.query.filter_by(
+            type="purchase_pending_review",
+            related_id=purchase.id
+        ).update({
+            "is_read": True,
+            "title": f"سند استلام تم رفضه ({purchase.invoice_number or purchase.id}) ❌",
+            "has_supplier": True,
+            "supplier_name": purchase.supplier_name
+        }, synchronize_session=False)
         db.session.commit()
         flash("تم رفض الفاتورة وإعادتها", "warning")
 
@@ -3238,6 +3327,15 @@ def purchase_bulk_approve():
             )
 
         p.status = "approved"
+        Notification.query.filter_by(
+            type="purchase_pending_review",
+            related_id=p.id
+        ).update({
+            "is_read": True,
+            "title": f"سند استلام تم اعتماده ({p.invoice_number or p.id}) ✅",
+            "has_supplier": True,
+            "supplier_name": p.supplier_name
+        }, synchronize_session=False)
         sq.enqueue("purchase", p.id)
         approved_count += 1
         if p.location:
@@ -5318,6 +5416,20 @@ def api_parse_invoice():
         
         invoice_data = extract_invoice_from_image(file_bytes, mime_type)
 
+        # حفظ نسخة من الملف تلقائياً لربطها كمرفق رسمي للسند دون الحاجة لإعادة رفعه
+        try:
+            import uuid
+            ext = os.path.splitext(file.filename)[1].lower() or ".jpg"
+            saved_filename = f"ai_scan_{uuid.uuid4().hex[:12]}{ext}"
+            save_dir = os.path.join(app.root_path, "static", "uploads", "purchases_temp")
+            os.makedirs(save_dir, exist_ok=True)
+            full_save_path = os.path.join(save_dir, saved_filename)
+            with open(full_save_path, "wb") as f_out:
+                f_out.write(file_bytes)
+            invoice_data["attached_file_path"] = f"/static/uploads/purchases_temp/{saved_filename}"
+        except Exception as _f_err:
+            invoice_data["attached_file_path"] = None
+
         # 1. مطابقة ذكية لاسم المورد باستخدام دالة النظام find_supplier_by_name
         raw_supp = (invoice_data.get("supplier_name") or "").strip()
         matched_supplier = find_supplier_by_name(raw_supp) if raw_supp else None
@@ -5337,7 +5449,7 @@ def api_parse_invoice():
         invoice_data["matched_location_id"] = matched_location.id if matched_location else None
         invoice_data["matched_location_name"] = matched_location.name_ar if matched_location else None
 
-        # 3. مطابقة ذكية للأصناف مع حقول جدول Item الفعلية (sku, barcode, name_ar, name_en)
+        # 3. مطابقة ذكية للأصناف وتطبيق قاعدة تطبيع وحدات القياس (Unit Normalization)
         all_items = Item.query.all()
         for line in invoice_data.get("items", []):
             raw_name = normalize_arabic(line.get("item_name") or "")
@@ -5353,18 +5465,108 @@ def api_parse_invoice():
                 if raw_code and (raw_code == db_sku or raw_code == db_bar):
                     matched_item = db_item
                     break
-                if raw_name and ((db_ar and (db_ar in raw_name or raw_name in db_ar)) or (db_en and db_en in raw_name)):
+                if raw_name and len(raw_name) >= 3 and ((db_ar and (db_ar in raw_name or raw_name in db_ar)) or (db_en and db_en in raw_name)):
                     matched_item = db_item
                     break
 
-            line["matched_item_id"] = matched_item.id if matched_item else None
-            line["matched_item_sku"] = matched_item.sku if matched_item else None
-            line["matched_item_name"] = matched_item.name_ar if matched_item else line.get("item_name")
+            raw_qty = float(line.get("quantity") or 0.0)
+            raw_price = float(line.get("unit_price") or 0.0)
+            raw_unit = (line.get("unit") or "").strip().lower()
+
+            norm_qty = raw_qty
+            norm_price = raw_price
+
+            if matched_item:
+                # تطبيق قاعدة تطبيع وحدات القياس للعبوات والتعبئة التلقائية (كرتون / لتر / مل / حبة)
+                if any(w in raw_unit for w in ["لتر", "ltr", "liter"]):
+                    m_liters = re.search(r"(\d+(?:\.\d+)?)\s*(?:لتر|ltr|liter)", raw_unit)
+                    liters = float(m_liters.group(1)) if m_liters else 1.0
+                    if (matched_item.storage_unit or "").lower() in ["ml", "مل", "ملل", "مليلتر"]:
+                        norm_qty = raw_qty * (liters * 1000.0)
+                        norm_price = raw_price / (liters * 1000.0) if norm_qty > 0 else raw_price
+                elif any(w in raw_unit for w in ["كرتون", "carton", "box"]):
+                    m_box = re.search(r"(\d+)\s*(?:حبة|قطعة|pcs|pc|حبات)", raw_unit)
+                    if m_box:
+                        pcs = float(m_box.group(1))
+                        if (matched_item.storage_unit or "").lower() in ["حبة", "قطعة", "pcs", "each"]:
+                            norm_qty = raw_qty * pcs
+                            norm_price = raw_price / pcs if pcs > 0 else raw_price
+
+                line["matched_item_id"] = matched_item.id
+                line["matched_item_sku"] = matched_item.sku
+                line["matched_item_name"] = matched_item.name_ar or matched_item.name_en
+                line["storage_unit"] = matched_item.storage_unit or line.get("unit")
+            else:
+                line["matched_item_id"] = None
+                line["matched_item_sku"] = None
+                line["matched_item_name"] = line.get("item_name")
+                line["storage_unit"] = line.get("unit")
+
+            line["normalized_quantity"] = round(norm_qty, 4)
+            line["normalized_unit_price"] = round(norm_price, 4)
 
         return jsonify({"status": "success", "data": invoice_data})
     except Exception as e:
         app.logger.error(f"AI Invoice Parse Error: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/purchases/<int:purchase_id>/ai-import-lines", methods=["POST"])
+@login_required
+def api_purchase_ai_import_lines(purchase_id):
+    """استيراد بنود الأصناف المستخرجة بالذكاء الاصطناعي مباشرة إلى سند استلام قائم بحالة مسودة."""
+    purchase = PurchaseTransaction.query.get_or_404(purchase_id)
+    if purchase.status not in ["draft"]:
+        return jsonify({"status": "error", "message": "لا يمكن استيراد بنود لسند معتمد أو مرحل"}), 400
+
+    payload = request.get_json(silent=True) or {}
+    items = payload.get("items", [])
+    attached_file = payload.get("attached_file_path")
+
+    if attached_file:
+        try:
+            current_att = json.loads(purchase.attachments or "[]") if purchase.attachments else []
+            if attached_file not in current_att:
+                current_att.append(attached_file)
+                purchase.attachments = json.dumps(current_att)
+        except Exception:
+            pass
+
+    if not items:
+        if attached_file:
+            db.session.commit()
+            return jsonify({"status": "success", "message": "تم إرفاق ملف الفاتورة بنجاح", "added_count": 0})
+        return jsonify({"status": "error", "message": "لم يتم إرسال أي أصناف للاستيراد"}), 400
+
+    added_count = 0
+    for itm in items:
+        item_id = itm.get("matched_item_id")
+        if not item_id and itm.get("matched_item_sku"):
+            db_it = Item.query.filter_by(sku=itm["matched_item_sku"]).first()
+            if db_it:
+                item_id = db_it.id
+
+        if item_id:
+            qty = float(itm.get("normalized_quantity") or itm.get("quantity") or 0.0)
+            cost = float(itm.get("normalized_unit_price") or itm.get("unit_price") or 0.0)
+            tax = float(itm.get("tax_amount") or 0.0)
+            tot = float(itm.get("total_price") or (qty * cost))
+            if qty > 0:
+                line = PurchaseLine(
+                    purchase_id=purchase.id,
+                    item_id=int(item_id),
+                    quantity=qty,
+                    unit_cost=cost,
+                    notes="مستورد بالذكاء الاصطناعي"
+                )
+                db.session.add(line)
+                added_count += 1
+
+    if added_count > 0:
+        db.session.commit()
+        return jsonify({"status": "success", "message": f"تم بنجاح إدراج {added_count} صنف في السند", "added_count": added_count})
+    else:
+        return jsonify({"status": "error", "message": "لم يتم مطابقة أي أصناف مسجلة في النظام لإضافتها"}), 400
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = not IS_PRODUCTION and (os.environ.get("FLASK_DEBUG", "1") == "1")

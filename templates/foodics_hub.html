@@ -403,14 +403,24 @@
         </div>
 
         <!-- Latest Received Notifications Log -->
-        <h4 style="font-size: 14px; font-weight: 800; color: #1e1b4b; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
-            <span>📋 سجل إشعارات مواد المخزون المستلمة مؤخراً</span>
-            <form method="POST" action="{{ url_for('api_notification_mark_all_read') }}" style="display: inline;">
-                <button type="submit" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 3px 8px;">
-                    ✓ تعليم الكل كمقروء
-                </button>
-            </form>
-        </h4>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+            <h4 style="font-size: 14px; font-weight: 800; color: #1e1b4b; margin: 0; display: flex; align-items: center; gap: 8px;">
+                <span>📋 سجل إشعارات مواد المخزون والعمليات المستلمة مؤخراً</span>
+            </h4>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="notif-filters" style="display: inline-flex; gap: 4px; background: #f1f5f9; padding: 3px; border-radius: 6px;">
+                    <button type="button" class="notif-filter-btn active" onclick="filterNotifs('all', this)" style="border: none; background: #fff; color: #1e293b; font-weight: 700; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">الكل</button>
+                    <button type="button" class="notif-filter-btn" onclick="filterNotifs('new_inventory_item', this)" style="border: none; background: transparent; color: #64748b; font-weight: 600; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer;">📦 مواد جديدة</button>
+                    <button type="button" class="notif-filter-btn" onclick="filterNotifs('purchase_pending_review', this)" style="border: none; background: transparent; color: #64748b; font-weight: 600; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer;">🛒 سندات الاستلام</button>
+                    <button type="button" class="notif-filter-btn" onclick="filterNotifs('foodics_sync', this)" style="border: none; background: transparent; color: #64748b; font-weight: 600; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer;">⚡ مزامنة فوديكس</button>
+                </div>
+                <form method="POST" action="{{ url_for('api_notification_mark_all_read') }}" style="display: inline;">
+                    <button type="submit" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 10px;">
+                        ✓ تعليم الكل كمقروء
+                    </button>
+                </form>
+            </div>
+        </div>
         <div class="table-responsive">
             <table class="data-table">
                 <thead>
@@ -419,40 +429,68 @@
                         <th>نوع الإشعار</th>
                         <th>عنوان الإشعار</th>
                         <th>التفاصيل والمحتوى</th>
-                        <th>كود الصنف (SKU)</th>
-                        <th>حالة ربط المورد</th>
+                        <th>كود الصنف / الرقم المرجعي</th>
+                        <th>حالة المورد</th>
                         <th>تاريخ ووقت الوصول</th>
                         <th>الحالة</th>
                         <th style="text-align: center;">الإجراء والمعالجة</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="notifsTableBody">
                     {% for notif in recent_notifications %}
-                    <tr style="{% if not notif.is_read %}background: #eff6ff; font-weight: 600;{% endif %}">
+                    <tr class="notif-row" data-type="{{ notif.type }}" style="{% if not notif.is_read %}background: #eff6ff; font-weight: 600;{% endif %}">
                         <td><strong>#{{ notif.id }}</strong></td>
                         <td>
-                            <span class="badge {% if notif.type == 'new_inventory_item' %}badge-approved{% else %}badge-draft{% endif %}">
-                                {{ 'مادة مخزون جديدة' if notif.type == 'new_inventory_item' else notif.type }}
+                            {% if notif.type == 'new_inventory_item' %}
+                            <span class="badge" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 700; font-size: 11px;">
+                                📦 مادة مخزون جديدة
                             </span>
+                            {% elif notif.type == 'purchase_pending_review' %}
+                            <span class="badge" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-weight: 700; font-size: 11px;">
+                                🛒 سند استلام مشتريات
+                            </span>
+                            {% elif notif.type == 'foodics_sync' %}
+                            <span class="badge" style="background: #fdf4ff; color: #86198f; border: 1px solid #f5d0fe; font-weight: 700; font-size: 11px;">
+                                ⚡ مزامنة فوديكس
+                            </span>
+                            {% else %}
+                            <span class="badge badge-draft" style="font-size: 11px;">
+                                {{ notif.type }}
+                            </span>
+                            {% endif %}
                         </td>
                         <td><strong>{{ notif.title }}</strong></td>
                         <td style="font-size: 12px; color: #334155;">{{ notif.message }}</td>
                         <td>
                             {% if notif.item_sku %}
                             <code>{{ notif.item_sku }}</code>
+                            {% elif notif.related_id and notif.type == 'purchase_pending_review' %}
+                            <span style="font-family: monospace; font-size: 11px; color: #1e40af; font-weight: 700; background: #dbeafe; padding: 2px 6px; border-radius: 4px;">سند #{{ notif.related_id }}</span>
                             {% else %}
                             -
                             {% endif %}
                         </td>
                         <td>
-                            {% if notif.has_supplier %}
-                            <span class="badge" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 700; font-size: 11px;">
-                                🤝 {{ notif.supplier_name }} ✅
-                            </span>
+                            {% if notif.type == 'new_inventory_item' %}
+                                {% if notif.has_supplier %}
+                                <span class="badge" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 700; font-size: 11px;">
+                                    🤝 {{ notif.supplier_name }} ✅
+                                </span>
+                                {% else %}
+                                <span class="badge" style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 700; font-size: 11px;">
+                                    ⚠️ غير مربوط بمورد
+                                </span>
+                                {% endif %}
+                            {% elif notif.type == 'purchase_pending_review' and (notif.supplier_name or notif.has_supplier) %}
+                                <span class="badge" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 700; font-size: 11px;">
+                                    🤝 {{ notif.supplier_name or 'مورد معتمد بالسند' }} ✅
+                                </span>
+                            {% elif notif.supplier_name %}
+                                <span class="badge" style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 700; font-size: 11px;">
+                                    🤝 {{ notif.supplier_name }}
+                                </span>
                             {% else %}
-                            <span class="badge" style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 700; font-size: 11px;">
-                                ⚠️ غير مربوط بمورد
-                            </span>
+                                <span style="color: var(--gray-400); font-size: 12px;">—</span>
                             {% endif %}
                         </td>
                         <td style="font-size: 12px; color: var(--gray-500);">{{ notif.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
@@ -460,14 +498,18 @@
                             {% if not notif.is_read %}
                             <span style="color: #2563eb; font-weight: 800;">🔵 جديد غير مقروء</span>
                             {% else %}
-                            <span style="color: var(--gray-400);">تمت القراءة</span>
+                            <span style="color: var(--gray-500); font-weight: 600;">تمت القراءة</span>
                             {% endif %}
                         </td>
                         <td style="text-align: center;">
-                            {% if notif.item_sku %}
+                            {% if notif.type == 'new_inventory_item' and notif.item_sku %}
                             <button type="button" class="btn btn-sm btn-primary" onclick="openResolveModal('{{ notif.item_sku }}', {{ notif.id }})" style="font-size: 11px; padding: 5px 12px; font-weight: 800; background: #4f46e5; border-color: #4f46e5; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
                                 ⚙️ معالجة وتعديل الصنف
                             </button>
+                            {% elif notif.type == 'purchase_pending_review' and notif.related_id %}
+                            <a href="{{ url_for('purchase_edit', purchase_id=notif.related_id) }}" class="btn btn-sm btn-secondary" style="font-size: 11px; padding: 5px 12px; font-weight: 800; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; text-decoration: none; border: 1px solid #2563eb; color: #2563eb; background: #eff6ff;">
+                                📄 عرض السند (#{{ notif.related_id }})
+                            </a>
                             {% else %}
                             -
                             {% endif %}
@@ -483,6 +525,29 @@
                 </tbody>
             </table>
         </div>
+        <script>
+        function filterNotifs(type, btn) {
+            document.querySelectorAll('.notif-filter-btn').forEach(b => {
+                b.style.background = 'transparent';
+                b.style.color = '#64748b';
+                b.style.fontWeight = '600';
+                b.style.boxShadow = 'none';
+            });
+            btn.style.background = '#fff';
+            btn.style.color = '#1e293b';
+            btn.style.fontWeight = '700';
+            btn.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
+
+            const rows = document.querySelectorAll('.notif-row');
+            rows.forEach(r => {
+                if (type === 'all' || r.getAttribute('data-type') === type) {
+                    r.style.display = '';
+                } else {
+                    r.style.display = 'none';
+                }
+            });
+        }
+        </script>
     </div>
 </div>
 

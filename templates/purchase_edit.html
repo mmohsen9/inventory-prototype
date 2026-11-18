@@ -163,6 +163,170 @@
         </div>
     </div>
 
+    {% if purchase.status == 'draft' %}
+    <!-- استيراد أصناف الفاتورة بالذكاء الاصطناعي -->
+    <div style="margin-bottom: 16px; background: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%); border: 1.5px dashed #3b82f6; border-radius: var(--radius-md); padding: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 18px;">🤖</span>
+                <div>
+                    <strong style="color: #1e40af; font-size: 14px; display: block;">مسح واستيراد بنود الفاتورة بالذكاء الاصطناعي (Google Gemini)</strong>
+                    <span style="font-size: 11px; color: #475569;">ارفع صورة الفاتورة أو PDF لاستخراج الأصناف ومطابقتها بمخزونك وإضافتها دفعة واحدة للسند.</span>
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-primary" onclick="toggleAiScanEditSection()" style="background: #2563eb; border-color: #2563eb; font-weight: 700; padding: 6px 14px;">
+                ✨ فتح مسح الفاتورة
+            </button>
+        </div>
+
+        <div id="ai_scan_edit_box" style="display: none; margin-top: 14px; border-top: 1px dashed #bfdbfe; padding-top: 12px;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;">
+                <input type="file" id="ai_edit_file_input" class="form-control" accept="image/*,application/pdf" style="flex: 1; min-width: 220px; background: white;">
+                <button type="button" id="btn_run_ai_edit_scan" class="btn btn-primary btn-sm" onclick="runAiScanOnEdit()" style="padding: 8px 18px; font-weight: 700; white-space: nowrap;">
+                    🚀 تحليل الفاتورة
+                </button>
+            </div>
+            <div id="ai_edit_status" style="display: none; padding: 8px 12px; background: #dbeafe; color: #1e40af; border-radius: 6px; font-size: 12px; font-weight: 700; margin-bottom: 10px;">
+                ⏳ جاري تحليل الفاتورة ومطابقة الأصناف وتطبيع الوحدات...
+            </div>
+            <div id="ai_edit_results_box" style="display: none; background: white; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                    <strong style="color: #1e3a8a; font-size: 13px;">الأصناف المستخرجة (<span id="ai_edit_count">0</span> صنف):</strong>
+                    <button type="button" id="btn_confirm_import_lines" class="btn btn-success btn-sm" onclick="confirmImportAiLines()" style="padding: 5px 14px; font-weight: 800;">
+                        📥 استيراد الأصناف المحددة إلى السند
+                    </button>
+                </div>
+                <div style="overflow-x: auto; max-height: 220px; overflow-y: auto;">
+                    <table class="table" style="font-size: 12px; width: 100%; margin-bottom: 0;">
+                        <thead>
+                            <tr style="background: #f8fafc;">
+                                <th style="width: 30px;"><input type="checkbox" id="ai_edit_select_all" checked onchange="toggleAllAiEditItems(this)"></th>
+                                <th>اسم الصنف في الفاتورة</th>
+                                <th>المطابقة في المخزون</th>
+                                <th>الكمية</th>
+                                <th>السعر</th>
+                                <th>الإجمالي</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ai_edit_tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let aiEditItems = [];
+    let aiEditAttachedPath = null;
+
+    function toggleAiScanEditSection() {
+        const box = document.getElementById('ai_scan_edit_box');
+        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function runAiScanOnEdit() {
+        const fileIn = document.getElementById('ai_edit_file_input');
+        const statusEl = document.getElementById('ai_edit_status');
+        const btn = document.getElementById('btn_run_ai_edit_scan');
+        const resultsBox = document.getElementById('ai_edit_results_box');
+        const tbody = document.getElementById('ai_edit_tbody');
+
+        if (!fileIn.files.length) {
+            alert('الرجاء اختيار صورة الفاتورة أو ملف PDF أولاً');
+            return;
+        }
+
+        const fd = new FormData();
+        fd.append('invoice_file', fileIn.files[0]);
+
+        statusEl.style.display = 'block';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/ai/parse-invoice', { method: 'POST', body: fd });
+            const json = await res.json();
+            if (json.status !== 'success') throw new Error(json.message || 'فشل تحليل الفاتورة');
+
+            aiEditItems = json.data.items || [];
+            aiEditAttachedPath = json.data.attached_file_path || null;
+            document.getElementById('ai_edit_count').textContent = aiEditItems.length;
+
+            tbody.innerHTML = '';
+            aiEditItems.forEach((itm, idx) => {
+                const tr = document.createElement('tr');
+                const isMatched = !!itm.matched_item_sku;
+                const matchBadge = isMatched
+                    ? `<span class="badge" style="background:#dcfce7;color:#15803d;font-size:11px;">✅ ${itm.matched_item_sku} - ${itm.matched_item_name || ''}</span>`
+                    : `<span class="badge" style="background:#fef3c7;color:#92400e;font-size:11px;">⚠️ غير مسجل بالنظام</span>`;
+
+                const qty = itm.normalized_quantity || itm.quantity || 0;
+                const unit = itm.storage_unit || itm.unit || '';
+                const price = itm.normalized_unit_price || itm.unit_price || 0;
+                const total = itm.total_price || (qty * price);
+
+                tr.innerHTML = `
+                    <td><input type="checkbox" class="ai-edit-check" data-idx="${idx}" ${isMatched ? 'checked' : ''}></td>
+                    <td><strong>${itm.item_name || '-'}</strong></td>
+                    <td>${matchBadge}</td>
+                    <td>${qty} ${unit}</td>
+                    <td>${Number(price).toFixed(2)}</td>
+                    <td>${Number(total).toFixed(2)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            resultsBox.style.display = 'block';
+        } catch (err) {
+            alert('❌ خطأ أثناء قراءة الفاتورة: ' + err.message);
+        } finally {
+            statusEl.style.display = 'none';
+            btn.disabled = false;
+        }
+    }
+
+    function toggleAllAiEditItems(master) {
+        document.querySelectorAll('.ai-edit-check').forEach(cb => { cb.checked = master.checked; });
+    }
+
+    async function confirmImportAiLines() {
+        const selected = [];
+        document.querySelectorAll('.ai-edit-check:checked').forEach(cb => {
+            const idx = parseInt(cb.getAttribute('data-idx'));
+            if (aiEditItems[idx]) selected.push(aiEditItems[idx]);
+        });
+
+        if (!selected.length) {
+            alert('يرجى تحديد صنف واحد على الأقل للاستيراد');
+            return;
+        }
+
+        const btn = document.getElementById('btn_confirm_import_lines');
+        btn.disabled = true;
+        btn.textContent = '⏳ جاري الاستيراد...';
+
+        try {
+            const res = await fetch('/api/purchases/{{ purchase.id }}/ai-import-lines', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    items: selected,
+                    attached_file_path: aiEditAttachedPath
+                })
+            });
+            const json = await res.json();
+            if (json.status !== 'success') throw new Error(json.message || 'تعذر استيراد الأصناف');
+
+            alert('✅ ' + json.message);
+            window.location.reload();
+        } catch (err) {
+            alert('❌ فشل استيراد الأصناف: ' + err.message);
+            btn.disabled = false;
+            btn.textContent = '📥 استيراد الأصناف المحددة إلى السند';
+        }
+    }
+    </script>
+    {% endif %}
+
     <!-- حقل قارئ الباركود الخارجي السريع -->
     <div style="margin-bottom: 16px; background: #faf5ff; padding: 12px; border-radius: var(--radius-md); border: 1px dashed #d8b4fe;">
         <label style="font-size: 13px; font-weight: 700; color: #6b21a8; display: block; margin-bottom: 4px;">

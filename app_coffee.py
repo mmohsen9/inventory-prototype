@@ -674,6 +674,12 @@ def green_stock():
     r = _require_login()
     if r: return r
 
+    try:
+        from coffee_importer import ensure_2026_coffee_items_and_balances
+        ensure_2026_coffee_items_and_balances()
+    except Exception:
+        pass
+
     gw = _get_green_warehouse()
     green_items = (
         CoffeeItem.query

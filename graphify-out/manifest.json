@@ -36,15 +36,15 @@
     "semantic_hash": ""
   },
   "app.py": {
-    "mtime": 1794928097.7096112,
-    "seen": 1794929513.141111,
-    "ast_hash": "e155713b3923b4f7c1f0970d02e4792d",
+    "mtime": 1794992583.2982795,
+    "seen": 1794992830.270986,
+    "ast_hash": "496ce87123f5d4c0f94764485a5e92f2",
     "semantic_hash": ""
   },
   "app_coffee.py": {
-    "mtime": 1794929285.3005087,
-    "seen": 1794929513.141111,
-    "ast_hash": "6e1062d612b9154a4f2cb0b4cc865011",
+    "mtime": 1794992063.6451633,
+    "seen": 1794992830.270986,
+    "ast_hash": "a63aab52f905d7315221791993f6ab42",
     "semantic_hash": ""
   },
   "backup_restore.py": {
@@ -72,9 +72,9 @@
     "semantic_hash": ""
   },
   "coffee_importer.py": {
-    "mtime": 1794929234.6373792,
-    "seen": 1794929513.1632686,
-    "ast_hash": "60372458ef608401234ad17d4939f32e",
+    "mtime": 1794992063.6582942,
+    "seen": 1794992830.2766902,
+    "ast_hash": "31b9eaa59ee5c917cf27ca723d29dd9a",
     "semantic_hash": ""
   },
   "coffee_seed_data.json": {
@@ -84,9 +84,9 @@
     "semantic_hash": ""
   },
   "coffee_xero.py": {
-    "mtime": 1794929211.0827465,
-    "seen": 1794929513.1638784,
-    "ast_hash": "e87daeaa555f259cb27ba6b6d858f3ef",
+    "mtime": 1794992063.65933,
+    "seen": 1794992830.2766902,
+    "ast_hash": "48b9d97ee62c43c793a1f8a2e1006cd8",
     "semantic_hash": ""
   },
   "foodics_oauth.py": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "docs/CHANGELOG.md": {
-    "mtime": 1794927828.2413604,
-    "seen": 1794929513.3640928,
-    "ast_hash": "67952d9533a003e83ea82fcba4e11c77",
+    "mtime": 1794992746.0674193,
+    "seen": 1794992830.4472497,
+    "ast_hash": "75afacf1332b424c8b0b54438f04541f",
     "semantic_hash": ""
   },
   "docs/DECISIONS.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": ""
   },
   "docs/HANDOFF.md": {
-    "mtime": 1794927828.9194572,
-    "seen": 1794929513.3640928,
-    "ast_hash": "fb5db0fb50deade4fde5b9519d97edbd",
+    "mtime": 1794992767.8178315,
+    "seen": 1794992830.4483154,
+    "ast_hash": "20560fc5920029397bbd1b27b14879d8",
     "semantic_hash": ""
   },
   "docs/IDEAS.md": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "requirements.txt": {
-    "mtime": 1791378167.677622,
-    "seen": 1792675987.3534918,
-    "ast_hash": "dab162175aa3bac24e90a03fdd088f07",
+    "mtime": 1794992054.042746,
+    "seen": 1794992830.4520664,
+    "ast_hash": "6dae61689cc1bd9e8e20d7162c320910",
     "semantic_hash": ""
   },
   "templates/accountant_review.html": {
@@ -522,9 +522,9 @@
     "semantic_hash": ""
   },
   "templates/base.html": {
-    "mtime": 1794819651.982425,
-    "seen": 1794819859.4434483,
-    "ast_hash": "6cfc6ce17d8745ad145417741cd1c854",
+    "mtime": 1794992063.7080817,
+    "seen": 1794992830.4531004,
+    "ast_hash": "6c66f8dda255d4d5eaf65dc975ff0859",
     "semantic_hash": ""
   },
   "templates/coffee/audit_log.html": {
@@ -666,8 +666,8 @@
     "semantic_hash": ""
   },
   "templates/coffee/xero_items_sync.html": {
-    "mtime": 1794929345.015704,
-    "seen": 1794929513.4153714,
+    "mtime": 1794929601.0790186,
+    "seen": 1794991588.9479704,
     "ast_hash": "515c1618f0bbb33af46dbb603f7e1bb4",
     "semantic_hash": ""
   },
@@ -702,9 +702,9 @@
     "semantic_hash": ""
   },
   "templates/foodics_hub.html": {
-    "mtime": 1794820410.6985495,
-    "seen": 1794820965.1574335,
-    "ast_hash": "f03638c89536542c7a07c9f4d78db021",
+    "mtime": 1794992063.7080817,
+    "seen": 1794992830.5164123,
+    "ast_hash": "4601dab178c5a21b8d0b62c7f81dad00",
     "semantic_hash": ""
   },
   "templates/login.html": {
@@ -720,15 +720,15 @@
     "semantic_hash": ""
   },
   "templates/purchase_edit.html": {
-    "mtime": 1794757990.2912295,
-    "seen": 1794758444.703845,
-    "ast_hash": "99005771f2932dc659e6f8402d7c8a8e",
+    "mtime": 1794992434.7778971,
+    "seen": 1794992830.51953,
+    "ast_hash": "db1a159c69dee95ceeabc20abf868590",
     "semantic_hash": ""
   },
   "templates/purchase_new.html": {
-    "mtime": 1794732760.919202,
-    "seen": 1794732973.542922,
-    "ast_hash": "c3247da3179a0f06c5c481d0f18a8588",
+    "mtime": 1794992417.0713902,
+    "seen": 1794992830.51953,
+    "ast_hash": "27d59cdbbb60b00cc00833b91e89cd55",
     "semantic_hash": ""
   },
   "templates/purchases_list.html": {
@@ -1839,6 +1839,18 @@
     "mtime": 1794922117.7958686,
     "seen": 1794923696.8671505,
     "ast_hash": "d2ce78f9571de3c84f6734f38ed03de5",
+    "semantic_hash": ""
+  },
+  "ai_service.py": {
+    "mtime": 1794992229.1761658,
+    "seen": 1794992830.270986,
+    "ast_hash": "47895e75f043b1234ad5122c90dbdc7b",
+    "semantic_hash": ""
+  },
+  "tests/test_ai_invoice_scanning.py": {
+    "mtime": 1794992694.8964322,
+    "seen": 1794992830.2925134,
+    "ast_hash": "035a6bcea55db4e532c06599dee5f945",
     "semantic_hash": ""
   }
 }

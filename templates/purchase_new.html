@@ -17,26 +17,66 @@
 
 <div class="card" style="max-width: 780px; margin: 0 auto;">
     <!-- أداة قراءة الفاتورة بالذكاء الاصطناعي -->
-    <div style="background: var(--gray-50); border: 1px dashed var(--primary); padding: 14px; border-radius: var(--radius-md); margin-bottom: 16px;">
-        <label style="display: block; font-weight: 700; margin-bottom: 8px; color: var(--primary);">
-            🤖 قراءة فاتورة المورد تلقائياً بالذكاء الاصطناعي (صورة أو PDF)
-        </label>
-        <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="file" id="ai_invoice_input" class="form-control" accept="image/*,application/pdf">
-            <button type="button" id="btn_scan_invoice" class="btn btn-primary" style="white-space: nowrap;" onclick="scanInvoiceWithAI()">
-                ✨ مسح وتعبئة السند
+    <div style="background: linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%); border: 1.5px dashed #3b82f6; padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <label style="display: flex; align-items: center; gap: 6px; font-weight: 800; color: #1e40af; margin-bottom: 0; font-size: 15px;">
+                🤖 قراءة فاتورة المورد تلقائياً بالذكاء الاصطناعي (صورة أو PDF)
+            </label>
+            <span style="font-size: 12px; background: #dbeafe; color: #1e40af; padding: 3px 10px; border-radius: 12px; font-weight: 700;">
+                مدعوم بنموذج Google Gemini
+            </span>
+        </div>
+        <p style="font-size: 12px; color: #475569; margin: 0 0 12px 0;">
+            ارفع صورة الفاتورة أو ملف PDF؛ سيقوم الذكاء الاصطناعي باستخراج اسم المورد، رقم الفاتورة، التاريخ، وجميع بنود الأصناف ومطابقتها بمخزونك وتطبيع الوحدات تلقائياً.
+        </p>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <input type="file" id="ai_invoice_input" class="form-control" accept="image/*,application/pdf" style="flex: 1; min-width: 220px; background: white;">
+            <button type="button" id="btn_scan_invoice" class="btn btn-primary" style="white-space: nowrap; padding: 10px 20px; font-weight: 700; background: #2563eb; border-color: #2563eb;" onclick="scanInvoiceWithAI()">
+                ✨ مسح وتعبئة السند آلياً
             </button>
         </div>
-        <small id="ai_scan_status" style="display: none; margin-top: 8px; color: var(--primary); font-weight: 600;">
-            ⏳ جاري تحليل الفاتورة واستخراج الأصناف والأسعار...
-        </small>
+        <div id="ai_scan_status" style="display: none; margin-top: 12px; padding: 10px 14px; background: #eff6ff; border-radius: 8px; color: #1e40af; font-size: 13px; font-weight: 700;">
+            <span style="display: inline-block; animation: pulse 1.5s infinite;">⏳</span> جاري تحليل الفاتورة واستخراج المورد، الأصناف، والأسعار بدقة...
+        </div>
+
+        <!-- بطاقة معاينة الأصناف المستخرجة بالذكاء الاصطناعي -->
+        <div id="ai_items_preview_box" style="display: none; margin-top: 16px; background: white; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 6px;">
+                <h5 style="margin: 0; color: #1e3a8a; font-size: 14px; font-weight: 800;">
+                    📋 بنود الأصناف المستخرجة من الفاتورة (<span id="ai_items_count">0</span> صنف)
+                </h5>
+                <span id="ai_invoice_meta" style="font-size: 12px; color: #047857; font-weight: 700;"></span>
+            </div>
+            <div style="overflow-x: auto; max-height: 260px; overflow-y: auto;">
+                <table class="table" style="font-size: 12px; width: 100%; margin-bottom: 0;">
+                    <thead>
+                        <tr style="background: #f8fafc;">
+                            <th style="width: 32px;"><input type="checkbox" id="ai_select_all" checked onchange="toggleAllAiItems(this)"></th>
+                            <th>الصنف في الفاتورة</th>
+                            <th>المطابقة في النظام</th>
+                            <th>الكمية والوحدة</th>
+                            <th>السعر</th>
+                            <th>الإجمالي</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ai_items_tbody"></tbody>
+                </table>
+            </div>
+            <div style="margin-top: 10px; padding: 8px 12px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; font-size: 12px; color: #065f46; font-weight: 600;">
+                💡 الأصناف المؤشر عليها أعلاه ستُدرج تلقائياً في السند فور الضغط على زر "متابعة وإضافة الأصناف" بالأسفل، وسيتم إرفاق ملف الفاتورة تلقائياً.
+            </div>
+        </div>
     </div>
 
     <script>
+    let extractedAiItems = [];
+
     async function scanInvoiceWithAI() {
         const fileInput = document.getElementById('ai_invoice_input');
         const statusEl = document.getElementById('ai_scan_status');
         const btnEl = document.getElementById('btn_scan_invoice');
+        const previewBox = document.getElementById('ai_items_preview_box');
+        const tbody = document.getElementById('ai_items_tbody');
 
         if (!fileInput.files.length) {
             alert('الرجاء اختيار صورة الفاتورة أو ملف PDF أولاً');
@@ -59,7 +99,7 @@
 
             const data = json.data;
 
-            // 1. تعبئة اسم المورد في حقل supplier_name
+            // 1. تعبئة المورد
             const suppInput = document.getElementById('supplier_name');
             if (suppInput) {
                 suppInput.value = data.matched_supplier_name || data.supplier_name || '';
@@ -67,16 +107,64 @@
                 suppInput.dispatchEvent(new Event('change', { bubbles: true }));
             }
 
-            // 2. تعبئة رقم فاتورة المورد
-            const invInput = document.querySelector('[name="supplier_invoice_no"], [name="invoice_number"], [name="reference_no"], #supplier_invoice_no, #invoice_number');
+            // 2. تعبئة رقم الفاتورة
+            const invInput = document.getElementById('invoice_number');
             if (invInput && data.invoice_number) invInput.value = data.invoice_number;
 
             // 3. تعبئة تاريخ الفاتورة
-            const dateInput = document.querySelector('[name="receipt_date"], [name="transaction_date"], [name="date"], input[type="date"]');
+            const dateInput = document.getElementById('invoice_date');
             if (dateInput && data.invoice_date) dateInput.value = data.invoice_date;
 
-            console.log('البيانات المستخرجة من الفاتورة:', data);
-            alert(`✅ تم قراءة الفاتورة (${data.invoice_number || 'بدون رقم'}) واستخراج ${data.items.length} أصناف بنجاح!`);
+            // 4. تعبئة الفرع المستلم إن وجد وكان متاحاً
+            if (data.matched_location_id) {
+                const locSelect = document.getElementById('location_id');
+                if (locSelect) {
+                    for (let opt of locSelect.options) {
+                        if (opt.value == data.matched_location_id) {
+                            locSelect.value = data.matched_location_id;
+                            locSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 5. حفظ مسار المرفق التلقائي في الحقل المخفي
+            document.getElementById('ai_attached_file').value = data.attached_file_path || '';
+
+            // 6. عرض جدول المعاينة للأصناف المستخرجة
+            extractedAiItems = data.items || [];
+            document.getElementById('ai_items_count').textContent = extractedAiItems.length;
+            const totalText = data.total_amount ? ` | الإجمالي: ${data.total_amount} ر.س` : '';
+            document.getElementById('ai_invoice_meta').textContent = `الفاتورة: ${data.invoice_number || '-'} (${data.invoice_date || '-'})${totalText}`;
+
+            tbody.innerHTML = '';
+            extractedAiItems.forEach((item, idx) => {
+                const tr = document.createElement('tr');
+                const isMatched = !!item.matched_item_sku;
+                const matchBadge = isMatched
+                    ? `<span class="badge" style="background:#dcfce7;color:#15803d;font-size:11px;">✅ ${item.matched_item_sku} - ${item.matched_item_name || ''}</span>`
+                    : `<span class="badge" style="background:#fef3c7;color:#92400e;font-size:11px;">⚠️ صنف جديد</span>`;
+
+                const qty = item.normalized_quantity || item.quantity || 0;
+                const unit = item.storage_unit || item.unit || '';
+                const price = item.normalized_unit_price || item.unit_price || 0;
+                const total = item.total_price || (qty * price);
+
+                tr.innerHTML = `
+                    <td><input type="checkbox" class="ai-item-check" data-index="${idx}" ${isMatched ? 'checked' : ''} onchange="updateSelectedAiItemsJson()"></td>
+                    <td><strong>${item.item_name || '-'}</strong></td>
+                    <td>${matchBadge}</td>
+                    <td>${qty} ${unit}</td>
+                    <td>${Number(price).toFixed(2)}</td>
+                    <td>${Number(total).toFixed(2)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            previewBox.style.display = 'block';
+            updateSelectedAiItemsJson();
+
         } catch (err) {
             alert('❌ خطأ أثناء قراءة الفاتورة: ' + err.message);
         } finally {
@@ -84,9 +172,29 @@
             btnEl.disabled = false;
         }
     }
+
+    function toggleAllAiItems(master) {
+        document.querySelectorAll('.ai-item-check').forEach(cb => {
+            cb.checked = master.checked;
+        });
+        updateSelectedAiItemsJson();
+    }
+
+    function updateSelectedAiItemsJson() {
+        const selected = [];
+        document.querySelectorAll('.ai-item-check:checked').forEach(cb => {
+            const idx = parseInt(cb.getAttribute('data-index'));
+            if (extractedAiItems[idx]) {
+                selected.push(extractedAiItems[idx]);
+            }
+        });
+        document.getElementById('ai_parsed_lines_json').value = JSON.stringify(selected);
+    }
     </script>
 
     <form method="POST" enctype="multipart/form-data">
+        <input type="hidden" id="ai_attached_file" name="ai_attached_file" value="">
+        <input type="hidden" id="ai_parsed_lines_json" name="ai_parsed_lines_json" value="">
         <div class="form-grid">
             <!-- حقل المورد مع إمكانية البحث والإضافة السريعة -->
             <div class="form-group" style="grid-column: 1 / -1;">

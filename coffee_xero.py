@@ -2075,9 +2075,23 @@ def fetch_xero_items_diff(only_with_stock: bool = False) -> dict:
             c_type = "green"
             p = "GB"
 
-        # استخراج الاسم العربي النظيف إن وُجد بعد الشرطة
-        parts = name.split("-", 1)
-        name_ar = parts[1].strip() if len(parts) > 1 else name
+        # استخراج الاسم العربي النظيف
+        has_ar_in_code = bool(re.search(r"[\u0600-\u06FF]", code))
+        has_ar_in_name = bool(re.search(r"[\u0600-\u06FF]", name))
+        has_ar_in_desc = bool(re.search(r"[\u0600-\u06FF]", desc))
+
+        if has_ar_in_code and "-" in code:
+            name_ar = code.split("-", 1)[1].strip()
+        elif has_ar_in_name:
+            parts = name.split("-", 1)
+            name_ar = parts[1].strip() if len(parts) > 1 and re.search(r"[\u0600-\u06FF]", parts[1]) else name
+        elif has_ar_in_desc:
+            parts = desc.split("-", 1)
+            name_ar = parts[1].strip() if len(parts) > 1 and re.search(r"[\u0600-\u06FF]", parts[1]) else desc
+        else:
+            parts = name.split("-", 1)
+            name_ar = parts[1].strip() if len(parts) > 1 else name
+
         name_en = name or name_ar
 
         # قراءة الأسعار
@@ -2090,16 +2104,20 @@ def fetch_xero_items_diff(only_with_stock: bool = False) -> dict:
         qoh = float(it.get("QuantityOnHand") or 0.0)
         is_tracked = bool(it.get("IsTrackedAsInventory"))
 
-        # استنتاج وزن الخيشة إن وجد في النص (مثل 60k أو 30k) أو الافتراضي 60 للأخضر
+        # استنتاج وزن الخيشة إن وجد في النص (مثل 60k أو 30k أو bags30)
         sack_weight = 60.0 if c_type == "green" else 0.0
-        m_sack = re.search(r"(\d+)\s*(?:kg|k|كجم|كيلو)", name, re.IGNORECASE)
-        if m_sack and c_type == "green":
-            try:
-                sw = float(m_sack.group(1))
-                if 10.0 <= sw <= 100.0:
-                    sack_weight = sw
-            except ValueError:
-                pass
+        combined_text = f"{name} {desc} {code}".lower()
+        if any(w in combined_text for w in ["bag30", "bags30", "30k", "30 كجم", "30ك"]):
+            sack_weight = 30.0
+        else:
+            m_sack = re.search(r"(\d+)\s*(?:kg|k|كجم|كيلو)", name, re.IGNORECASE)
+            if m_sack and c_type == "green":
+                try:
+                    sw = float(m_sack.group(1))
+                    if 10.0 <= sw <= 100.0:
+                        sack_weight = sw
+                except ValueError:
+                    pass
 
         has_green_pair = (c_type == "roasted") and bool(b and b.strip().upper() in existing_green_bases)
 
@@ -2139,10 +2157,19 @@ def fetch_xero_items_diff(only_with_stock: bool = False) -> dict:
 def import_xero_items(selected_items: list, user_id=None) -> dict:
     """
     يستورد الأصناف المحددة من Xero، وينشئ لها سجلات Item و CoffeeItem،
+    ويسجل الأرصدة الافتتاحية في مستودع البن الأخضر أو المحمص،
     ويربط آلياً بين صنف البن الأخضر والمحمص المقابل إن وجد.
     """
-    from models import db, Item
+    from models import db, Item, Location, StockBalance, StockMovement
     from models_coffee import CoffeeItem, CoffeeItemLink, log_coffee_audit
+
+    gw = Location.query.filter_by(name_ar="مستودع البن الأخضر").first()
+    if not gw:
+        gw = Location.query.filter(Location.name_ar.like("%أخضر%") | Location.name_ar.like("%اخضر%")).first()
+
+    rw = Location.query.filter_by(name_ar="مستودع البن المحمص").first()
+    if not rw:
+        rw = Location.query.filter(Location.name_ar.like("%محمص%") | Location.name_ar.like("%محموص%")).first()
 
     added = []
     skipped = []
@@ -2169,26 +2196,20 @@ def import_xero_items(selected_items: list, user_id=None) -> dict:
         if not prefix:
             prefix = "GB" if c_type == "green" else "RB"
 
+        qoh = float(item_data.get("quantity_on_hand") or item_data.get("qoh") or 0.0)
+
         # التحقق من عدم التكرار
         existing = CoffeeItem.query.filter(
             (CoffeeItem.xero_item_code == code) |
             ((CoffeeItem.prefix == prefix) & (CoffeeItem.base_code == base_code))
         ).first()
-        if existing:
-            # تحديث سعر التكلفة المعتمد إذا توفر
-            u_cost_val = float(item_data.get("unit_cost") or 0.0)
-            if u_cost_val > 0:
-                existing.xero_cost_price = u_cost_val
-                if existing.item:
-                    existing.item.cost = u_cost_val
-                db.session.add(existing)
-            skipped.append(code)
-            continue
 
         name_raw = (item_data.get("name") or "").strip()
         name_ar = (item_data.get("name_ar") or "").strip()
         if not name_ar:
-            if "-" in name_raw:
+            if "-" in code and any("\u0600" <= c <= "\u06ff" for c in code):
+                name_ar = code.split("-", 1)[1].strip()
+            elif "-" in name_raw and any("\u0600" <= c <= "\u06ff" for c in name_raw):
                 name_ar = name_raw.split("-", 1)[1].strip()
             elif name_raw:
                 name_ar = name_raw
@@ -2197,7 +2218,54 @@ def import_xero_items(selected_items: list, user_id=None) -> dict:
         name_en = item_data.get("name_en") or name_raw or name_ar
         unit_cost = float(item_data.get("unit_cost") or 0.0)
         sale_price = float(item_data.get("sale_price") or 0.0)
-        sack_weight = float(item_data.get("default_sack_weight") or 60.0) if c_type == "green" else 0.0
+        sack_weight = float(item_data.get("default_sack_weight") or 30.0) if c_type == "green" else 0.0
+
+        if existing:
+            # تحديث سعر التكلفة المعتمد إذا توفر
+            if unit_cost > 0:
+                existing.xero_cost_price = unit_cost
+                if existing.item:
+                    existing.item.cost = unit_cost
+            if name_ar and not any("\u0600" <= c <= "\u06ff" for c in (existing.name_ar or "")):
+                existing.name_ar = name_ar
+                if existing.item:
+                    existing.item.name_ar = name_ar
+            # تحديث الرصيد المخزني إذا كان صفر أو غير مسجل
+            target_loc = gw if c_type == "green" else rw
+            if target_loc and qoh > 0:
+                bal = StockBalance.query.filter_by(item_id=existing.item_id, location_id=target_loc.id).first()
+                if not bal:
+                    bal = StockBalance(item_id=existing.item_id, location_id=target_loc.id, quantity=qoh)
+                    db.session.add(bal)
+                    db.session.flush()
+                    mov = StockMovement(
+                        item_id=existing.item_id,
+                        location_id=target_loc.id,
+                        movement_type="initial",
+                        reference_type="xero_sync",
+                        quantity_change=qoh,
+                        balance_after=qoh,
+                        notes=f"رصيد افتتاحي مستورد من Xero ({code})",
+                        created_by=user_id
+                    )
+                    db.session.add(mov)
+                elif bal.quantity is None or bal.quantity == 0.0:
+                    bal.quantity = qoh
+                    mov = StockMovement(
+                        item_id=existing.item_id,
+                        location_id=target_loc.id,
+                        movement_type="initial",
+                        reference_type="xero_sync",
+                        quantity_change=qoh,
+                        balance_after=qoh,
+                        notes=f"تحديث الرصيد الافتتاحي من Xero ({code})",
+                        created_by=user_id
+                    )
+                    db.session.add(mov)
+
+            db.session.add(existing)
+            skipped.append(code)
+            continue
 
         # إنشاء أو جلب Item الأساسي
         base_item = Item.query.filter_by(sku=code).first()
@@ -2225,7 +2293,7 @@ def import_xero_items(selected_items: list, user_id=None) -> dict:
             name_en=name_en,
             sack_allowed=(c_type == "green" and sack_weight > 0),
             default_sack_weight=sack_weight,
-            allowed_sack_weights=json.dumps([int(sack_weight)] if sack_weight > 0 else [60]),
+            allowed_sack_weights=json.dumps([int(sack_weight), 60] if sack_weight > 0 else [30, 60]),
             sale_price_per_kg=sale_price,
             xero_cost_price=unit_cost,
             reference_loss_pct=18.0 if c_type == "green" else 0.0,
@@ -2235,6 +2303,29 @@ def import_xero_items(selected_items: list, user_id=None) -> dict:
         db.session.add(ci)
         db.session.flush()
         added.append(code)
+
+        # تسجيل الرصيد الافتتاحي في المستودع المناسب
+        target_loc = gw if c_type == "green" else rw
+        if target_loc and qoh > 0:
+            bal = StockBalance.query.filter_by(item_id=base_item.id, location_id=target_loc.id).first()
+            if not bal:
+                bal = StockBalance(item_id=base_item.id, location_id=target_loc.id, quantity=qoh)
+                db.session.add(bal)
+                db.session.flush()
+            else:
+                bal.quantity = qoh
+
+            mov = StockMovement(
+                item_id=base_item.id,
+                location_id=target_loc.id,
+                movement_type="initial",
+                reference_type="xero_sync",
+                quantity_change=qoh,
+                balance_after=qoh,
+                notes=f"رصيد افتتاحي مستورد من Xero ({code})",
+                created_by=user_id
+            )
+            db.session.add(mov)
 
         # محاولة الربط التلقائي بين الأخضر والمحمص إذا وُجد الصنف المقابل بنفس base_code
         if c_type == "green":

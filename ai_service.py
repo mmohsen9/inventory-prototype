@@ -78,7 +78,7 @@ def extract_invoice_from_image(file_bytes: bytes, mime_type: str) -> dict:
     """
 
     last_error = None
-    for model_name in ("gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-4-hydrogen"):
+    for model_name in ("gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"):
         try:
             response = client.models.generate_content(
                 model=model_name,
@@ -86,4 +86,18 @@ def extract_invoice_from_image(file_bytes: bytes, mime_type: str) -> dict:
                     types.Part.from_bytes(data=file_bytes, mime_type=mime_type),
                     universal_prompt
                 ],
-                config=types.
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    response_schema=UniversalInvoiceData,
+                    temperature=0.1,
+                ),
+            )
+            if response.text:
+                data = json.loads(response.text)
+                data["invoice_date"] = normalize_date(data.get("invoice_date", ""))
+                return data
+        except Exception as e:
+            last_error = e
+            continue
+
+    raise RuntimeError(f"تعذر استخراج بيانات الفاتورة عبر نماذج الذكاء الاصطناعي: {last_error}")

@@ -518,13 +518,194 @@ def ensure_default_coffee_items(force_sync=False, user_id=None):
     }
 
 
-def ensure_2026_roasted_coffee_items():
+def ensure_2026_coffee_items_and_balances():
     """
-    تثبيت وتأكيد أصناف البن المحمص لعام 2026 وربطها التلقائي مع أصناف البن الأخضر المقابلة لها.
+    تثبيت وتأكيد أصناف البن الأخضر والبن المحمص لعام 2026، وتحديث كمياتها من Xero،
+    وربط كل صنف محمص بصنفه الأخضر المقابل تلقائياً وبشكل دائم.
     """
-    from models import db, Item
+    from models import db, Item, Location, StockBalance, StockMovement
     from models_coffee import CoffeeItem, CoffeeItemLink
 
+    # مستودع البن الأخضر
+    gw = Location.query.filter_by(name_ar="مستودع البن الأخضر").first()
+    if not gw:
+        gw = Location.query.filter(Location.name_ar.like("%أخضر%") | Location.name_ar.like("%اخضر%")).first()
+
+    # 1. قائمة أصناف البن الأخضر لعام 2026 مع كمياتها الفعلية من Xero وأوزان الأكياس (30 كجم)
+    green_items_2026 = [
+        {
+            "code": "GB12026- مكسيكي مجففة أخضر",
+            "base_code": "12026",
+            "name_ar": "مكسيكي مجففة أخضر",
+            "name_en": "Mexico Arabica Natural (1Kg) MX126 bags30",
+            "sack_weight": 30.0,
+            "cost": 50.29,
+            "sale": 70.00,
+            "qty": 3300.0,
+        },
+        {
+            "code": "GB22026-مكسيكى باتشى مجفف اخضر",
+            "base_code": "22026",
+            "name_ar": "مكسيكي باتشي مجفف أخضر",
+            "name_en": "Mexico Pache Anaerobic Natural(1Kg)MX26(bags30k)",
+            "sack_weight": 30.0,
+            "cost": 55.94,
+            "sale": 78.00,
+            "qty": 2250.0,
+        },
+        {
+            "code": "GB32026-مكسيكى كاتورمجففة اخضر",
+            "base_code": "32026",
+            "name_ar": "مكسيكي كاتورا مجففة أخضر",
+            "name_en": "Mexico Caturra Anaerobic Natural(1Kg)MX26",
+            "sack_weight": 30.0,
+            "cost": 54.00,
+            "sale": 76.00,
+            "qty": 1800.0,
+        },
+        {
+            "code": "GB42026-مكسيك باتشى مغسول اخضر",
+            "base_code": "42026",
+            "name_ar": "مكسيك باتشي مغسول أخضر",
+            "name_en": "Mexico Pache Washed (1Kg)MX26(bags30k)",
+            "sack_weight": 30.0,
+            "cost": 39.00,
+            "sale": 55.00,
+            "qty": 1500.0,
+        },
+        {
+            "code": "GB52026-مكسيكى بدون كافين اخضر",
+            "base_code": "52026",
+            "name_ar": "مكسيكي بدون كافيين أخضر",
+            "name_en": "Mexico Decaffeinated coffee(1Kg)MX26(bags30k)",
+            "sack_weight": 30.0,
+            "cost": 48.50,
+            "sale": 68.00,
+            "qty": 750.0,
+        },
+        {
+            "code": "GB62026- قيشا ميكسيكى اخضر",
+            "base_code": "62026",
+            "name_ar": "قيشا مكسيكي أخضر",
+            "name_en": "Mexico Geisha Natural (1Kg)MX26-(bags30k)",
+            "sack_weight": 30.0,
+            "cost": 54.50,
+            "sale": 76.00,
+            "qty": 300.0,
+        },
+        {
+            "code": "GB72026- ارابيكا عسلية اخضر",
+            "base_code": "72026",
+            "name_ar": "ارابيكا عسلية أخضر",
+            "name_en": "Mexico Arabica honey(1Kg)MX26-(bags30k)",
+            "sack_weight": 30.0,
+            "cost": 46.52,
+            "sale": 65.00,
+            "qty": 1500.0,
+        },
+        {
+            "code": "GB82026-كاتورا مغسولة اخضر",
+            "base_code": "82026",
+            "name_ar": "كاتورا مغسولة أخضر",
+            "name_en": "Mexico Caturra Washed (1Kg)MX26-(bags30k)",
+            "sack_weight": 30.0,
+            "cost": 37.10,
+            "sale": 52.00,
+            "qty": 1500.0,
+        },
+    ]
+
+    for git in green_items_2026:
+        b = git["base_code"]
+        raw_code = git["code"]
+        g_existing = CoffeeItem.query.filter(
+            (CoffeeItem.xero_item_code == raw_code) |
+            ((CoffeeItem.prefix == "GB") & (CoffeeItem.base_code == b))
+        ).first()
+
+        if not g_existing:
+            base_item = Item.query.filter_by(sku=raw_code).first()
+            if not base_item:
+                base_item = Item(
+                    sku=raw_code,
+                    name_ar=git["name_ar"],
+                    name_en=git["name_en"],
+                    cost=git["cost"],
+                    storage_unit="kg",
+                    ingredient_unit="kg",
+                    storage_to_ingredient_factor=1.0,
+                    sync_status="synced"
+                )
+                db.session.add(base_item)
+                db.session.flush()
+
+            g_existing = CoffeeItem(
+                item_id=base_item.id,
+                xero_item_code=raw_code,
+                prefix="GB",
+                base_code=b,
+                coffee_type="green",
+                name_ar=git["name_ar"],
+                name_en=git["name_en"],
+                sack_allowed=True,
+                default_sack_weight=git["sack_weight"],
+                allowed_sack_weights=json.dumps([int(git["sack_weight"]), 60]),
+                sale_price_per_kg=git["sale"],
+                xero_cost_price=git["cost"],
+                reference_loss_pct=18.0,
+                data_source="xero_sync",
+                active=True
+            )
+            db.session.add(g_existing)
+            db.session.flush()
+        else:
+            # تحديث الاسم والتكاليف والوزن إن لم تكن محدثة
+            g_existing.name_ar = git["name_ar"]
+            g_existing.name_en = git["name_en"]
+            g_existing.default_sack_weight = git["sack_weight"]
+            g_existing.allowed_sack_weights = json.dumps([int(git["sack_weight"]), 60])
+            g_existing.sack_allowed = True
+            g_existing.xero_cost_price = git["cost"]
+            g_existing.sale_price_per_kg = git["sale"]
+            if g_existing.item:
+                g_existing.item.name_ar = git["name_ar"]
+                g_existing.item.name_en = git["name_en"]
+                g_existing.item.cost = git["cost"]
+            db.session.add(g_existing)
+
+        # تسجيل وتحديث الرصيد المخزني الفعلي في مستودع البن الأخضر
+        if gw and git["qty"] > 0:
+            bal = StockBalance.query.filter_by(item_id=g_existing.item_id, location_id=gw.id).first()
+            if not bal:
+                bal = StockBalance(item_id=g_existing.item_id, location_id=gw.id, quantity=git["qty"])
+                db.session.add(bal)
+                db.session.flush()
+                mov = StockMovement(
+                    item_id=g_existing.item_id,
+                    location_id=gw.id,
+                    movement_type="initial",
+                    reference_type="xero_sync",
+                    quantity_change=git["qty"],
+                    balance_after=git["qty"],
+                    notes=f"رصيد افتتاحي مستورد من Xero ({raw_code})",
+                    created_by=None
+                )
+                db.session.add(mov)
+            elif bal.quantity is None or bal.quantity == 0.0:
+                bal.quantity = git["qty"]
+                mov = StockMovement(
+                    item_id=g_existing.item_id,
+                    location_id=gw.id,
+                    movement_type="initial",
+                    reference_type="xero_sync",
+                    quantity_change=git["qty"],
+                    balance_after=git["qty"],
+                    notes=f"تحديث الرصيد الافتتاحي من Xero ({raw_code})",
+                    created_by=None
+                )
+                db.session.add(mov)
+
+    # 2. قائمة أصناف البن المحمص لعام 2026
     items_2026 = [
         {
             "code": "-RB12026",
@@ -658,3 +839,8 @@ def ensure_2026_roasted_coffee_items():
         db.session.commit()
 
     return {"added": added, "linked": linked}
+
+
+def ensure_2026_roasted_coffee_items():
+    """دالة مرادفة للتوافقية واستدعاء المعالجة الكاملة للأصناف والأرصدة."""
+    return ensure_2026_coffee_items_and_balances()
