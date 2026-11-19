@@ -36,9 +36,9 @@
     "semantic_hash": ""
   },
   "app.py": {
-    "mtime": 1795015990.328364,
-    "seen": 1795016546.3880744,
-    "ast_hash": "4ecd4430c2520c0e17698df344033d88",
+    "mtime": 1795079046.4902773,
+    "seen": 1795102275.1514633,
+    "ast_hash": "3985f7e34974e113e7ce19a5aea5bf63",
     "semantic_hash": ""
   },
   "app_coffee.py": {
@@ -474,9 +474,9 @@
     "semantic_hash": ""
   },
   "docs/CHANGELOG.md": {
-    "mtime": 1795015942.7847078,
-    "seen": 1795016546.515073,
-    "ast_hash": "c9f1fee54bf27e3d150ccce7cf5af985",
+    "mtime": 1795083290.0261295,
+    "seen": 1795102275.2983434,
+    "ast_hash": "67eb07678e046d7db565deaf1e23a2d4",
     "semantic_hash": ""
   },
   "docs/DECISIONS.md": {
@@ -486,9 +486,9 @@
     "semantic_hash": ""
   },
   "docs/HANDOFF.md": {
-    "mtime": 1795015959.4469635,
-    "seen": 1795016546.515073,
-    "ast_hash": "e5bfe22ff9d810300002012b88714636",
+    "mtime": 1795090732.7209554,
+    "seen": 1795102275.30042,
+    "ast_hash": "9f88a65e31f3e09a3b0b8eb88354197b",
     "semantic_hash": ""
   },
   "docs/IDEAS.md": {
@@ -888,15 +888,15 @@
     "semantic_hash": ""
   },
   "coffee_salla.py": {
-    "mtime": 1794746359.5317078,
-    "seen": 1794757756.771084,
-    "ast_hash": "e0012719ef4cb628d89086bffabcaf5f",
+    "mtime": 1795084369.0419784,
+    "seen": 1795102275.1569662,
+    "ast_hash": "5f11a90042128dc15dc6bd033e6bafa9",
     "semantic_hash": ""
   },
   "tests/test_coffee_salla.py": {
-    "mtime": 1794746408.18133,
-    "seen": 1794757756.7914755,
-    "ast_hash": "8a1f1f5aa1166d7c68eb200829a040f7",
+    "mtime": 1795083064.640761,
+    "seen": 1795102275.1950014,
+    "ast_hash": "e5c2eaabc640ecd18c87166cf2e5ccd7",
     "semantic_hash": ""
   },
   "templates/coffee/salla_mappings_list.html": {
@@ -972,9 +972,9 @@
     "semantic_hash": ""
   },
   "app_findash.py": {
-    "mtime": 1795017102.737705,
-    "seen": 1795017132.0248222,
-    "ast_hash": "b8a25a126a722048c0893dc798c5e3d9",
+    "mtime": 1795088347.1780014,
+    "seen": 1795102275.1524572,
+    "ast_hash": "cbd38a2407cdc20cad75caea060c6c7d",
     "semantic_hash": ""
   },
   "models_findash.py": {
@@ -984,15 +984,15 @@
     "semantic_hash": ""
   },
   "services/findash_service.py": {
-    "mtime": 1795017103.5001605,
-    "seen": 1795017132.0420794,
-    "ast_hash": "05b016667784e921dc3aa3ae6e39e89c",
+    "mtime": 1795101854.9251187,
+    "seen": 1795102275.175835,
+    "ast_hash": "625f0c208d447a49dc93f840c52f634a",
     "semantic_hash": ""
   },
   "tests/test_findash.py": {
-    "mtime": 1794133374.294858,
-    "seen": 1794133452.0572934,
-    "ast_hash": "5ce4da83b25d724f8ba716db312531bd",
+    "mtime": 1795088153.2389326,
+    "seen": 1795102275.197058,
+    "ast_hash": "974e977eaee3b66db51aa3db45c9acab",
     "semantic_hash": ""
   },
   "templates/findash/balance_sheet.html": {
@@ -1002,15 +1002,15 @@
     "semantic_hash": ""
   },
   "templates/findash/base.html": {
-    "mtime": 1794474163.1680994,
-    "seen": 1794474703.5068557,
-    "ast_hash": "f17aac2dd5519b119322926a377439de",
+    "mtime": 1795088352.9507198,
+    "seen": 1795102275.340696,
+    "ast_hash": "eb1d25dfb03d217d7bf59f2f910ebc62",
     "semantic_hash": ""
   },
   "templates/findash/branches.html": {
-    "mtime": 1794408993.7330763,
-    "seen": 1794410438.8983757,
-    "ast_hash": "47a97495be33e29fb3fb88e5e5db927f",
+    "mtime": 1795088354.1488152,
+    "seen": 1795102275.340696,
+    "ast_hash": "fed15a29124b969e96fff376df8c1a6f",
     "semantic_hash": ""
   },
   "templates/findash/dashboard.html": {
@@ -1044,9 +1044,9 @@
     "semantic_hash": ""
   },
   "templates/findash/inventory.html": {
-    "mtime": 1794408998.3349564,
-    "seen": 1794410438.8983757,
-    "ast_hash": "5aa5a4cb56b02f0aee9889223a29b9ac",
+    "mtime": 1795102119.7874596,
+    "seen": 1795102275.3427253,
+    "ast_hash": "632cee56564105474a146d4110c062b2",
     "semantic_hash": ""
   },
   "\u062a\u0637\u0628\u064a\u0642_\u0627\u0644\u062f\u0627\u0634\u0628\u0648\u0631\u062f_\u0627\u0644\u062a\u0641\u0627\u0639\u0644\u064a/\u062a\u0637\u0628\u064a\u0642_\u0627\u0644\u062f\u0627\u0634\u0628\u0648\u0631\u062f_\u0627\u0644\u062a\u0641\u0627\u0639\u0644\u064a.py": {
@@ -1863,6 +1863,12 @@
     "mtime": 1794997777.8625364,
     "seen": 1794999317.0357132,
     "ast_hash": "8315e697775819c61b08300127e194e0",
+    "semantic_hash": ""
+  },
+  "scripts/ingest_sept_2026.py": {
+    "mtime": 1795099436.72603,
+    "seen": 1795102275.1736646,
+    "ast_hash": "6853b214225d83ddfd9885cbfe32bf8b",
     "semantic_hash": ""
   }
 }

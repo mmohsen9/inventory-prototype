@@ -945,7 +945,7 @@ def import_foodics_product_sales_csv(file_path: Path, default_year: int = 2026, 
     hdr_idx = None
     for i in range(min(15, len(rows))):
         lows = [str(c).strip() for c in rows[i]]
-        if any("المنتج" in c for c in lows) and any("الفرع" in c for c in lows):
+        if any("المنتج" in c for c in lows):
             hdr_idx = i
             break
 
@@ -995,7 +995,7 @@ def import_foodics_product_sales_csv(file_path: Path, default_year: int = 2026, 
         p_sale = FinFoodicsProductSale(
             year=year,
             month=month,
-            branch=branch or "غير محدد",
+            branch=branch or "Total",
             branch_code=cell_val(c_bcode),
             product=prod,
             product_code=cell_val(c_pcode),
@@ -1726,6 +1726,36 @@ def sync_month_from_foodics(year: int, month: int) -> Dict[str, Any]:
 # 4. محرك استعلامات الداشبورد والمؤشرات التنفيذية (KPIs & Charts)
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _filter_deduped_pnl_records(records: List[FinMonthlyPnl]) -> List[FinMonthlyPnl]:
+    """
+    تطبيق قاعدة الفصل المحاسبي المعتمدة لعام 2026:
+    - الشهور 1 إلى 9 (يناير حتى نهاية سبتمبر 2026): المصدر المعتمد حصراً هو ملفات الإكسيل التاريخية (source='excel').
+    - الشهور 10 فما بعد (أكتوبر ونوفمبر وديسمبر حتى إقفال العام): المصدر المعتمد هو المزامنة الحية لـ Xero API (source='xero_api').
+    - منع أي ازدواجية أو تكرار بين المصدرين لنفس الشهر.
+    """
+    if not records:
+        return []
+    deduped = []
+    seen = set()
+    for r in records:
+        # قاعدة الفصل المحاسبي لسنة 2026
+        if r.year == 2026 and r.month and r.month > 0:
+            if r.month <= 9 and getattr(r, "source", "") == "xero_api":
+                # استبعاد زيرو للشهور 1-9 المعتمدة من الإكسيل
+                continue
+            elif r.month >= 10 and getattr(r, "source", "") == "excel":
+                # استبعاد الإكسيل لشهر 10 فما بعد لصالح المزامنة الحية
+                continue
+
+        # منع تكرار نفس الحساب لنفس الشهر والفرع والتصنيف
+        key = (r.year, r.month, r.branch, r.category, r.account_code or (r.account_name or "").strip())
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(r)
+    return deduped
+
+
 def get_dashboard_summary(year: int, month: Optional[int] = None) -> Dict[str, Any]:
     """توليد ملخص المؤشرات التنفيذية والمخططات التفاعلية للعام أو الشهر المحدد."""
     import time
@@ -1739,7 +1769,7 @@ def get_dashboard_summary(year: int, month: Optional[int] = None) -> Dict[str, A
     if month and month > 0:
         q = q.filter_by(month=month)
 
-    records = q.all()
+    records = _filter_deduped_pnl_records(q.all())
 
     total_revenue = 0.0
     total_cogs = 0.0
@@ -1783,7 +1813,7 @@ def get_dashboard_summary(year: int, month: Optional[int] = None) -> Dict[str, A
         "net_profit": [0.0] * 12,
     }
 
-    all_monthly = FinMonthlyPnl.query.filter_by(year=year, branch="Total").all()
+    all_monthly = _filter_deduped_pnl_records(FinMonthlyPnl.query.filter_by(year=year, branch="Total").all())
     for rec in all_monthly:
         m_idx = rec.month - 1
         if 0 <= m_idx < 12:
@@ -1923,7 +1953,7 @@ def get_pnl_statement_table(year: int, month: Optional[int] = None, branch: str 
         q = FinMonthlyPnl.query.filter_by(year=year, branch="Total")
         if month and month > 0:
             q = q.filter_by(month=month)
-        records = q.all()
+        records = _filter_deduped_pnl_records(q.all())
 
     grouped = {
         "Trading Income": {"title": "الإيرادات التشغيلية (Trading Income)", "accounts": {}, "total": 0.0},
@@ -3193,7 +3223,7 @@ def get_financial_analysis_data(selected_year: int = 2026, year_a: int = 2024, y
     def get_monthly_series(y: int):
         rev = [0.0] * 12
         exp = [0.0] * 12
-        pnl_records = FinMonthlyPnl.query.filter_by(year=y, branch="Total").all()
+        pnl_records = _filter_deduped_pnl_records(FinMonthlyPnl.query.filter_by(year=y, branch="Total").all())
         for r in pnl_records:
             m = r.month - 1
             if 0 <= m < 12:

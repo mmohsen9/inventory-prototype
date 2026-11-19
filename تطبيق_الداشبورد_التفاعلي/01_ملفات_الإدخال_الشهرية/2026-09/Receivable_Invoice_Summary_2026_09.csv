@@ -1,0 +1,340 @@
+Invoice Number,Contact,Invoice Date,Expected Date,Reference,Gross,Balance,Status,Source,Invoice Sent
+INV-4989,Foodics Customer,2026-01-01,2026-01-01,Alsahafa branch Sales 2026-01-01,18181,0,Paid,Receivable Invoice,Not sent
+INV-4990,Foodics Customer,2026-01-01,2026-01-01,RAFA Sales 2026-01-01,8409,0,Paid,Receivable Invoice,Not sent
+INV-4991,Foodics Customer,2026-01-01,2026-01-01,WAW-Brunch Sales 2026-01-01,2641,0,Paid,Receivable Invoice,Not sent
+INV-4992,Foodics Customer,2026-01-01,2026-01-01,Takhassussi- HMG Sales 2026-01-01,4552,0,Paid,Receivable Invoice,Not sent
+INV-4993,Foodics Customer,2026-01-01,2026-01-01,Hittin branch Sales 2026-01-01,42548.5,0,Paid,Receivable Invoice,Not sent
+INV-4994,Foodics Customer,2026-01-02,2026-01-02,Alsahafa branch Sales 2026-01-02,10094.5,0,Paid,Receivable Invoice,Not sent
+INV-4995,Foodics Customer,2026-01-02,2026-01-02,Takhassussi- HMG Sales 2026-01-02,1727.5,0,Paid,Receivable Invoice,Not sent
+INV-4996,Foodics Customer,2026-01-02,2026-01-02,RAFA Sales 2026-01-02,7509,0,Paid,Receivable Invoice,Not sent
+INV-4997,Foodics Customer,2026-01-02,2026-01-02,WAW-Brunch Sales 2026-01-02,2221,0,Paid,Receivable Invoice,Not sent
+INV-4998,Foodics Customer,2026-01-02,2026-01-02,Hittin branch Sales 2026-01-02,46515.5,0,Paid,Receivable Invoice,Not sent
+INV-4999,Foodics Customer,2026-01-03,2026-01-03,Alsahafa branch Sales 2026-01-03,21132,0,Paid,Receivable Invoice,Not sent
+INV-5000,Foodics Customer,2026-01-03,2026-01-03,RAFA Sales 2026-01-03,5586,0,Paid,Receivable Invoice,Not sent
+INV-5001,Foodics Customer,2026-01-03,2026-01-03,Takhassussi- HMG Sales 2026-01-03,5350.5,0,Paid,Receivable Invoice,Not sent
+INV-5002,Foodics Customer,2026-01-03,2026-01-03,WAW-Brunch Sales 2026-01-03,1954,0,Paid,Receivable Invoice,Not sent
+INV-5003,Foodics Customer,2026-01-03,2026-01-03,Hittin branch Sales 2026-01-03,29546,0,Paid,Receivable Invoice,Not sent
+INV-5004,Foodics Customer,2026-01-04,2026-01-04,Alsahafa branch Sales 2026-01-04,20362,0,Paid,Receivable Invoice,Not sent
+INV-5005,Foodics Customer,2026-01-04,2026-01-04,RAFA Sales 2026-01-04,4034,0,Paid,Receivable Invoice,Not sent
+INV-5006,Foodics Customer,2026-01-04,2026-01-04,Takhassussi- HMG Sales 2026-01-04,7195,0,Paid,Receivable Invoice,Not sent
+INV-5007,Foodics Customer,2026-01-04,2026-01-04,WAW-Brunch Sales 2026-01-04,827,0,Paid,Receivable Invoice,Not sent
+INV-5008,Foodics Customer,2026-01-04,2026-01-04,Hittin branch Sales 2026-01-04,26491,0,Paid,Receivable Invoice,Not sent
+INV-5009,مقى حبات كرزية لتقديم المشروبات,2026-01-04,2026-01-04,MP 2901,2386.25,0,Paid,Receivable Invoice,Not sent
+INV-5010,مؤسسة احمد غنام ضاوي العتيبي للتجارة,2026-01-04,2026-01-04,MP 2902,4312.5,0,Paid,Receivable Invoice,Not sent
+INV-5017,Foodics Customer,2026-01-05,2026-01-05,Alsahafa branch Sales 2026-01-05,20449.5,0,Paid,Receivable Invoice,Not sent
+INV-5018,Foodics Customer,2026-01-05,2026-01-05,RAFA Sales 2026-01-05,5222,0,Paid,Receivable Invoice,Not sent
+INV-5019,Foodics Customer,2026-01-05,2026-01-05,Takhassussi- HMG Sales 2026-01-05,6617.5,0,Paid,Receivable Invoice,Not sent
+INV-5020,Foodics Customer,2026-01-05,2026-01-05,WAW-Brunch Sales 2026-01-05,1476,0,Paid,Receivable Invoice,Not sent
+INV-5021,Foodics Customer,2026-01-05,2026-01-05,Hittin branch Sales 2026-01-05,27080.5,0,Paid,Receivable Invoice,Not sent
+INV-5023,Foodics Customer,2026-01-06,2026-01-06,Alsahafa branch Sales 2026-01-06,19000,0,Paid,Receivable Invoice,Not sent
+INV-5024,Foodics Customer,2026-01-06,2026-01-06,RAFA Sales 2026-01-06,5886,0,Paid,Receivable Invoice,Not sent
+INV-5025,Foodics Customer,2026-01-06,2026-01-06,Takhassussi- HMG Sales 2026-01-06,7986,0,Paid,Receivable Invoice,Not sent
+INV-5026,Foodics Customer,2026-01-06,2026-01-06,WAW-Brunch Sales 2026-01-06,2138,0,Paid,Receivable Invoice,Not sent
+INV-5027,Foodics Customer,2026-01-06,2026-01-06,Hittin branch Sales 2026-01-06,29135,0,Paid,Receivable Invoice,Not sent
+INV-5031,Foodics Customer,2026-01-07,2026-01-07,Takhassussi- HMG Sales 2026-01-07,6462,0,Paid,Receivable Invoice,Not sent
+INV-5032,Foodics Customer,2026-01-07,2026-01-07,WAW-Brunch Sales 2026-01-07,1998,0,Paid,Receivable Invoice,Not sent
+INV-5028,نادر الحربى,2026-01-07,2026-01-07,GB 2508,10514.45,0,Paid,Receivable Invoice,Not sent
+INV-5029,Foodics Customer,2026-01-07,2026-01-07,Alsahafa branch Sales 2026-01-07,20349,0,Paid,Receivable Invoice,Not sent
+INV-5030,Foodics Customer,2026-01-07,2026-01-07,RAFA Sales 2026-01-07,5537,0,Paid,Receivable Invoice,Not sent
+INV-5033,Foodics Customer,2026-01-07,2026-01-07,Hittin branch Sales 2026-01-07,32985.5,0,Paid,Receivable Invoice,Not sent
+INV-5034,Foodics Customer,2026-01-08,2026-01-08,Alsahafa branch Sales 2026-01-08,18119,0,Paid,Receivable Invoice,Not sent
+INV-5035,Foodics Customer,2026-01-08,2026-01-08,RAFA Sales 2026-01-08,5697,0,Paid,Receivable Invoice,Not sent
+INV-5037,Foodics Customer,2026-01-08,2026-01-08,Takhassussi- HMG Sales 2026-01-08,5420.5,0,Paid,Receivable Invoice,Not sent
+INV-5036,Foodics Customer,2026-01-08,2026-01-08,WAW-Brunch Sales 2026-01-08,1156,0,Paid,Receivable Invoice,Not sent
+INV-5038,Foodics Customer,2026-01-08,2026-01-08,Hittin branch Sales 2026-01-08,36157,0,Paid,Receivable Invoice,Not sent
+INV-5042,Foodics Customer,2026-01-09,2026-01-09,WAW-Brunch Sales 2026-01-09,2529,0,Paid,Receivable Invoice,Not sent
+INV-5039,Foodics Customer,2026-01-09,2026-01-09,Alsahafa branch Sales 2026-01-09,8322,0,Paid,Receivable Invoice,Not sent
+INV-5041,Foodics Customer,2026-01-09,2026-01-09,Takhassussi- HMG Sales 2026-01-09,1615.5,0,Paid,Receivable Invoice,Not sent
+INV-5043,Foodics Customer,2026-01-09,2026-01-09,Hittin branch Sales 2026-01-09,47472.5,0,Paid,Receivable Invoice,Not sent
+INV-5049,مقهى ستة اوقيات لتقديم المشروبات,2026-01-09,2026-01-09,GB 4509,15939,0,Paid,Receivable Invoice,Not sent
+INV-5040,Foodics Customer,2026-01-09,2026-01-09,RAFA Sales 2026-01-09,9374,0,Paid,Receivable Invoice,Not sent
+INV-5044,Foodics Customer,2026-01-10,2026-01-10,Alsahafa branch Sales 2026-01-10,18550.5,0,Paid,Receivable Invoice,Not sent
+INV-5045,Foodics Customer,2026-01-10,2026-01-10,RAFA Sales 2026-01-10,7181,0,Paid,Receivable Invoice,Not sent
+INV-5046,Foodics Customer,2026-01-10,2026-01-10,Takhassussi- HMG Sales 2026-01-10,4989.5,0,Paid,Receivable Invoice,Not sent
+INV-5047,Foodics Customer,2026-01-10,2026-01-10,WAW-Brunch Sales 2026-01-10,2899,0,Paid,Receivable Invoice,Not sent
+INV-5048,Foodics Customer,2026-01-10,2026-01-10,Hittin branch Sales 2026-01-10,35380.5,0,Paid,Receivable Invoice,Not sent
+INV-5053,Foodics Customer,2026-01-11,2026-01-11,Alsahafa branch Sales 2026-01-11,18282,0,Paid,Receivable Invoice,Not sent
+INV-5055,Foodics Customer,2026-01-11,2026-01-11,Takhassussi- HMG Sales 2026-01-11,6901,0,Paid,Receivable Invoice,Not sent
+INV-5056,Foodics Customer,2026-01-11,2026-01-11,WAW-Brunch Sales 2026-01-11,1466,0,Paid,Receivable Invoice,Not sent
+INV-5050,مقهى مذاق لذيذ لتقديم المشروبات,2026-01-11,2026-01-11,GB 4510,34741.5,0,Paid,Receivable Invoice,Not sent
+INV-5054,Foodics Customer,2026-01-11,2026-01-11,RAFA Sales 2026-01-11,5576.5,0,Paid,Receivable Invoice,Not sent
+INV-5057,Foodics Customer,2026-01-11,2026-01-11,Hittin branch Sales 2026-01-11,26575.5,0,Paid,Receivable Invoice,Not sent
+INV-5060,Foodics Customer,2026-01-12,2026-01-12,Takhassussi- HMG Sales 2026-01-12,6777.5,0,Paid,Receivable Invoice,Not sent
+INV-5061,Foodics Customer,2026-01-12,2026-01-12,WAW-Brunch Sales 2026-01-12,1356,0,Paid,Receivable Invoice,Not sent
+INV-5062,Foodics Customer,2026-01-12,2026-01-12,Hittin branch Sales 2026-01-12,25263,0,Paid,Receivable Invoice,Not sent
+INV-5058,Foodics Customer,2026-01-12,2026-01-12,Alsahafa branch Sales 2026-01-12,20287.5,0,Paid,Receivable Invoice,Not sent
+INV-5059,Foodics Customer,2026-01-12,2026-01-12,RAFA Sales 2026-01-12,4340,0,Paid,Receivable Invoice,Not sent
+INV-5063,Foodics Customer,2026-01-13,2026-01-13,Alsahafa branch Sales 2026-01-13,19784.5,0,Paid,Receivable Invoice,Not sent
+INV-5064,Foodics Customer,2026-01-13,2026-01-13,RAFA Sales 2026-01-13,5999,0,Paid,Receivable Invoice,Not sent
+INV-5066,Foodics Customer,2026-01-13,2026-01-13,WAW-Brunch Sales 2026-01-13,2578,0,Paid,Receivable Invoice,Not sent
+INV-5068,شركة مستشفي المحمدية للرعاية الطبية,2026-01-13,2026-01-13,MP 2919,1451.88,0,Paid,Receivable Invoice,Not sent
+INV-5065,Foodics Customer,2026-01-13,2026-01-13,Takhassussi- HMG Sales 2026-01-13,6317.5,0,Paid,Receivable Invoice,Not sent
+INV-5067,Foodics Customer,2026-01-13,2026-01-13,Hittin branch Sales 2026-01-13,32657,0,Paid,Receivable Invoice,Not sent
+INV-5071,Foodics Customer,2026-01-14,2026-01-14,Takhassussi- HMG Sales 2026-01-14,5778,0,Paid,Receivable Invoice,Not sent
+INV-5069,Foodics Customer,2026-01-14,2026-01-14,Alsahafa branch Sales 2026-01-14,18854,0,Paid,Receivable Invoice,Not sent
+INV-5070,Foodics Customer,2026-01-14,2026-01-14,RAFA Sales 2026-01-14,5659,0,Paid,Receivable Invoice,Not sent
+INV-5072,Foodics Customer,2026-01-14,2026-01-14,WAW-Brunch Sales 2026-01-14,1829,0,Paid,Receivable Invoice,Not sent
+INV-5073,Foodics Customer,2026-01-14,2026-01-14,Hittin branch Sales 2026-01-14,31721,0,Paid,Receivable Invoice,Not sent
+INV-5075,Foodics Customer,2026-01-15,2026-01-15,Takhassussi- HMG Sales 2026-01-15,5775.5,0,Paid,Receivable Invoice,Not sent
+INV-5076,Foodics Customer,2026-01-15,2026-01-15,WAW-Brunch Sales 2026-01-15,2136,0,Paid,Receivable Invoice,Not sent
+INV-5077,Foodics Customer,2026-01-15,2026-01-15,RAFA Sales 2026-01-15,8256,0,Paid,Receivable Invoice,Not sent
+INV-5078,Foodics Customer,2026-01-15,2026-01-15,Hittin branch Sales 2026-01-15,40335.5,0,Paid,Receivable Invoice,Not sent
+INV-5074,Foodics Customer,2026-01-15,2026-01-15,Alsahafa branch Sales 2026-01-15,16835,0,Paid,Receivable Invoice,Not sent
+INV-5079,Foodics Customer,2026-01-16,2026-01-16,Alsahafa branch Sales 2026-01-16,9295,0,Paid,Receivable Invoice,Not sent
+INV-5080,Foodics Customer,2026-01-16,2026-01-16,RAFA Sales 2026-01-16,9119,0,Paid,Receivable Invoice,Not sent
+INV-5081,Foodics Customer,2026-01-16,2026-01-16,Takhassussi- HMG Sales 2026-01-16,1459.5,0,Paid,Receivable Invoice,Not sent
+INV-5082,Foodics Customer,2026-01-16,2026-01-16,WAW-Brunch Sales 2026-01-16,2374,0,Paid,Receivable Invoice,Not sent
+INV-5083,Foodics Customer,2026-01-16,2026-01-16,Hittin branch Sales 2026-01-16,45309,0,Paid,Receivable Invoice,Not sent
+INV-5084,Foodics Customer,2026-01-17,2026-01-17,Alsahafa branch Sales 2026-01-17,21380,0,Paid,Receivable Invoice,Not sent
+INV-5087,Foodics Customer,2026-01-17,2026-01-17,WAW-Brunch Sales 2026-01-17,1806,0,Paid,Receivable Invoice,Not sent
+INV-5085,Foodics Customer,2026-01-17,2026-01-17,RAFA Sales 2026-01-17,5049,0,Paid,Receivable Invoice,Not sent
+INV-5086,Foodics Customer,2026-01-17,2026-01-17,Takhassussi- HMG Sales 2026-01-17,5409.5,0,Paid,Receivable Invoice,Not sent
+INV-5088,Foodics Customer,2026-01-17,2026-01-17,Hittin branch Sales 2026-01-17,26344,0,Paid,Receivable Invoice,Not sent
+INV-5089,Foodics Customer,2026-01-18,2026-01-18,Alsahafa branch Sales 2026-01-18,18946.5,0,Paid,Receivable Invoice,Not sent
+INV-5090,Foodics Customer,2026-01-18,2026-01-18,RAFA Sales 2026-01-18,4898,0,Paid,Receivable Invoice,Not sent
+INV-5091,Foodics Customer,2026-01-18,2026-01-18,Takhassussi- HMG Sales 2026-01-18,6797.5,0,Paid,Receivable Invoice,Not sent
+INV-5092,Foodics Customer,2026-01-18,2026-01-18,WAW-Brunch Sales 2026-01-18,1326,0,Paid,Receivable Invoice,Not sent
+INV-5094,مقهى ستة اوقيات لتقديم المشروبات,2026-01-18,2026-01-18,GB 4511 /  4512,39847.5,0,Paid,Receivable Invoice,Not sent
+INV-5093,Foodics Customer,2026-01-18,2026-01-18,Hittin branch Sales 2026-01-18,20454,0,Paid,Receivable Invoice,Not sent
+INV-5095,Foodics Customer,2026-01-19,2026-01-19,Alsahafa branch Sales 2026-01-19,19391.5,0,Paid,Receivable Invoice,Not sent
+INV-5096,Foodics Customer,2026-01-19,2026-01-19,RAFA Sales 2026-01-19,4972,0,Paid,Receivable Invoice,Not sent
+INV-5097,Foodics Customer,2026-01-19,2026-01-19,Takhassussi- HMG Sales 2026-01-19,6207,0,Paid,Receivable Invoice,Not sent
+INV-5098,Foodics Customer,2026-01-19,2026-01-19,WAW-Brunch Sales 2026-01-19,1390,0,Paid,Receivable Invoice,Not sent
+INV-5099,Foodics Customer,2026-01-19,2026-01-19,Hittin branch Sales 2026-01-19,20361,0,Paid,Receivable Invoice,Not sent
+INV-5102,Foodics Customer,2026-01-20,2026-01-20,Takhassussi- HMG Sales 2026-01-20,6660,0,Paid,Receivable Invoice,Not sent
+INV-5100,Foodics Customer,2026-01-20,2026-01-20,Alsahafa branch Sales 2026-01-20,20374.5,0,Paid,Receivable Invoice,Not sent
+INV-5101,Foodics Customer,2026-01-20,2026-01-20,RAFA Sales 2026-01-20,6975,0,Paid,Receivable Invoice,Not sent
+INV-5103,Foodics Customer,2026-01-20,2026-01-20,WAW-Brunch Sales 2026-01-20,2230,0,Paid,Receivable Invoice,Not sent
+INV-5104,Foodics Customer,2026-01-20,2026-01-20,Hittin branch Sales 2026-01-20,24136.5,0,Paid,Receivable Invoice,Not sent
+INV-5105,نادر الحربى,2026-01-21,2026-01-21,GB 2513,19262.5,0,Paid,Receivable Invoice,Not sent
+INV-5106,Foodics Customer,2026-01-21,2026-01-21,Alsahafa branch Sales 2026-01-21,20752,0,Paid,Receivable Invoice,Not sent
+INV-5107,Foodics Customer,2026-01-21,2026-01-21,RAFA Sales 2026-01-21,5390,0,Paid,Receivable Invoice,Not sent
+INV-5109,Foodics Customer,2026-01-21,2026-01-21,WAW-Brunch Sales 2026-01-21,1918,0,Paid,Receivable Invoice,Not sent
+INV-5110,Foodics Customer,2026-01-21,2026-01-21,Hittin branch Sales 2026-01-21,24205,0,Paid,Receivable Invoice,Not sent
+INV-5108,Foodics Customer,2026-01-21,2026-01-21,Takhassussi- HMG Sales 2026-01-21,6591,0,Paid,Receivable Invoice,Not sent
+INV-5113,Foodics Customer,2026-01-22,2026-01-22,RAFA Sales 2026-01-22,6560.5,0,Paid,Receivable Invoice,Not sent
+INV-5115,Foodics Customer,2026-01-22,2026-01-22,WAW-Brunch Sales 2026-01-22,1563,0,Paid,Receivable Invoice,Not sent
+INV-5111,مقهى واي تسعة لتقديم المشروبات,2026-01-22,2026-01-22,MP 2937,1466.25,0,Paid,Receivable Invoice,Not sent
+INV-5112,Foodics Customer,2026-01-22,2026-01-22,Alsahafa branch Sales 2026-01-22,20518.5,0,Paid,Receivable Invoice,Not sent
+INV-5114,Foodics Customer,2026-01-22,2026-01-22,Takhassussi- HMG Sales 2026-01-22,4740,0,Paid,Receivable Invoice,Not sent
+INV-5116,Foodics Customer,2026-01-22,2026-01-22,Hittin branch Sales 2026-01-22,36444,0,Paid,Receivable Invoice,Not sent
+INV-5117,Foodics Customer,2026-01-23,2026-01-23,Alsahafa branch Sales 2026-01-23,10319,0,Paid,Receivable Invoice,Not sent
+INV-5121,Foodics Customer,2026-01-23,2026-01-23,Hittin branch Sales 2026-01-23,48375,0,Paid,Receivable Invoice,Not sent
+INV-5118,Foodics Customer,2026-01-23,2026-01-23,RAFA Sales 2026-01-23,8397,0,Paid,Receivable Invoice,Not sent
+INV-5119,Foodics Customer,2026-01-23,2026-01-23,Takhassussi- HMG Sales 2026-01-23,1675,0,Paid,Receivable Invoice,Not sent
+INV-5120,Foodics Customer,2026-01-23,2026-01-23,WAW-Brunch Sales 2026-01-23,3012,0,Paid,Receivable Invoice,Not sent
+INV-5122,Foodics Customer,2026-01-24,2026-01-24,Alsahafa branch Sales 2026-01-24,20134,0,Paid,Receivable Invoice,Not sent
+INV-5125,Foodics Customer,2026-01-24,2026-01-24,WAW-Brunch Sales 2026-01-24,1778,0,Paid,Receivable Invoice,Not sent
+INV-5123,Foodics Customer,2026-01-24,2026-01-24,RAFA Sales 2026-01-24,5731,0,Paid,Receivable Invoice,Not sent
+INV-5124,Foodics Customer,2026-01-24,2026-01-24,Takhassussi- HMG Sales 2026-01-24,5830.5,0,Paid,Receivable Invoice,Not sent
+INV-5126,Foodics Customer,2026-01-24,2026-01-24,Hittin branch Sales 2026-01-24,31761,0,Paid,Receivable Invoice,Not sent
+INV-5127,Foodics Customer,2026-01-25,2026-01-25,Alsahafa branch Sales 2026-01-25,20861,0,Paid,Receivable Invoice,Not sent
+INV-5128,Foodics Customer,2026-01-25,2026-01-25,RAFA Sales 2026-01-25,3862,0,Paid,Receivable Invoice,Not sent
+INV-5129,Foodics Customer,2026-01-25,2026-01-25,Takhassussi- HMG Sales 2026-01-25,7086,0,Paid,Receivable Invoice,Not sent
+INV-5130,Foodics Customer,2026-01-25,2026-01-25,WAW-Brunch Sales 2026-01-25,728,0,Paid,Receivable Invoice,Not sent
+INV-5131,Foodics Customer,2026-01-25,2026-01-25,Hittin branch Sales 2026-01-25,20921.5,0,Paid,Receivable Invoice,Not sent
+INV-5132,Foodics Customer,2026-01-26,2026-01-26,Alsahafa branch Sales 2026-01-26,20783.5,0,Paid,Receivable Invoice,Not sent
+INV-5134,Foodics Customer,2026-01-26,2026-01-26,WAW-Brunch Sales 2026-01-26,1129,0,Paid,Receivable Invoice,Not sent
+INV-5135,Foodics Customer,2026-01-26,2026-01-26,Takhassussi- HMG Sales 2026-01-26,6575,0,Paid,Receivable Invoice,Not sent
+INV-5136,Foodics Customer,2026-01-26,2026-01-26,Hittin branch Sales 2026-01-26,23142,0,Paid,Receivable Invoice,Not sent
+INV-5138,شركة لوازم للتجارة والتسويق,2026-01-26,2026-01-26,MP 2941,5060,0,Paid,Receivable Invoice,Not sent
+INV-5133,Foodics Customer,2026-01-26,2026-01-26,RAFA Sales 2026-01-26,4686,0,Paid,Receivable Invoice,Not sent
+INV-5137,Arto Caffee ارتوكفى,2026-01-26,2026-01-26,MP 2940,9096.5,0,Paid,Receivable Invoice,Not sent
+INV-5139,Foodics Customer,2026-01-27,2026-01-27,Alsahafa branch Sales 2026-01-27,22617,0,Paid,Receivable Invoice,Not sent
+INV-5144,مؤسسة خطوات التحميص للتجارة,2026-01-27,2026-01-27,GB 4514,2656.5,0,Paid,Receivable Invoice,Not sent
+INV-5140,Foodics Customer,2026-01-27,2026-01-27,RAFA Sales 2026-01-27,4835,0,Paid,Receivable Invoice,Not sent
+INV-5141,Foodics Customer,2026-01-27,2026-01-27,Takhassussi- HMG Sales 2026-01-27,7771.5,0,Paid,Receivable Invoice,Not sent
+INV-5142,Foodics Customer,2026-01-27,2026-01-27,WAW-Brunch Sales 2026-01-27,1678,0,Paid,Receivable Invoice,Not sent
+INV-5143,Foodics Customer,2026-01-27,2026-01-27,Hittin branch Sales 2026-01-27,23604,0,Paid,Receivable Invoice,Not sent
+INV-5145,Foodics Customer,2026-01-28,2026-01-28,Alsahafa branch Sales 2026-01-28,22131,0,Paid,Receivable Invoice,Not sent
+INV-5146,Foodics Customer,2026-01-28,2026-01-28,RAFA Sales 2026-01-28,6298,0,Paid,Receivable Invoice,Not sent
+INV-5147,Foodics Customer,2026-01-28,2026-01-28,Takhassussi- HMG Sales 2026-01-28,8012.5,0,Paid,Receivable Invoice,Not sent
+INV-5148,Foodics Customer,2026-01-28,2026-01-28,WAW-Brunch Sales 2026-01-28,1421,0,Paid,Receivable Invoice,Not sent
+INV-5149,Foodics Customer,2026-01-28,2026-01-28,Hittin branch Sales 2026-01-28,29803,0,Paid,Receivable Invoice,Not sent
+INV-5150,Foodics Customer,2026-01-29,2026-01-29,Alsahafa branch Sales 2026-01-29,18838,0,Paid,Receivable Invoice,Not sent
+INV-5152,Foodics Customer,2026-01-29,2026-01-29,Takhassussi- HMG Sales 2026-01-29,5966,0,Paid,Receivable Invoice,Not sent
+INV-5153,Foodics Customer,2026-01-29,2026-01-29,WAW-Brunch Sales 2026-01-29,1351,0,Paid,Receivable Invoice,Not sent
+INV-5154,Foodics Customer,2026-01-29,2026-01-29,Hittin branch Sales 2026-01-29,38544,0,Paid,Receivable Invoice,Not sent
+INV-5151,Foodics Customer,2026-01-29,2026-01-29,RAFA Sales 2026-01-29,6891,0,Paid,Receivable Invoice,Not sent
+INV-5155,Foodics Customer,2026-01-30,2026-01-30,Alsahafa branch Sales 2026-01-30,9906.5,0,Paid,Receivable Invoice,Not sent
+INV-5156,Foodics Customer,2026-01-30,2026-01-30,RAFA Sales 2026-01-30,9402,0,Paid,Receivable Invoice,Not sent
+INV-5157,Foodics Customer,2026-01-30,2026-01-30,Takhassussi- HMG Sales 2026-01-30,1375,0,Paid,Receivable Invoice,Not sent
+INV-5159,Foodics Customer,2026-01-30,2026-01-30,Hittin branch Sales 2026-01-30,50621.5,0,Paid,Receivable Invoice,Not sent
+INV-5158,Foodics Customer,2026-01-30,2026-01-30,WAW-Brunch Sales 2026-01-30,1499,0,Paid,Receivable Invoice,Not sent
+INV-5160,Foodics Customer,2026-01-31,2026-01-31,Alsahafa branch Sales 2026-01-31,20768,0,Paid,Receivable Invoice,Not sent
+INV-5161,Foodics Customer,2026-01-31,2026-01-31,RAFA Sales 2026-01-31,6463,0,Paid,Receivable Invoice,Not sent
+INV-5162,Foodics Customer,2026-01-31,2026-01-31,Takhassussi- HMG Sales 2026-01-31,6234,0,Paid,Receivable Invoice,Not sent
+INV-5163,Foodics Customer,2026-01-31,2026-01-31,WAW-Brunch Sales 2026-01-31,2903,0,Paid,Receivable Invoice,Not sent
+INV-5164,Foodics Customer,2026-01-31,2026-01-31,Hittin branch Sales 2026-01-31,26881,0,Paid,Receivable Invoice,Not sent
+INV-5225,موقع سلة Salla website,2026-01-31,2026-01-31,مبيعات شهر  يناير26,1684.37,0,Paid,Receivable Invoice,Not sent
+INV-5296,شركة مجموعة سليمان الحبيب للخدمات الطبية,2026-01-31,2026-01-31,04549,3680,0,Paid,Receivable Invoice,Not sent
+INV-6227,Foodics Customer,2026-09-01,2026-09-01,Alsahafa branch Sales 2026-09-01,19651.5,0,Paid,Receivable Invoice,Not sent
+INV-6228,Foodics Customer,2026-09-01,2026-09-01,RAFA Sales 2026-09-01,11230,0,Paid,Receivable Invoice,Not sent
+INV-6230,Foodics Customer,2026-09-01,2026-09-01,Alyasamin -Brunch Sales 2026-09-01,8,0,Paid,Receivable Invoice,Not sent
+INV-6231,Foodics Customer,2026-09-01,2026-09-01,Hittin branch Sales 2026-09-01,20368.5,0,Paid,Receivable Invoice,Not sent
+INV-6229,Foodics Customer,2026-09-01,2026-09-01,Takhassussi- HMG Sales 2026-09-01,6878,0,Paid,Receivable Invoice,Not sent
+INV-6232,Foodics Customer,2026-09-02,2026-09-02,Alsahafa branch Sales 2026-09-02,20574.5,0,Paid,Receivable Invoice,Not sent
+INV-6233,Foodics Customer,2026-09-02,2026-09-02,RAFA Sales 2026-09-02,10223.5,0,Paid,Receivable Invoice,Not sent
+INV-6235,Foodics Customer,2026-09-02,2026-09-02,Takhassussi- HMG Sales 2026-09-02,7673.5,0,Paid,Receivable Invoice,Not sent
+INV-6237,مقى حبات كرزية لتقديم المشروبات,2026-09-02,2026-09-02,MP 3457,2365.55,0,Paid,Receivable Invoice,Not sent
+INV-6234,Foodics Customer,2026-09-02,2026-09-02,Alyasamin -Brunch Sales 2026-09-02,64,0,Paid,Receivable Invoice,Not sent
+INV-6236,Foodics Customer,2026-09-02,2026-09-02,Hittin branch Sales 2026-09-02,24521,0,Paid,Receivable Invoice,Not sent
+INV-6240,Foodics Customer,2026-09-03,2026-09-03,Takhassussi- HMG Sales 2026-09-03,7036,0,Paid,Receivable Invoice,Not sent
+INV-6241,Foodics Customer,2026-09-03,2026-09-03,Alyasamin -Brunch Sales 2026-09-03,40,0,Paid,Receivable Invoice,Not sent
+INV-6242,Foodics Customer,2026-09-03,2026-09-03,Hittin branch Sales 2026-09-03,39788,0,Paid,Receivable Invoice,Not sent
+INV-6238,Foodics Customer,2026-09-03,2026-09-03,Alsahafa branch Sales 2026-09-03,18887.5,0,Paid,Receivable Invoice,Not sent
+INV-6239,Foodics Customer,2026-09-03,2026-09-03,RAFA Sales 2026-09-03,16394.5,0,Paid,Receivable Invoice,Not sent
+INV-6243,Foodics Customer,2026-09-04,2026-09-04,Alsahafa branch Sales 2026-09-04,10182.5,0,Paid,Receivable Invoice,Not sent
+INV-6244,Foodics Customer,2026-09-04,2026-09-04,RAFA Sales 2026-09-04,16022.5,0,Paid,Receivable Invoice,Not sent
+INV-6245,Foodics Customer,2026-09-04,2026-09-04,Takhassussi- HMG Sales 2026-09-04,3096,0,Paid,Receivable Invoice,Not sent
+INV-6246,Foodics Customer,2026-09-04,2026-09-04,Alyasamin -Brunch Sales 2026-09-04,84,0,Paid,Receivable Invoice,Not sent
+INV-6247,Foodics Customer,2026-09-04,2026-09-04,Hittin branch Sales 2026-09-04,46747.5,0,Paid,Receivable Invoice,Not sent
+INV-6250,Foodics Customer,2026-09-05,2026-09-05,Takhassussi- HMG Sales 2026-09-05,6992.5,0,Paid,Receivable Invoice,Not sent
+INV-6249,Foodics Customer,2026-09-05,2026-09-05,RAFA Sales 2026-09-05,12843,0,Paid,Receivable Invoice,Not sent
+INV-6251,Foodics Customer,2026-09-05,2026-09-05,Alyasamin -Brunch Sales 2026-09-05,88,0,Paid,Receivable Invoice,Not sent
+INV-6252,Foodics Customer,2026-09-05,2026-09-05,Hittin branch Sales 2026-09-05,21746.5,0,Paid,Receivable Invoice,Not sent
+INV-6248,Foodics Customer,2026-09-05,2026-09-05,Alsahafa branch Sales 2026-09-05,22019,0,Paid,Receivable Invoice,Not sent
+INV-6254,شركة مستشفي المحمدية للرعاية الطبية,2026-09-06,2026-09-06,MP 3468,1486.38,0,Paid,Receivable Invoice,Not sent
+INV-6259,Foodics Customer,2026-09-06,2026-09-06,Takhassussi- HMG Sales 2026-09-06,8233.5,0,Paid,Receivable Invoice,Not sent
+INV-6256,Foodics Customer,2026-09-06,2026-09-06,Alsahafa branch Sales 2026-09-06,19001.5,0,Paid,Receivable Invoice,Not sent
+INV-6257,Foodics Customer,2026-09-06,2026-09-06,RAFA Sales 2026-09-06,8532,0,Paid,Receivable Invoice,Not sent
+INV-6260,Foodics Customer,2026-09-06,2026-09-06,Hittin branch Sales 2026-09-06,17211,0,Paid,Receivable Invoice,Not sent
+INV-6255,مقهى لدن اربعين لتقديم المشروبات,2026-09-06,2026-09-06,GB 4547,4522.95,0,Paid,Receivable Invoice,Not sent
+INV-6258,Foodics Customer,2026-09-06,2026-09-06,Alyasamin -Brunch Sales 2026-09-06,43,0,Paid,Receivable Invoice,Not sent
+INV-6261,Foodics Customer,2026-09-07,2026-09-07,Alsahafa branch Sales 2026-09-07,18087,0,Paid,Receivable Invoice,Not sent
+INV-6265,Foodics Customer,2026-09-07,2026-09-07,Hittin branch Sales 2026-09-07,17988,0,Paid,Receivable Invoice,Not sent
+INV-6262,Foodics Customer,2026-09-07,2026-09-07,RAFA Sales 2026-09-07,10090,0,Paid,Receivable Invoice,Not sent
+INV-6263,Foodics Customer,2026-09-07,2026-09-07,Takhassussi- HMG Sales 2026-09-07,7465.5,0,Paid,Receivable Invoice,Not sent
+INV-6264,Foodics Customer,2026-09-07,2026-09-07,Alyasamin -Brunch Sales 2026-09-07,106,0,Paid,Receivable Invoice,Not sent
+INV-6269,Foodics Customer,2026-09-08,2026-09-08,Takhassussi- HMG Sales 2026-09-08,8420.5,0,Paid,Receivable Invoice,Not sent
+INV-6267,Foodics Customer,2026-09-08,2026-09-08,Alsahafa branch Sales 2026-09-08,19154.5,0,Paid,Receivable Invoice,Not sent
+INV-6268,Foodics Customer,2026-09-08,2026-09-08,RAFA Sales 2026-09-08,12637.5,0,Paid,Receivable Invoice,Not sent
+INV-6270,Foodics Customer,2026-09-08,2026-09-08,Alyasamin -Brunch Sales 2026-09-08,44,0,Paid,Receivable Invoice,Not sent
+INV-6271,Foodics Customer,2026-09-08,2026-09-08,Hittin branch Sales 2026-09-08,21395.5,0,Paid,Receivable Invoice,Not sent
+INV-6266,مقهى لدن اربعين لتقديم المشروبات,2026-09-08,2026-09-08,GB 4548,3015.3,0,Paid,Receivable Invoice,Not sent
+INV-6273,Foodics Customer,2026-09-09,2026-09-09,Takhassussi- HMG Sales 2026-09-09,8188,0,Paid,Receivable Invoice,Not sent
+INV-6274,Foodics Customer,2026-09-09,2026-09-09,RAFA Sales 2026-09-09,11570.5,0,Paid,Receivable Invoice,Not sent
+INV-6272,Foodics Customer,2026-09-09,2026-09-09,Alsahafa branch Sales 2026-09-09,19120,0,Paid,Receivable Invoice,Not sent
+INV-6275,Foodics Customer,2026-09-09,2026-09-09,Alyasamin -Brunch Sales 2026-09-09,245,0,Paid,Receivable Invoice,Not sent
+INV-6276,Foodics Customer,2026-09-09,2026-09-09,Hittin branch Sales 2026-09-09,24159.5,0,Paid,Receivable Invoice,Not sent
+INV-6277,مقهى واي تسعة لتقديم المشروبات,2026-09-10,2026-09-10,MP 3482,977.5,0,Paid,Receivable Invoice,Not sent
+INV-6281,Foodics Customer,2026-09-10,2026-09-10,Alyasamin -Brunch Sales 2026-09-10,96,0,Paid,Receivable Invoice,Not sent
+INV-6278,Foodics Customer,2026-09-10,2026-09-10,Alsahafa branch Sales 2026-09-10,17781.5,0,Paid,Receivable Invoice,Not sent
+INV-6280,Foodics Customer,2026-09-10,2026-09-10,Takhassussi- HMG Sales 2026-09-10,7049.5,0,Paid,Receivable Invoice,Not sent
+INV-6282,Foodics Customer,2026-09-10,2026-09-10,Hittin branch Sales 2026-09-10,38039,0,Paid,Receivable Invoice,Not sent
+INV-6279,Foodics Customer,2026-09-10,2026-09-10,RAFA Sales 2026-09-10,17215.5,0,Paid,Receivable Invoice,Not sent
+INV-6283,Foodics Customer,2026-09-11,2026-09-11,Alsahafa branch Sales 2026-09-11,9735.5,0,Paid,Receivable Invoice,Not sent
+INV-6284,Foodics Customer,2026-09-11,2026-09-11,RAFA Sales 2026-09-11,19731.5,0,Paid,Receivable Invoice,Not sent
+INV-6286,Foodics Customer,2026-09-11,2026-09-11,Alyasamin -Brunch Sales 2026-09-11,55,0,Paid,Receivable Invoice,Not sent
+INV-6285,Foodics Customer,2026-09-11,2026-09-11,Takhassussi- HMG Sales 2026-09-11,2913,0,Paid,Receivable Invoice,Not sent
+INV-6287,Foodics Customer,2026-09-11,2026-09-11,Hittin branch Sales 2026-09-11,49435,0,Paid,Receivable Invoice,Not sent
+INV-6288,Foodics Customer,2026-09-12,2026-09-12,Alsahafa branch Sales 2026-09-12,21159.5,0,Paid,Receivable Invoice,Not sent
+INV-6290,Foodics Customer,2026-09-12,2026-09-12,Alyasamin -Brunch Sales 2026-09-12,64,0,Paid,Receivable Invoice,Not sent
+INV-6291,Foodics Customer,2026-09-12,2026-09-12,Takhassussi- HMG Sales 2026-09-12,6200.5,0,Paid,Receivable Invoice,Not sent
+INV-6292,Foodics Customer,2026-09-12,2026-09-12,Hittin branch Sales 2026-09-12,23508.5,0,Paid,Receivable Invoice,Not sent
+INV-6289,Foodics Customer,2026-09-12,2026-09-12,RAFA Sales 2026-09-12,12467,0,Paid,Receivable Invoice,Not sent
+INV-6293,Foodics Customer,2026-09-13,2026-09-13,Alsahafa branch Sales 2026-09-13,18341.5,0,Paid,Receivable Invoice,Not sent
+INV-6297,Foodics Customer,2026-09-13,2026-09-13,Hittin branch Sales 2026-09-13,18268.5,0,Paid,Receivable Invoice,Not sent
+INV-6298,شركة حصيل للصناعة,2026-09-13,2026-09-13,GB 4549,11962.88,0,Paid,Receivable Invoice,Not sent
+INV-6294,Foodics Customer,2026-09-13,2026-09-13,RAFA Sales 2026-09-13,7673,0,Paid,Receivable Invoice,Not sent
+INV-6296,Foodics Customer,2026-09-13,2026-09-13,Alyasamin -Brunch Sales 2026-09-13,19,0,Paid,Receivable Invoice,Not sent
+INV-6295,Foodics Customer,2026-09-13,2026-09-13,Takhassussi- HMG Sales 2026-09-13,7644.5,0,Paid,Receivable Invoice,Not sent
+INV-6299,Foodics Customer,2026-09-14,2026-09-14,Alsahafa branch Sales 2026-09-14,18356,0,Paid,Receivable Invoice,Not sent
+INV-6300,Foodics Customer,2026-09-14,2026-09-14,RAFA Sales 2026-09-14,11581.5,0,Paid,Receivable Invoice,Not sent
+INV-6301,Foodics Customer,2026-09-14,2026-09-14,Takhassussi- HMG Sales 2026-09-14,7518.5,0,Paid,Receivable Invoice,Not sent
+INV-6303,Foodics Customer,2026-09-14,2026-09-14,Hittin branch Sales 2026-09-14,19446,0,Paid,Receivable Invoice,Not sent
+INV-6302,Foodics Customer,2026-09-14,2026-09-14,Alyasamin -Brunch Sales 2026-09-14,155,0,Paid,Receivable Invoice,Not sent
+INV-6309,Foodics Customer,2026-09-15,2026-09-15,Hittin branch Sales 2026-09-15,19723.5,0,Paid,Receivable Invoice,Not sent
+INV-6305,Foodics Customer,2026-09-15,2026-09-15,Alsahafa branch Sales 2026-09-15,18447,0,Paid,Receivable Invoice,Not sent
+INV-6306,Foodics Customer,2026-09-15,2026-09-15,RAFA Sales 2026-09-15,10887,0,Paid,Receivable Invoice,Not sent
+INV-6307,Foodics Customer,2026-09-15,2026-09-15,Alyasamin -Brunch Sales 2026-09-15,33,0,Paid,Receivable Invoice,Not sent
+INV-6308,Foodics Customer,2026-09-15,2026-09-15,Takhassussi- HMG Sales 2026-09-15,6562,0,Paid,Receivable Invoice,Not sent
+INV-6539,Foodics Customer,2026-09-15,2026-09-15,,1565.79,0,Paid,Receivable Invoice,Not sent
+INV-6310,مؤسسة جذل لتقديم المشروبات,2026-09-16,2026-09-16,MP 3492,3381,3381,Approved,Receivable Invoice,Not sent
+INV-6312,Foodics Customer,2026-09-16,2026-09-16,RAFA Sales 2026-09-16,11040.5,0,Paid,Receivable Invoice,Not sent
+INV-6313,Foodics Customer,2026-09-16,2026-09-16,Takhassussi- HMG Sales 2026-09-16,8893,0,Paid,Receivable Invoice,Not sent
+INV-6314,Foodics Customer,2026-09-16,2026-09-16,Alyasamin -Brunch Sales 2026-09-16,8,0,Paid,Receivable Invoice,Not sent
+INV-6315,Foodics Customer,2026-09-16,2026-09-16,Hittin branch Sales 2026-09-16,22934.5,0,Paid,Receivable Invoice,Not sent
+INV-6311,Foodics Customer,2026-09-16,2026-09-16,Alsahafa branch Sales 2026-09-16,21130,0,Paid,Receivable Invoice,Not sent
+INV-6321,Foodics Customer,2026-09-17,2026-09-17,Hittin branch Sales 2026-09-17,34673.5,0,Paid,Receivable Invoice,Not sent
+INV-6316,مؤسسة كيندا بين,2026-09-17,2026-09-17,GB 4550,8376.6,0,Paid,Receivable Invoice,Not sent
+INV-6317,Foodics Customer,2026-09-17,2026-09-17,Alsahafa branch Sales 2026-09-17,18910,0,Paid,Receivable Invoice,Not sent
+INV-6318,Foodics Customer,2026-09-17,2026-09-17,RAFA Sales 2026-09-17,13720,0,Paid,Receivable Invoice,Not sent
+INV-6320,Foodics Customer,2026-09-17,2026-09-17,Alyasamin -Brunch Sales 2026-09-17,24,0,Paid,Receivable Invoice,Not sent
+INV-6319,Foodics Customer,2026-09-17,2026-09-17,Takhassussi- HMG Sales 2026-09-17,6341.5,0,Paid,Receivable Invoice,Not sent
+INV-6322,Foodics Customer,2026-09-18,2026-09-18,Alsahafa branch Sales 2026-09-18,10346.5,0,Paid,Receivable Invoice,Not sent
+INV-6324,Foodics Customer,2026-09-18,2026-09-18,RAFA Sales 2026-09-18,19852,0,Paid,Receivable Invoice,Not sent
+INV-6323,Foodics Customer,2026-09-18,2026-09-18,Takhassussi- HMG Sales 2026-09-18,2072.5,0,Paid,Receivable Invoice,Not sent
+INV-6325,Foodics Customer,2026-09-18,2026-09-18,Alyasamin -Brunch Sales 2026-09-18,58,0,Paid,Receivable Invoice,Not sent
+INV-6333,Arto Caffee ارتوكفى,2026-09-18,2026-09-18,MP 3503,15329.5,15329.5,Paid,Receivable Invoice,Not sent
+INV-6326,Foodics Customer,2026-09-18,2026-09-18,Hittin branch Sales 2026-09-18,42640,0,Paid,Receivable Invoice,Not sent
+INV-6332,زياد الزاير,2026-09-19,2026-09-19,04640,828,0,Paid,Receivable Invoice,Not sent
+INV-6327,Foodics Customer,2026-09-19,2026-09-19,Alsahafa branch Sales 2026-09-19,20907,0,Paid,Receivable Invoice,Not sent
+INV-6328,Foodics Customer,2026-09-19,2026-09-19,Takhassussi- HMG Sales 2026-09-19,6716.5,0,Paid,Receivable Invoice,Not sent
+INV-6329,Foodics Customer,2026-09-19,2026-09-19,Alyasamin -Brunch Sales 2026-09-19,20,0,Paid,Receivable Invoice,Not sent
+INV-6330,Foodics Customer,2026-09-19,2026-09-19,RAFA Sales 2026-09-19,11410,0,Paid,Receivable Invoice,Not sent
+INV-6331,Foodics Customer,2026-09-19,2026-09-19,Hittin branch Sales 2026-09-19,24301,0,Paid,Receivable Invoice,Not sent
+INV-6336,Foodics Customer,2026-09-20,2026-09-20,Alsahafa branch Sales 2026-09-20,20819,0,Paid,Receivable Invoice,Not sent
+INV-6337,Foodics Customer,2026-09-20,2026-09-20,RAFA Sales 2026-09-20,8500.5,0,Paid,Receivable Invoice,Not sent
+INV-6338,Foodics Customer,2026-09-20,2026-09-20,Alyasamin -Brunch Sales 2026-09-20,46,0,Paid,Receivable Invoice,Not sent
+INV-6342,مؤسسة سما برهان لتقديم المشروبات,2026-09-20,2026-09-20,MP 3511,432.4,0,Paid,Receivable Invoice,Not sent
+INV-6334,شركة كايف لتقديم المشروبات,2026-09-20,2026-09-20,MP 3512,6095,6095,Paid,Receivable Invoice,Not sent
+INV-6335,مؤسسة عربة وافل لتقديم المشروبات,2026-09-20,2026-09-20,MP 3513,1219,0,Paid,Receivable Invoice,Not sent
+INV-6339,Foodics Customer,2026-09-20,2026-09-20,Takhassussi- HMG Sales 2026-09-20,7647,0,Paid,Receivable Invoice,Not sent
+INV-6340,Foodics Customer,2026-09-20,2026-09-20,Hittin branch Sales 2026-09-20,18158,0,Paid,Receivable Invoice,Not sent
+INV-6341,شركة المبتدأ المميز لتقديم المشروبات,2026-09-20,2026-09-20,MP 3504,3323.5,3323.5,Paid,Receivable Invoice,Not sent
+INV-6345,Foodics Customer,2026-09-21,2026-09-21,Alyasamin -Brunch Sales 2026-09-21,34,0,Paid,Receivable Invoice,Not sent
+INV-6343,Foodics Customer,2026-09-21,2026-09-21,Alsahafa branch Sales 2026-09-21,18016,0,Paid,Receivable Invoice,Not sent
+INV-6344,Foodics Customer,2026-09-21,2026-09-21,RAFA Sales 2026-09-21,10396,0,Paid,Receivable Invoice,Not sent
+INV-6346,Foodics Customer,2026-09-21,2026-09-21,Takhassussi- HMG Sales 2026-09-21,6594,0,Paid,Receivable Invoice,Not sent
+INV-6347,Foodics Customer,2026-09-21,2026-09-21,Hittin branch Sales 2026-09-21,19400,0,Paid,Receivable Invoice,Not sent
+INV-6349,Foodics Customer,2026-09-22,2026-09-22,RAFA Sales 2026-09-22,14601.5,0,Paid,Receivable Invoice,Not sent
+INV-6350,Foodics Customer,2026-09-22,2026-09-22,Takhassussi- HMG Sales 2026-09-22,7290,0,Paid,Receivable Invoice,Not sent
+INV-6348,Foodics Customer,2026-09-22,2026-09-22,Alsahafa branch Sales 2026-09-22,20119,0,Paid,Receivable Invoice,Not sent
+INV-6351,Foodics Customer,2026-09-22,2026-09-22,Alyasamin -Brunch Sales 2026-09-22,68,0,Paid,Receivable Invoice,Not sent
+INV-6352,Foodics Customer,2026-09-22,2026-09-22,Hittin branch Sales 2026-09-22,25447,0,Paid,Receivable Invoice,Not sent
+INV-6355,Foodics Customer,2026-09-23,2026-09-23,Alyasamin -Brunch Sales 2026-09-23,146,0,Paid,Receivable Invoice,Not sent
+INV-6357,Foodics Customer,2026-09-23,2026-09-23,Hittin branch Sales 2026-09-23,35168.5,0,Paid,Receivable Invoice,Not sent
+INV-6353,Foodics Customer,2026-09-23,2026-09-23,Alsahafa branch Sales 2026-09-23,15074,0,Paid,Receivable Invoice,Not sent
+INV-6354,Foodics Customer,2026-09-23,2026-09-23,RAFA Sales 2026-09-23,16945,0,Paid,Receivable Invoice,Not sent
+INV-6356,Foodics Customer,2026-09-23,2026-09-23,Takhassussi- HMG Sales 2026-09-23,4926,0,Paid,Receivable Invoice,Not sent
+INV-6358,Foodics Customer,2026-09-24,2026-09-24,Alsahafa branch Sales 2026-09-24,14728.5,0,Paid,Receivable Invoice,Not sent
+INV-6360,Foodics Customer,2026-09-24,2026-09-24,Takhassussi- HMG Sales 2026-09-24,4516.5,0,Paid,Receivable Invoice,Not sent
+INV-6361,Foodics Customer,2026-09-24,2026-09-24,Alyasamin -Brunch Sales 2026-09-24,38,0,Paid,Receivable Invoice,Not sent
+INV-6359,Foodics Customer,2026-09-24,2026-09-24,RAFA Sales 2026-09-24,15267,0,Paid,Receivable Invoice,Not sent
+INV-6362,Foodics Customer,2026-09-24,2026-09-24,Hittin branch Sales 2026-09-24,37028,0,Paid,Receivable Invoice,Not sent
+INV-6517,Foodics Customer,2026-09-25,2026-09-25,Hittin branch Sales 2026-09-25,40826.5,0,Paid,Receivable Invoice,Not sent
+INV-6525,Foodics Customer,2026-09-25,2026-09-25,RAFA Sales 2026-09-25,14624.5,0,Paid,Receivable Invoice,Not sent
+INV-6527,Foodics Customer,2026-09-25,2026-09-25,Alsahafa branch Sales 2026-09-25,8819,0,Paid,Receivable Invoice,Not sent
+INV-6365,Foodics Customer,2026-09-25,2026-09-25,Takhassussi- HMG Sales 2026-09-25,2403,0,Paid,Receivable Invoice,Not sent
+INV-6366,Foodics Customer,2026-09-25,2026-09-25,Alyasamin -Brunch Sales 2026-09-25,27,0,Paid,Receivable Invoice,Not sent
+INV-6368,Foodics Customer,2026-09-26,2026-09-26,Alsahafa branch Sales 2026-09-26,19084,0,Paid,Receivable Invoice,Not sent
+INV-6371,Foodics Customer,2026-09-26,2026-09-26,Alyasamin -Brunch Sales 2026-09-26,162,0,Paid,Receivable Invoice,Not sent
+INV-6369,Foodics Customer,2026-09-26,2026-09-26,Takhassussi- HMG Sales 2026-09-26,7179.5,0,Paid,Receivable Invoice,Not sent
+INV-6370,Foodics Customer,2026-09-26,2026-09-26,RAFA Sales 2026-09-26,11827.51,0,Paid,Receivable Invoice,Not sent
+INV-6372,Foodics Customer,2026-09-26,2026-09-26,Hittin branch Sales 2026-09-26,19805.5,0,Paid,Receivable Invoice,Not sent
+INV-6374,Foodics Customer,2026-09-27,2026-09-27,RAFA Sales 2026-09-27,8223.5,0,Paid,Receivable Invoice,Not sent
+INV-6376,Foodics Customer,2026-09-27,2026-09-27,Alyasamin -Brunch Sales 2026-09-27,33,0,Paid,Receivable Invoice,Not sent
+INV-6373,Foodics Customer,2026-09-27,2026-09-27,Alsahafa branch Sales 2026-09-27,19667,0,Paid,Receivable Invoice,Not sent
+INV-6375,Foodics Customer,2026-09-27,2026-09-27,Takhassussi- HMG Sales 2026-09-27,8694.5,0,Paid,Receivable Invoice,Not sent
+INV-6377,Foodics Customer,2026-09-27,2026-09-27,Hittin branch Sales 2026-09-27,19347,0,Paid,Receivable Invoice,Not sent
+INV-6379,Foodics Customer,2026-09-28,2026-09-28,Alsahafa branch Sales 2026-09-28,20767.5,0,Paid,Receivable Invoice,Not sent
+INV-6378,مقهى لدن اربعين لتقديم المشروبات,2026-09-28,2026-09-28,GB 4551,3015.3,0,Paid,Receivable Invoice,Not sent
+INV-6380,Foodics Customer,2026-09-28,2026-09-28,RAFA Sales 2026-09-28,8435.5,0,Paid,Receivable Invoice,Not sent
+INV-6383,Foodics Customer,2026-09-28,2026-09-28,Hittin branch Sales 2026-09-28,18453.5,0,Paid,Receivable Invoice,Not sent
+INV-6381,Foodics Customer,2026-09-28,2026-09-28,Takhassussi- HMG Sales 2026-09-28,7542,0,Paid,Receivable Invoice,Not sent
+INV-6382,Foodics Customer,2026-09-28,2026-09-28,Alyasamin -Brunch Sales 2026-09-28,54,0,Paid,Receivable Invoice,Not sent
+INV-6387,Foodics Customer,2026-09-29,2026-09-29,Alyasamin -Brunch Sales 2026-09-29,28,0,Paid,Receivable Invoice,Not sent
+INV-6388,Foodics Customer,2026-09-29,2026-09-29,Hittin branch Sales 2026-09-29,18167.5,0,Paid,Receivable Invoice,Not sent
+INV-6384,Foodics Customer,2026-09-29,2026-09-29,Alsahafa branch Sales 2026-09-29,22337,0,Paid,Receivable Invoice,Not sent
+INV-6385,Foodics Customer,2026-09-29,2026-09-29,Takhassussi- HMG Sales 2026-09-29,7383,0,Paid,Receivable Invoice,Not sent
+INV-6386,Foodics Customer,2026-09-29,2026-09-29,RAFA Sales 2026-09-29,8209,0,Paid,Receivable Invoice,Not sent
+INV-6390,شركة الخزامي التجارية,2026-09-30,2026-09-30,MP 3540,7820,7820,Approved,Receivable Invoice,Not sent
+INV-6418,شركة مجموعة سليمان الحبيب للخدمات الطبية,2026-09-30,2026-09-30,04652,4240,0,Paid,Receivable Invoice,Not sent
+INV-6514,Foodics Customer,2026-09-30,2026-09-30,RAFA Sales 2026-09-30,9789.5,0,Paid,Receivable Invoice,Not sent
+INV-6512,Foodics Customer,2026-09-30,2026-09-30,Takhassussi- HMG Sales 2026-09-30,8340.5,0,Paid,Receivable Invoice,Not sent
+INV-6513,Foodics Customer,2026-09-30,2026-09-30,Alyasamin -Brunch Sales 2026-09-30,31,0,Paid,Receivable Invoice,Not sent
+INV-6515,Foodics Customer,2026-09-30,2026-09-30,Hittin branch Sales 2026-09-30,22660,0,Paid,Receivable Invoice,Not sent
+INV-6516,Foodics Customer,2026-09-30,2026-09-30,Alsahafa branch Sales 2026-09-30,20514.5,0,Paid,Receivable Invoice,Not sent
+INV-6529,Foodics Customer,2026-09-30,2026-09-30,Alsahafa branch Salesفروق,568.61,0,Paid,Receivable Invoice,Not sent
+INV-6530,موقع سلة Salla website,2026-09-30,2026-09-30,,15400.91,0,Paid,Receivable Invoice,Not sent
