@@ -505,3 +505,62 @@ def test_salla_mappings_auto_seed_and_manual_seed(admin_client, db_session):
     # يجب ألا تتكرر الأصناف بفضل الحماية من التكرار
     assert SallaItemMapping.query.count() == 17
 
+
+def test_salla_paste_json_array_of_orders(admin_client, db_session):
+    """التحقق من دعم لصق مصفوفة JSON تحتوي على عدة طلبات كما في تصدير سلة."""
+    orders_json = json.dumps([
+        {
+            "id": 2017958728,
+            "reference_id": "300654573",
+            "date": "2026-11-17 23:32:22",
+            "status": "جاري التوصيل",
+            "total": {"amount": 171.84, "currency": "SAR"},
+            "payment_method": "credit_card",
+            "customer": {"name": "May Alosaimi", "mobile": "+966500878780", "city": "الدرعية"},
+            "items": [{"name": "بن قوتيتي المختص من برقاتشيف", "quantity": 5}]
+        },
+        {
+            "id": 671090339,
+            "reference_id": "300640520",
+            "date": "2026-11-17 22:07:47",
+            "status": "جاري التوصيل",
+            "total": {"amount": 81.84, "currency": "SAR"},
+            "payment_method": "mada",
+            "customer": {"name": "رهف", "mobile": "+966546673833", "city": "الرياض"},
+            "items": [{"name": "بن قوتيتي المختص من برقاتشيف", "quantity": 2}]
+        }
+    ])
+
+    resp = admin_client.post("/coffee/salla/orders/paste-payload", data={
+        "payload_json": orders_json
+    }, follow_redirects=True)
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+    assert "300654573" in html
+    assert "300640520" in html
+
+    ord1 = SallaOrderQueue.query.filter(
+        (SallaOrderQueue.salla_order_id == "300654573") | (SallaOrderQueue.order_reference == "300654573")
+    ).first()
+    assert ord1 is not None
+    assert ord1.total_amount == 171.84
+    assert ord1.has_unmapped_items is False
+
+
+def test_salla_csv_import_with_composite_items(admin_client, db_session):
+    """التحقق من استيراد ملف CSV بهيكل سلة الذي يدمج عدة أصناف في خلية واحدة."""
+    csv_content = """اسم العميل,رقم الجوال,المدينة,رقم الطلب,مجموع السلة,تكلفة الشحن,الضريبة,صافي المبيعات,تاريخ الطلب,اسماء المنتجات مع SKU,SKU,رقم مرجع الطلب,رقم الفاتورة
+Sara Alruwita,+966555293434,Riyadh,299842834,353.92,19,30.9,236.86,2026-11-13 14:25,"'(SKU: )مكسيكو باتشي(Qty: 1)','(SKU: )كولمبيا توليمــا(Qty: 1)'",,199981237,1844
+"""
+    import io
+    data = {"salla_csv_file": (io.BytesIO(csv_content.encode("utf-8-sig")), "salla_orders.csv")}
+    resp = admin_client.post("/coffee/salla/orders/import-csv", data=data, content_type="multipart/form-data", follow_redirects=True)
+    assert resp.status_code == 200
+
+    ord_csv = SallaOrderQueue.query.filter_by(salla_order_id="299842834").first()
+    assert ord_csv is not None
+    assert ord_csv.total_amount == 236.86
+    assert ord_csv.shipping_amount == 19.0
+    assert ord_csv.has_unmapped_items is False
+
+

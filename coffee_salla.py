@@ -12,6 +12,9 @@ coffee_salla.py — نظام تكامل ومبيعات متجر سلة (Salla E-
 """
 import json
 import logging
+import csv
+import io
+import re
 from datetime import datetime, date
 from flask import request, render_template, redirect, url_for, flash, jsonify
 from models import db, Location, Item, StockBalance, record_stock_movement, Notification
@@ -42,7 +45,7 @@ def _get_main_warehouse():
     return mw
 
 def _find_item_mapping(prod_id: str, prod_name: str):
-    """البحث عن مطابقة الصنف في جدول سلة برقم الصنف أو بالاسم."""
+    """البحث الذكي عن مطابقة الصنف في جدول سلة برقم الصنف أو بالاسم ومطابقة الكلمات المفتاحية."""
     p_id = str(prod_id or "").strip()
     p_name = str(prod_name or "").strip()
 
@@ -53,12 +56,64 @@ def _find_item_mapping(prod_id: str, prod_name: str):
             return active
 
     if p_name:
+        # 1. مطابقة مباشرة بالاسم
         m = SallaItemMapping.query.filter(
             SallaItemMapping.salla_product_name.ilike(f"%{p_name}%")
         ).all()
         active = [x for x in m if x.is_active not in (False, 0, "0")]
         if active:
             return active
+
+        all_mappings = [x for x in SallaItemMapping.query.all() if x.is_active not in (False, 0, "0")]
+        # ترتيب حسب طول الاسم تنازلياً لتفضيل المطابقات الأكثر تحديداً أولاً
+        sorted_mappings = sorted(all_mappings, key=lambda x: len(x.salla_product_name or ""), reverse=True)
+
+        # 2. مطابقة عكسية وجزئية
+        for mp in sorted_mappings:
+            m_name = (mp.salla_product_name or "").strip()
+            if not m_name:
+                continue
+            if m_name == "مكسيكو" and ("كاتورا" in p_name or "باتشي" in p_name):
+                continue
+            if m_name in p_name or p_name in m_name:
+                return [mp]
+
+        # 3. مطابقة الكلمات المفتاحية والتنويعات اللغوية للمنتجات
+        clean_name = p_name.replace("أ", "ا").replace("إ", "ا").replace("–", "-").replace("ـ", "")
+        for mp in sorted_mappings:
+            clean_m = (mp.salla_product_name or "").replace("أ", "ا").replace("إ", "ا").replace("–", "-").replace("ـ", "")
+            # فحص قوتيتي (يرقاتشيف / برقاتشيف / اثيوبي)
+            if "قوتيتي" in clean_name and "قوتيتي" in clean_m:
+                if ("اظرف" in clean_name) == ("اظرف" in clean_m):
+                    return [mp]
+            # فحص ديكاف / منزوعة الكافيين
+            if ("ديكاف" in clean_name or "منزوعة الكافيين" in clean_name) and ("ديكاف" in clean_m or "منزوعة الكافيين" in clean_m):
+                return [mp]
+            # فحص توليما
+            if "توليما" in clean_name and "توليما" in clean_m:
+                return [mp]
+            # فحص باتشي
+            if "باتشي" in clean_name and "باتشي" in clean_m:
+                return [mp]
+            # فحص كاتورا
+            if "كاتورا" in clean_name and "كاتورا" in clean_m:
+                return [mp]
+            # فحص مكسيكو المنفرد
+            if "مكسيكو" in clean_name and clean_m.strip() == "مكسيكو":
+                if "باتشي" not in clean_name and "كاتورا" not in clean_name:
+                    return [mp]
+            # فحص نوفمبر بلند
+            if "نوفمبر بلند" in clean_name and "نوفمبر بلند" in clean_m:
+                return [mp]
+            # فحص قهوة سعودية
+            if "سعودية" in clean_name and "سعودية" in clean_m:
+                return [mp]
+            # فحص كافيك
+            if "كافيك" in clean_name and "كافيك" in clean_m:
+                return [mp]
+            # فحص كيمكس
+            if "كيمكس" in clean_name and "كيمكس" in clean_m:
+                return [mp]
 
     return []
 
@@ -122,7 +177,7 @@ def process_salla_webhook_payload(payload: dict) -> dict:
     if event in order_events or "order" in event or "invoice" in event or "shipment" in event:
         # استخراج بيانات الطلب بمرونة (سواء من كائن الطلب المباشر أو من فاتورة مرتبطة بطلب)
         order_data = data.get("order") if isinstance(data.get("order"), dict) else data
-        order_id = str(data.get("order_id") or order_data.get("id") or data.get("id") or "")
+        order_id = str(data.get("order_id") or order_data.get("id") or data.get("id") or data.get("reference_id") or "")
         if not order_id:
             return {"success": False, "error": "No order id in payload"}
 
@@ -210,13 +265,36 @@ def process_salla_webhook_payload(payload: dict) -> dict:
         unmapped_str = "، ".join(unmapped_list) if unmapped_list else None
         summary_str = " | ".join(resolved_summary) if resolved_summary else "طلب بدون تفاصيل أصناف"
 
+        parsed_order_date = datetime.utcnow()
+        raw_date = data.get("date") or order_data.get("date")
+        if isinstance(raw_date, str) and raw_date.strip():
+            try:
+                from datetime import datetime as dt_cls
+                parsed_order_date = dt_cls.fromisoformat(raw_date.strip().replace("Z", ""))
+            except Exception:
+                try:
+                    parsed_order_date = dt_cls.strptime(raw_date.strip()[:19], "%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    pass
+        elif isinstance(raw_date, dict) and "date" in raw_date:
+            try:
+                from datetime import datetime as dt_cls
+                parsed_order_date = dt_cls.strptime(str(raw_date["date"])[:19], "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                pass
+
         # حفظ الطلب أو تحديثه في طابور سلة
-        existing_order = SallaOrderQueue.query.filter_by(salla_order_id=order_id).first()
+        existing_order = SallaOrderQueue.query.filter(
+            (SallaOrderQueue.salla_order_id == order_id) |
+            (SallaOrderQueue.salla_order_id == order_ref) |
+            (SallaOrderQueue.order_reference == order_id) |
+            (SallaOrderQueue.order_reference == order_ref)
+        ).first()
         if not existing_order:
             existing_order = SallaOrderQueue(
                 salla_order_id=order_id,
                 order_reference=order_ref,
-                order_date=datetime.utcnow(),
+                order_date=parsed_order_date,
                 customer_name=cust_name or "عملاء موقع سلة Salla website",
                 customer_phone=cust_phone,
                 total_amount=total_val,
@@ -258,7 +336,9 @@ def process_salla_webhook_payload(payload: dict) -> dict:
             "order_id": order_id,
             "status": status,
             "has_unmapped": has_unmapped,
-            "unmapped_items": unmapped_list
+            "unmapped_items": unmapped_list,
+            "total_amount": total_val,
+            "customer_name": cust_name
         }
 
     return {"success": True, "event": event, "message": "Event ignored or logged"}
@@ -312,12 +392,13 @@ def import_salla_orders_csv(file_stream) -> dict:
                     return orig_fn
         return None
 
-    col_order_id = find_col("رقم الطلب", "معرف الطلب", "رقم المعاملة", "order id", "order_id", "reference")
+    col_order_id = find_col("رقم الطلب", "معرف الطلب", "رقم المعاملة", "رقم مرجع الطلب", "order id", "order_id", "reference")
     col_customer = find_col("اسم العميل", "العميل", "المستلم", "customer name", "customer", "name")
     col_phone    = find_col("رقم الجوال", "الجوال", "الهاتف", "mobile", "phone")
     col_date     = find_col("تاريخ الطلب", "تاريخ الإنشاء", "التاريخ", "date", "created_at")
-    col_total    = find_col("الإجمالي", "إجمالي الطلب", "المجموع", "المبلغ", "total", "amount")
-    col_product  = find_col("اسم المنتج", "المنتجات", "المنتج", "اسم الصنف", "الأصناف", "product", "item")
+    col_total    = find_col("صافي المبيعات", "مجموع السلة", "الإجمالي", "إجمالي الطلب", "المجموع", "المبلغ", "total", "amount")
+    col_shipping = find_col("تكلفة الشحن", "الشحن", "shipping")
+    col_product  = find_col("اسماء المنتجات مع sku", "اسماء المنتجات", "اسم المنتج", "المنتجات", "المنتج", "اسم الصنف", "الأصناف", "product", "item")
     col_qty      = find_col("الكمية", "عدد", "qty", "quantity")
 
     if not col_order_id:
@@ -338,23 +419,48 @@ def import_salla_orders_csv(file_stream) -> dict:
             except (ValueError, TypeError):
                 amt = 0.0
 
+            raw_ship = str(row.get(col_shipping) or "0").replace(",", "").replace("ر.س", "").replace("SAR", "").strip() if col_shipping else "0"
+            try:
+                ship_amt = float(raw_ship)
+            except (ValueError, TypeError):
+                ship_amt = 0.0
+
             grouped_orders[o_id] = {
                 "order_id": o_id,
                 "customer_name": (str(row.get(col_customer) or "عملاء موقع سلة Salla website")).strip() if col_customer else "عملاء موقع سلة Salla website",
                 "customer_phone": (str(row.get(col_phone) or "")).strip() if col_phone else "",
                 "total_amount": amt,
+                "shipping_amount": ship_amt,
                 "items": []
             }
 
         if col_product and row.get(col_product):
-            p_name = str(row.get(col_product)).strip()
-            q_val = 1.0
-            if col_qty and row.get(col_qty):
-                try:
-                    q_val = float(str(row.get(col_qty)).replace(",", "").strip())
-                except (ValueError, TypeError):
-                    q_val = 1.0
-            grouped_orders[o_id]["items"].append({"name": p_name, "qty": q_val})
+            p_cell = str(row.get(col_product)).strip()
+            # فحص ما إذا كانت الخلية تحتوي على عدة منتجات بصيغة سلة: '(SKU: )منتج(Qty: 1)'
+            if "(Qty:" in p_cell:
+                import re
+                parsed_items = re.findall(r"(?:\(SKU:\s*([^)]*)\))?\s*([^(]+?)\s*\(Qty:\s*([\d.]+)\)", p_cell)
+                if parsed_items:
+                    for sku, it_name, q_str in parsed_items:
+                        try:
+                            q_val = float(q_str)
+                        except (ValueError, TypeError):
+                            q_val = 1.0
+                        grouped_orders[o_id]["items"].append({
+                            "name": it_name.strip("' \""),
+                            "sku": sku.strip(),
+                            "qty": q_val
+                        })
+                else:
+                    grouped_orders[o_id]["items"].append({"name": p_cell, "qty": 1.0})
+            else:
+                q_val = 1.0
+                if col_qty and row.get(col_qty):
+                    try:
+                        q_val = float(str(row.get(col_qty)).replace(",", "").strip())
+                    except (ValueError, TypeError):
+                        q_val = 1.0
+                grouped_orders[o_id]["items"].append({"name": p_cell, "qty": q_val})
 
     if not grouped_orders:
         return {"success": False, "error": "الملف لا يحتوي على أي طلبات صالحة."}
@@ -403,7 +509,7 @@ def import_salla_orders_csv(file_stream) -> dict:
             customer_name=o_data["customer_name"],
             customer_phone=o_data["customer_phone"],
             total_amount=o_data["total_amount"],
-            shipping_amount=0.0,
+            shipping_amount=o_data.get("shipping_amount", 0.0),
             status=status,
             has_unmapped_items=has_unmapped,
             unmapped_items_details=", ".join(unmapped_list) if unmapped_list else None,
@@ -880,45 +986,68 @@ def init_salla_routes(bp):
                 lines = lines[:-1]
             cleaned = "\n".join(lines).strip()
 
-        payload = None
+        parsed_data = None
         try:
-            payload = json.loads(cleaned)
+            parsed_data = json.loads(cleaned)
         except Exception:
             try:
                 import ast
                 val = ast.literal_eval(cleaned)
-                if isinstance(val, dict):
-                    payload = val
+                if isinstance(val, (dict, list)):
+                    parsed_data = val
             except Exception:
                 pass
 
-        if not payload or not isinstance(payload, dict):
-            flash("صيغة الـ JSON غير صالحة. يرجى التأكد من نسخ كود الـ Payload بالكامل بين القوسين { }.", "error")
+        if not parsed_data or not isinstance(parsed_data, (dict, list)):
+            flash("صيغة الـ JSON غير صالحة. يرجى التأكد من نسخ كود الـ Payload بالكامل بين [ ] أو { }.", "error")
             return redirect(url_for("coffee.salla_orders_list"))
 
-        res = process_salla_webhook_payload(payload)
-        if res.get("success") and res.get("order_id"):
-            o_id = res.get("order_id")
-            if res.get("has_unmapped"):
-                flash(f"✓ تم استيراد الطلب #{o_id} بنجاح! ⚠️ ولكنه يحتوي على أصناف بحاجة لمطابقة قبل الترحيل.", "warning")
+        # تفكيك قائمة الطلبات في حال كان الإدخال مصفوفة JSON أو كائناً يحتوي قائمة
+        orders_to_process = []
+        if isinstance(parsed_data, list):
+            orders_to_process = parsed_data
+        elif isinstance(parsed_data, dict):
+            if isinstance(parsed_data.get("orders"), list):
+                orders_to_process = parsed_data["orders"]
+            elif isinstance(parsed_data.get("data"), list):
+                orders_to_process = parsed_data["data"]
             else:
-                flash(f"✓ تم بنجاح استيراد وقيد الطلب #{o_id} في طابور المعالجة وهو جاهز للإغلاق والترحيل.", "success")
-        elif res.get("success"):
-            flash(f"تم استقبال الحدث بنجاح: {res.get('message', res.get('action', 'OK'))}", "info")
+                orders_to_process = [parsed_data]
+
+        total_imported = 0
+        total_sar = 0.0
+        unmapped_orders = 0
+        last_order_id = ""
+
+        for single_payload in orders_to_process:
+            if not isinstance(single_payload, dict):
+                continue
+            res = process_salla_webhook_payload(single_payload)
+            if res.get("success") and res.get("order_id"):
+                total_imported += 1
+                last_order_id = res.get("order_id")
+                if res.get("has_unmapped"):
+                    unmapped_orders += 1
+                amt = float(res.get("total_amount") or 0.0)
+                if not amt and "total" in single_payload:
+                    t = single_payload["total"]
+                    amt = float(t.get("amount") if isinstance(t, dict) else t or 0.0)
+                total_sar += amt
+
+        if total_imported > 1:
+            msg = f"✓ تم بنجاح استيراد وقيد {total_imported} طلب من متجر سلة في طابور المعالجة بإجمالي {total_sar:.2f} ر.س!"
+            if unmapped_orders > 0:
+                msg += f" (⚠️ يوجد {unmapped_orders} طلب بحاجة لمطابقة أصنافه قبل الترحيل)."
+            flash(msg, "success")
+        elif total_imported == 1:
+            if unmapped_orders > 0:
+                flash(f"✓ تم استيراد الطلب #{last_order_id} بنجاح! ⚠️ ولكنه يحتوي على أصناف بحاجة لمطابقة قبل الترحيل.", "warning")
+            else:
+                flash(f"✓ تم بنجاح استيراد وقيد الطلب #{last_order_id} في طابور المعالجة وهو جاهز للإغلاق والترحيل.", "success")
         else:
-            flash(f"تعذر معالجة البيانات: {res.get('error', 'بيانات غير مكتملة')}", "error")
+            flash("لم يتم العثور على أي طلبات صالحة في البيانات الملصقة.", "error")
 
         return redirect(url_for("coffee.salla_orders_list"))
-
-        try:
-            payload = json.loads(payload_raw)
-        except Exception as e:
-            flash(f"صيغة الـ JSON غير صحيحة: {e}", "error")
-            return redirect(url_for("coffee.salla_orders_list"))
-
-        if not isinstance(payload, dict):
-            flash("بيانات الـ JSON يجب أن تكون كائناً (Object).", "error")
-            return redirect(url_for("coffee.salla_orders_list"))
 
         res = process_salla_webhook_payload(payload)
         if res.get("success") and res.get("order_id"):
