@@ -115,8 +115,11 @@ def process_salla_webhook_payload(payload: dict) -> dict:
         "order.payment.updated",
         "order.status.updated",
         "order.updated",
+        "shipment.created",
+        "order.shipment.created",
+        "shipment.updated",
     )
-    if event in order_events or "order" in event or "invoice" in event:
+    if event in order_events or "order" in event or "invoice" in event or "shipment" in event:
         # استخراج بيانات الطلب بمرونة (سواء من كائن الطلب المباشر أو من فاتورة مرتبطة بطلب)
         order_data = data.get("order") if isinstance(data.get("order"), dict) else data
         order_id = str(data.get("order_id") or order_data.get("id") or data.get("id") or "")
@@ -133,11 +136,16 @@ def process_salla_webhook_payload(payload: dict) -> dict:
         ).strip()
         cust_phone = str(customer.get("mobile") or customer.get("phone") or "").strip()
 
-        # استخراج المبالغ
-        amounts = data.get("amounts") or {}
+        # استخراج المبالغ بمرونة لمطابقة كل هياكل Webhook سلة (amount / amounts / shipping)
+        amounts = data.get("amounts") or data.get("amount") or {}
         total_val = 0.0
         if isinstance(amounts.get("total"), dict):
             total_val = float(amounts["total"].get("amount") or 0.0)
+        elif amounts.get("total") is not None:
+            try:
+                total_val = float(amounts["total"])
+            except (ValueError, TypeError):
+                total_val = 0.0
         elif "total" in data:
             t = data["total"]
             total_val = float(t.get("amount") if isinstance(t, dict) else t or 0.0)
@@ -145,11 +153,32 @@ def process_salla_webhook_payload(payload: dict) -> dict:
         ship_val = 0.0
         if isinstance(amounts.get("shipping_cost"), dict):
             ship_val = float(amounts["shipping_cost"].get("amount") or 0.0)
+        elif amounts.get("shipping_cost") is not None:
+            try:
+                ship_val = float(amounts["shipping_cost"])
+            except (ValueError, TypeError):
+                ship_val = 0.0
+        elif amounts.get("shipping") is not None:
+            s = amounts["shipping"]
+            if isinstance(s, dict):
+                ship_val = float(s.get("cost") or s.get("amount") or 0.0)
+            else:
+                try:
+                    ship_val = float(s)
+                except (ValueError, TypeError):
+                    ship_val = 0.0
         elif "shipping_cost" in data:
             s = data["shipping_cost"]
             ship_val = float(s.get("amount") if isinstance(s, dict) else s or 0.0)
+        elif "cost" in data:
+            try:
+                ship_val = float(data["cost"] or 0.0)
+            except (ValueError, TypeError):
+                ship_val = 0.0
+        elif isinstance(data.get("shipping"), dict):
+            ship_val = float(data["shipping"].get("cost") or data["shipping"].get("amount") or 0.0)
 
-        items = order_data.get("items") or data.get("items") or []
+        items = order_data.get("items") or data.get("items") or data.get("shipment_items") or []
         unmapped_list = []
         resolved_summary = []
 

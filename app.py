@@ -4823,6 +4823,7 @@ def salla_webhook():
         if not payload:
             return jsonify({"status": "error", "message": "No JSON payload provided"}), 400
 
+        current_app.logger.info(f"Salla Webhook incoming event: {payload.get('event')} | id: {payload.get('data', {}).get('id') if isinstance(payload.get('data'), dict) else 'none'}")
         res = process_salla_webhook_payload(payload)
         return jsonify(res), 200
     except Exception as e:

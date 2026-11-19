@@ -196,6 +196,70 @@ def test_salla_webhook_valid_order_and_daily_consolidation(db_session):
     ord = SallaOrderQueue.query.filter_by(salla_order_id=order_id).first()
     assert ord.status == "pending"
 
+    # اختبار إضافي: هيكل Webhook v2 الرسمي مع amount ككائن مفرد
+    v2_order_id = "300654573"
+    v2_payload = {
+        "event": "invoice.created",
+        "data": {
+            "id": v2_order_id,
+            "reference_id": "300654573",
+            "amount": {
+                "total": 171.84,
+                "shipping": 19.0
+            },
+            "customer": {
+                "first_name": "May",
+                "last_name": "Alosaimi",
+                "mobile": "+966500878780"
+            },
+            "items": [
+                {
+                    "id": "766085130",
+                    "product_id": "766085130",
+                    "name": "كولمبيا توليمــا",
+                    "quantity": 1
+                }
+            ]
+        }
+    }
+    v2_res = process_salla_webhook_payload(v2_payload)
+    assert v2_res.get("success") is True
+    v2_ord = SallaOrderQueue.query.filter_by(salla_order_id=v2_order_id).first()
+    assert v2_ord is not None
+    assert v2_ord.total_amount == 171.84
+    assert v2_ord.shipping_amount == 19.0
+    assert "May Alosaimi" in v2_ord.customer_name
+
+    # اختبار إضافي: حدث تم إنشاء شحنة shipment.created
+    shp_order_id = "300640520"
+    shp_payload = {
+        "event": "shipment.created",
+        "data": {
+            "id": 998877,
+            "order_id": shp_order_id,
+            "order_reference": "300640520",
+            "cost": 19.0,
+            "customer": {
+                "name": "رهف",
+                "mobile": "+966555123456"
+            },
+            "shipment_items": [
+                {
+                    "id": "528060831",
+                    "product_id": "528060831",
+                    "name": "اداة الكيمكس - 3 اكواب",
+                    "quantity": 1
+                }
+            ]
+        }
+    }
+    shp_res = process_salla_webhook_payload(shp_payload)
+    assert shp_res.get("success") is True
+    shp_ord = SallaOrderQueue.query.filter_by(salla_order_id=shp_order_id).first()
+    assert shp_ord is not None
+    assert shp_ord.shipping_amount == 19.0
+    assert shp_ord.customer_name == "رهف"
+
     # تنفيذ الإغلاق اليومي
     close_res = execute_salla_daily_consolidation([ord.id])
     assert close_res.get("success") is True
