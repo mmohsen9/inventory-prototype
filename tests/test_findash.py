@@ -842,3 +842,32 @@ def test_foodics_branch_and_product_sales(client, test_data, db_session):
     assert "أضعف المنتجات" in html
     assert "صافي المبيعات" in html
     assert "عدد الطلبات" in html
+
+
+def test_aggregated_item_statement_totals_and_empty_month(client, test_data):
+    """فحص حساب مجاميع بيان الصنف المجمع في بايثون بدلاً من جينجا والتعامل مع الشهور الفارغة."""
+    from services.findash_service import get_aggregated_item_statement
+
+    # 1. فحص شهر فارغ (شهر 9 مثلاً)
+    res_empty = get_aggregated_item_statement(year=2026, month=9)
+    assert res_empty["active_items_count"] == 0
+    assert "totals" in res_empty
+    assert res_empty["totals"]["purchase_in"] == 0.0
+    assert res_empty["totals"]["net_qty"] == 0.0
+
+    # 2. فحص استجابة المسار وظهور تنبيه الشهر الفارغ بدون أخطاء Bad Gateway / 500
+    with client.session_transaction() as sess:
+        sess["user_id"] = 1
+
+    r = client.get("/finance/inventory?subtab=statement&year=2026&month=9&basis=monthly")
+    assert r.status_code == 200
+    html = r.data.decode("utf-8")
+    assert "لا توجد حركات مخزون مسجلة لشهر" in html
+    assert "عرض الأساس السنوي" in html
+
+    # 3. فحص مسار المركز المالي مع month=0 ونسب السيولة
+    r_bs = client.get("/finance/balance-sheet?year=2026&month=0")
+    assert r_bs.status_code == 200
+    html_bs = r_bs.data.decode("utf-8")
+    assert "المركز المالي" in html_bs
+

@@ -280,8 +280,8 @@ def balance_sheet():
             c_r = round((fig_y.current_assets or 0.0) / fig_y.current_liabilities, 2)
             q_r = round(((fig_y.current_assets or 0.0) - (fig_y.inventory or 0.0)) / fig_y.current_liabilities, 2)
         elif fig_y and (fig_y.current_liabilities or 0.0) < 0:
-            c_r = round((fig_y.current_assets or 0.0) / fig_y.current_liabilities, 2)
-            q_r = round(((fig_y.current_assets or 0.0) - (fig_y.inventory or 0.0)) / fig_y.current_liabilities, 2)
+            c_r = round((fig_y.current_assets or 0.0) / abs(fig_y.current_liabilities), 2)
+            q_r = round(((fig_y.current_assets or 0.0) - (fig_y.inventory or 0.0)) / abs(fig_y.current_liabilities), 2)
         else:
             c_r = 0.0
             q_r = 0.0

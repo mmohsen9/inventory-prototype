@@ -2632,6 +2632,17 @@ def get_aggregated_item_statement(year: int = 2026, month: Optional[int] = None,
 
     items_list.sort(key=lambda x: x["item_code"])
 
+    totals = {
+        "purchase_in": round(sum(it["purchase_in"] for it in items_list), 1),
+        "roast_in": round(sum(it["roast_in"] for it in items_list), 1),
+        "roast_out": round(sum(it["roast_out"] for it in items_list), 1),
+        "sale": round(sum(it["sale"] for it in items_list), 1),
+        "branch_out": round(sum(it["branch_out"] for it in items_list), 1),
+        "samples": round(sum(it["samples"] for it in items_list), 1),
+        "adjustments": round(sum(it["adjustments"] for it in items_list), 1),
+        "net_qty": round(sum(it["net_qty"] for it in items_list), 1),
+    }
+
     return {
         "year": year,
         "month": month,
@@ -2639,6 +2650,7 @@ def get_aggregated_item_statement(year: int = 2026, month: Optional[int] = None,
         "total_roast_in": round(total_roast_in, 1),
         "total_sales": round(total_sales, 1),
         "total_inventory_diff": round(total_inventory_diff, 1),
+        "totals": totals,
         "items": items_list,
     }
 

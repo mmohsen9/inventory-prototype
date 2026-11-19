@@ -439,10 +439,15 @@
     color: #64748b;
     text-decoration: none;
     border-bottom: 3px solid transparent;
-    transition: all 0.2s ease;
+    transition: color 150ms cubic-bezier(0.16, 1, 0.3, 1), background-color 150ms cubic-bezier(0.16, 1, 0.3, 1), border-color 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
-.foodics-tab-link:hover {
-    color: #0f172a;
+@media (hover: hover) and (pointer: fine) {
+    .foodics-tab-link:hover {
+        color: #0f172a;
+    }
+}
+.foodics-tab-link:active {
+    transform: scale(0.98);
 }
 .foodics-tab-link.active {
     color: #4338ca;

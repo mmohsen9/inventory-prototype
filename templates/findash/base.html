@@ -128,13 +128,19 @@ function triggerLiveSync2026() {
     font-weight: 700;
     color: #475569;
     text-decoration: none;
-    transition: all 0.2s ease;
+    transition: background-color 150ms cubic-bezier(0.16, 1, 0.3, 1), color 150ms cubic-bezier(0.16, 1, 0.3, 1), border-color 150ms cubic-bezier(0.16, 1, 0.3, 1), transform 150ms cubic-bezier(0.16, 1, 0.3, 1);
     border: 1px solid transparent;
 }
 
-.fin-side-link:hover {
-    background: #f1f5f9;
-    color: #0f172a;
+@media (hover: hover) and (pointer: fine) {
+    .fin-side-link:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+}
+
+.fin-side-link:active {
+    transform: scale(0.98);
 }
 
 .fin-side-link.active {
@@ -257,12 +263,23 @@ function triggerLiveSync2026() {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
     position: relative;
     overflow: hidden;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.fin-kpi-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+@media (hover: hover) and (pointer: fine) {
+    .fin-kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+    }
+}
+
+.fin-kpi-card:active {
+    transform: scale(0.99);
+}
+
+/* Micro-interaction for buttons (Emil Kowalski's tactile feedback) */
+button:active, .btn:active {
+    transform: scale(0.98);
 }
 
 .fin-kpi-card::before {
@@ -516,6 +533,19 @@ body.show-table-totals .fin-table tfoot.tfoot-totals {
     font-size: 13px;
     padding: 12px 14px;
 }
+
+/* إمكانية الوصول: تقليل الحركة للمستخدمين الذين يفضلون ذلك */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    .fin-kpi-card:hover {
+        transform: none !important;
+    }
+}
 </style>
 {% endblock %}
 
@@ -663,7 +693,7 @@ body.show-table-totals .fin-table tfoot.tfoot-totals {
         </div>
 
         <!-- حاوية الإشعارات العائمة Toast -->
-        <div id="findash-toast" style="display:none; position:fixed; bottom:24px; left:24px; z-index:9999; max-width:420px; padding:14px 18px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.2); font-size:13px; font-weight:700; transition:all 0.3s ease;"></div>
+        <div id="findash-toast" style="display:none; position:fixed; bottom:24px; left:24px; z-index:9999; max-width:420px; padding:14px 18px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.2); font-size:13px; font-weight:700; opacity:0; transform:translateY(12px) scale(0.96); transition:transform 200ms cubic-bezier(0.16, 1, 0.3, 1), opacity 200ms cubic-bezier(0.16, 1, 0.3, 1);"></div>
 
         <!-- محتوى الصفحة المتغير -->
         {% block findash_content %}{% endblock %}
@@ -694,10 +724,14 @@ function showFindashToast(msg, isSuccess = true) {
     t.style.color = '#ffffff';
     t.style.border = isSuccess ? '1px solid #34d399' : '1px solid #f87171';
     t.style.display = 'block';
+    // Force reflow for smooth animation
+    void t.offsetWidth;
     t.style.opacity = '1';
+    t.style.transform = 'translateY(0) scale(1)';
     setTimeout(() => {
         t.style.opacity = '0';
-        setTimeout(() => { t.style.display = 'none'; }, 300);
+        t.style.transform = 'translateY(12px) scale(0.96)';
+        setTimeout(() => { t.style.display = 'none'; }, 220);
     }, 4500);
 }
 
@@ -841,59 +875,6 @@ document.addEventListener('DOMContentLoaded', function() {
         initLiveTableSearch(inp, targetTable, counterTarget);
     });
 });
-
-
-// تشغيل المزامنة الفورية اللحظية لعام 2026 عبر AJAX
-function triggerLiveSync2026() {
-    const btn = document.getElementById('btn-live-sync-2026');
-    const oldHtml = btn ? btn.innerHTML : '';
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<span>⏳ جاري الاتصال بـ Xero...</span>';
-    }
-
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
-    fetch("{{ url_for('findash.api_sync_live_2026') }}", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": csrfToken || "",
-            "X-Requested-With": "XMLHttpRequest"
-        }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            showFindashToast(data.message || "تمت المزامنة اللحظية الحية لعام 2026 بنجاح", true);
-            if (data.reports_scope_missing) {
-                setTimeout(() => {
-                    if (confirm("تم تحديث رصيد المخزون بنجاح (105 صنف).\n\nلقراءة تقارير الأرباح والخسائر والمركز المالي من زيرو مباشرة للشهور الحالية، هل ترغب في تفعيل صلاحية تقارير زيرو الآن؟")) {
-                        window.location.href = data.connect_url || "/coffee/xero/connect";
-                        return;
-                    }
-                    window.location.reload();
-                }, 1600);
-            } else {
-                setTimeout(() => { window.location.reload(); }, 1500);
-            }
-        } else {
-            showFindashToast("تنبيه: " + (data.error || "تعذرت المزامنة المباشرة"), false);
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = oldHtml;
-            }
-        }
-    })
-    .catch(err => {
-        showFindashToast("حدث خطأ أثناء طلب المزامنة: " + err, false);
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = oldHtml;
-        }
-    });
-}
-
 </script>
 {% endblock %}
 
